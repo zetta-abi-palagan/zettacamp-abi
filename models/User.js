@@ -1,19 +1,17 @@
 // *************** IMPORT LIBRARY ***************
 const mongoose = require('mongoose');
 
-const user_schema = mongoose.Schema({
+const userSchema = mongoose.Schema({
     // User's first name
     first_name: {
         type: String,
-        required: true,
-        trim: true
+        required: true
     },
 
     // User's last name
     last_name: {
         type: String,
-        required: true,
-        trim: true
+        required: true
     },
 
     // User's email address
@@ -21,8 +19,7 @@ const user_schema = mongoose.Schema({
         type: String,
         required: true,
         unique: true,
-        lowercase: true,
-        trim: true
+        lowercase: true
     },
 
     // User's password (hashed)
@@ -39,16 +36,35 @@ const user_schema = mongoose.Schema({
 
     // Timestamp for soft delete
     deleted_at: {
-        type: Date,
-        default: null
+        type: Date
     }
 }, {
     // Automatically include createdAt and updatedAt fields
     timestamps: true
 });
 
-// *************** Defines the 'User' model by compiling the user_schema.
-const User = mongoose.model('User', user_schema);
+/**
+ * Static method.
+ * Finds and returns all active (not soft-deleted) users.
+ * @returns {Promise<User[]>} A promise that resolves to an array of active User documents.
+ */
+userSchema.statics.findActive = function() {
+  return this.find({ deletedAt: null });
+};
+
+/**
+ * Instance method.
+ * Marks the current user document as soft-deleted by setting `deleted_at` to the current date,
+ * then saves the changes to the database.
+ * @returns {Promise<User>} A promise that resolves to the updated (soft-deleted) User document.
+ */
+userSchema.methods.softDelete = function() {
+  this.deletedAt = new Date();
+  return this.save();
+};
+
+// *************** Defines the 'User' model by compiling the userSchema.
+const User = mongoose.model('User', userSchema);
 
 // *************** EXPORT MODULE ***************
 module.exports = User;
