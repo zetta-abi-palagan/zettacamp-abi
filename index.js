@@ -3,16 +3,15 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 
-// *************** CONFIGURATION ***************
-dotenv.config(); // Load environment variables from .env file
+// *************** Load environment variables from .env file
+dotenv.config();
 
-const app = express(); // Initialize Express application
+// *************** Initialize Express application
+const app = express();
 
-// Environment variables
-const PORT = process.env.PORT || 3000; // Default to 3000 if PORT is not set
+// *************** Calling the environment variables
+const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
-
-// *************** APPLICATION LOGIC ***************
 
 /**
  * Establishes a connection to the MongoDB database.
@@ -25,18 +24,22 @@ const MONGO_URI = process.env.MONGO_URI;
  * log or process termination on error.
  */
 async function ConnectDB() {
-    // Sanity check for MONGO_URI
+    // *************** START: Sanity check for MONGO_URI ***************
     if (!MONGO_URI) {
         console.error('MongoDB connection error: MONGO_URI is not defined in environment variables.');
-        process.exit(1); // Exit if MONGO_URI is missing
+        process.exit(1);
     }
+    // *************** END: Sanity check for MONGO_URI ***************
+
+    // *************** START: Database connection attempt ***************
     try {
         await mongoose.connect(MONGO_URI);
         console.log('Successfully connected to MongoDB.');
     } catch (err) {
         console.error('MongoDB connection error:', err.message);
-        process.exit(1); // Exit application on database connection failure
+        process.exit(1);
     }
+    // *************** END: Database connection attempt ***************
 }
 
 /**
@@ -49,14 +52,16 @@ async function ConnectDB() {
  * this function logs success or terminates on error.
  */
 async function StartServer() {
+    // *************** START: Server listening attempt ***************
     try {
         app.listen(PORT, () => {
             console.log(`Server is running on http://localhost:${PORT}`);
         });
     } catch (err) {
         console.error('Failed to start server:', err.message);
-        process.exit(1); // Exit application if server fails to start
+        process.exit(1);
     }
+    // *************** END: Server listening attempt ***************
 }
 
 /**
@@ -70,17 +75,17 @@ async function StartServer() {
  * The application will log success or terminate on any critical failure.
  */
 async function InitializeApp() {
+    // *************** START: Application initialization sequence ***************
     try {
         await ConnectDB();
-
         await StartServer();
-
         console.log('Application initialized successfully.');
     } catch (err) {
         console.error('Application initialization failed:', err.message);
-        process.exit(1); // Exit application on general initialization failure
+        process.exit(1);
     }
+    // *************** END: Application initialization sequence ***************
 }
 
-// *************** START APPLICATION ***************
+// *************** Start the application
 InitializeApp();
