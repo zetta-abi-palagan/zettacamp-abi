@@ -14,6 +14,7 @@ const schoolSchema = mongoose.Schema({
         trim: true
     },
 
+    // Reference to students of the school
     student: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Student'
