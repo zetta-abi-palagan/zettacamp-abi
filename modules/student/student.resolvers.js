@@ -50,7 +50,6 @@ const studentResolvers = {
          */
         CreateStudent: async (_, { input }) => {
             try {
-                // Verify school exists
                 const school = await schoolModel.findById(input.school_id);
                 if (!school || school.deleted_at) {
                     throw new Error('School not found');
@@ -83,7 +82,6 @@ const studentResolvers = {
                     throw new Error('Student not found');
                 }
 
-                // Verify school exists if school_id is being updated
                 if (input.school_id) {
                     const school = await schoolModel.findById(input.school_id);
                     if (!school || school.deleted_at) {
