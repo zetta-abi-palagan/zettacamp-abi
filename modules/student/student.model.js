@@ -30,7 +30,7 @@ const studentSchema = mongoose.Schema({
     // Reference to the school the student belongs to
     school_id: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'School',
+        ref: 'school',
         required: true
     },
 
@@ -49,7 +49,7 @@ const studentSchema = mongoose.Schema({
  * @returns {Promise<Student[]>} A promise that resolves to an array of active Student documents.
  */
 studentSchema.statics.findActive = function() {
-  return this.find({ deletedAt: null });
+  return this.find({ deleted_at: null });
 };
 
 /**
@@ -59,12 +59,12 @@ studentSchema.statics.findActive = function() {
  * @returns {Promise<Student>} A promise that resolves to the updated (soft-deleted) Student document.
  */
 studentSchema.methods.softDelete = function() {
-  this.deletedAt = new Date();
+  this.deleted_at = new Date();
   return this.save();
 };
 
-// *************** Defines the 'Student' model by compiling the studentSchema.
-const Student = mongoose.model('Student', studentSchema);
+// *************** Defines the 'student' model by compiling the studentSchema.
+const studentModel = mongoose.model('student', studentSchema);
 
 // *************** EXPORT MODULE ***************
-module.exports = Student;
+module.exports = studentModel;

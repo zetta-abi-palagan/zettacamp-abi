@@ -49,7 +49,7 @@ const userSchema = mongoose.Schema({
  * @returns {Promise<User[]>} A promise that resolves to an array of active User documents.
  */
 userSchema.statics.findActive = function() {
-  return this.find({ deletedAt: null });
+  return this.find({ deleted_at: null });
 };
 
 /**
@@ -59,12 +59,12 @@ userSchema.statics.findActive = function() {
  * @returns {Promise<User>} A promise that resolves to the updated (soft-deleted) User document.
  */
 userSchema.methods.softDelete = function() {
-  this.deletedAt = new Date();
+  this.deleted_at = new Date();
   return this.save();
 };
 
-// *************** Defines the 'User' model by compiling the userSchema.
-const User = mongoose.model('User', userSchema);
+// *************** Defines the 'user' model by compiling the userSchema.
+const userModel = mongoose.model('user', userSchema);
 
 // *************** EXPORT MODULE ***************
-module.exports = User;
+module.exports = userModel;

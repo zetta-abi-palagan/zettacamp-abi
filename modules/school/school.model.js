@@ -14,12 +14,6 @@ const schoolSchema = mongoose.Schema({
         trim: true
     },
 
-    // Reference to students of the school
-    student: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Student'
-    }],
-
     // Timestamp for soft delete
     deleted_at: {
         type: Date
@@ -29,13 +23,26 @@ const schoolSchema = mongoose.Schema({
     timestamps: true
 });
 
+// *************** Defines a virtual 'students' field to populate active students linked by school_id.
+schoolSchema.virtual('students', {
+    ref: 'student',
+    localField: '_id',
+    foreignField: 'school_id',
+    justOne: false,
+    match: { deleted_at: null }
+});
+
+// *************** Ensures virtuals like 'students' are included when converting documents to JSON or objects.
+schoolSchema.set('toJSON', { virtuals: true });
+schoolSchema.set('toObject', { virtuals: true });
+
 /**
  * Static method.
  * Finds and returns all active (not soft-deleted) schools.
  * @returns {Promise<School[]>} A promise that resolves to an array of active School documents.
  */
-schoolSchema.statics.findActive = function() {
-  return this.find({ deletedAt: null });
+schoolSchema.statics.findActive = function () {
+    return this.find({ deleted_at: null });
 };
 
 /**
@@ -44,13 +51,13 @@ schoolSchema.statics.findActive = function() {
  * then saves the changes to the database.
  * @returns {Promise<School>} A promise that resolves to the updated (soft-deleted) School document.
  */
-schoolSchema.methods.softDelete = function() {
-  this.deletedAt = new Date();
-  return this.save();
+schoolSchema.methods.softDelete = function () {
+    this.deleted_at = new Date();
+    return this.save();
 };
 
-// *************** Defines the 'School' model by compiling the schoolSchema.
-const School = mongoose.model('School', schoolSchema);
+// *************** Defines the 'school' model by compiling the schoolSchema.
+const schoolModel = mongoose.model('school', schoolSchema);
 
 // *************** EXPORT MODULE ***************
-module.exports = School;
+module.exports = schoolModel;
