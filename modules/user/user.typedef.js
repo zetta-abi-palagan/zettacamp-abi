@@ -27,8 +27,8 @@ const userTypeDefs = gql`
   }
 
   type Query {
-    Users: [User!]!
-    User(id: ID!): User
+    GetAllUsers: [User!]!
+    GetOneUser(id: ID!): User
   }
 
   type Mutation {

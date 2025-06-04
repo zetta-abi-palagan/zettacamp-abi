@@ -11,7 +11,7 @@ const userResolvers = {
          * @returns {Promise<Array<Object>>} A promise that resolves to an array of user objects.
          * @throws {Error} If fetching users fails.
          */
-        Users: async () => {
+        GetAllUsers: async () => {
             try {
                 return await userModel.findActive();
             } catch (error) {
@@ -27,7 +27,7 @@ const userResolvers = {
          * @returns {Promise<Object>} A promise that resolves to the user object.
          * @throws {Error} If the user is not found or fetching fails.
          */
-        User: async (_, { id }) => {
+        GetOneUser: async (_, { id }) => {
             try {
                 const user = await userModel.findById(id);
                 if (!user || user.deleted_at) {
