@@ -42,10 +42,5 @@ const userSchema = mongoose.Schema({
     timestamps: true
 });
 
-
-
-// *************** Defines the 'user' model by compiling the userSchema.
-const userModel = mongoose.model('user', userSchema);
-
 // *************** EXPORT MODULE ***************
-module.exports = userModel;
+module.exports = mongoose.model('user', userSchema);
