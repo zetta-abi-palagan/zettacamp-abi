@@ -11,7 +11,6 @@ const port = config.PORT;
  * This function orchestrates database connection, Express app setup, Apollo Server setup,
  * and starts the HTTP server.
  * It will terminate the application process if any critical step fails.
- * @async
  */
 async function StartApp() {
     try {

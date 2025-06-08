@@ -7,16 +7,16 @@ const studentTypeDefs = gql`
     first_name: String!
     last_name: String!
     email: String!
-    date_of_birth: Date
+    date_of_birth: String
     school_id: ID!
-    deleted_at: Date
+    deleted_at: String
   }
 
   input CreateStudentInput {
     first_name: String!
     last_name: String!
     email: String!
-    date_of_birth: Date
+    date_of_birth: String
     school_id: ID!
   }
 
@@ -24,7 +24,7 @@ const studentTypeDefs = gql`
     first_name: String
     last_name: String
     email: String
-    date_of_birth: Date
+    date_of_birth: String
     school_id: ID
   }
 

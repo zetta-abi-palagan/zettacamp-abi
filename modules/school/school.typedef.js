@@ -7,7 +7,7 @@ const schoolTypeDefs = gql`
     name: String!
     address: String
     students: [Student]
-    deleted_at: Date
+    deleted_at: String
   }
 
   input CreateSchoolInput {

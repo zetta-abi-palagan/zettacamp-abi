@@ -1,7 +1,6 @@
 /**
  * Applies soft-delete logic to an already fetched Mongoose document instance
  * by setting its 'deleted_at' field and then saving it.
- * @async
  * @param {import('mongoose').Document} document - The fetched Mongoose document instance.
  * @returns {Promise<{document: import('mongoose').Document}>} The saved document with `deleted_at` updated.
  * @throws {Error} If the save operation fails.

@@ -1,4 +1,4 @@
-// *************** IMPORT LIBRARY ***************
+// *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
 const studentSchema = mongoose.Schema({
@@ -18,7 +18,6 @@ const studentSchema = mongoose.Schema({
     email: {
         type: String,
         required: true,
-        unique: true,
         lowercase: true
     },
 
@@ -43,28 +42,5 @@ const studentSchema = mongoose.Schema({
     timestamps: true
 });
 
-/**
- * Static method.
- * Finds and returns all active (not soft-deleted) students.
- * @returns {Promise<Student[]>} A promise that resolves to an array of active Student documents.
- */
-studentSchema.statics.findActive = function() {
-  return this.find({ deleted_at: null });
-};
-
-/**
- * Instance method.
- * Marks the current student document as soft-deleted by setting `deleted_at` to the current date,
- * then saves the changes to the database.
- * @returns {Promise<Student>} A promise that resolves to the updated (soft-deleted) Student document.
- */
-studentSchema.methods.softDelete = function() {
-  this.deleted_at = new Date();
-  return this.save();
-};
-
-// *************** Defines the 'student' model by compiling the studentSchema.
-const studentModel = mongoose.model('student', studentSchema);
-
 // *************** EXPORT MODULE ***************
-module.exports = studentModel;
+module.exports = mongoose.model('student', studentSchema);

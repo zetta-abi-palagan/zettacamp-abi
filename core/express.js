@@ -9,9 +9,9 @@ function InitializeExpressApp() {
     const app = express();
 
     // *************** Endpoint for checking if the server is up
-    app.get('/health', (req, res) => {
+    app.get('/health', function (req, res) {
         res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
-    });
+    })
 
     return app;
 }
@@ -21,7 +21,6 @@ function InitializeExpressApp() {
  * The function will terminate the application process if it fails to start the server.
  * @param {object} app - The Express application instance.
  * @param {number|string} port - The port number to listen on.
- * @async
  * @returns {Promise<void>} A promise that resolves when the server has started listening.
  */
 async function StartExpressServer(app, port) {
@@ -33,13 +32,13 @@ async function StartExpressServer(app, port) {
         port = 3000;
     }
 
-    return new Promise((resolve, reject) => {
-        const server = app.listen(port, () => {
+    return new Promise(function(resolve, reject) {
+        const server = app.listen(port, function() {
             console.log(`Server is running on http://localhost:${port}`);
             resolve(server);
         });
 
-        server.on('error', (err) => {
+        server.on('error', function(err) {
             console.error('Failed to start server:', err.message);
             reject(err);
         });
