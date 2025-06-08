@@ -4,8 +4,8 @@ const { mergeTypeDefs, mergeResolvers } = require('@graphql-tools/merge');
 
 // *************** IMPORT MODULE ***************
 const UserModel = require('../modules/user/user.model');
-const Student = require('../modules/student/student.model');
-const School = require('../modules/school/school.model');
+const StudentModel = require('../modules/student/student.model');
+const SchoolModel = require('../modules/school/school.model');
 const userTypeDefs = require('../modules/user/user.typedef');
 const studentTypeDefs = require('../modules/student/student.typedef');
 const schoolTypeDefs = require('../modules/school/school.typedef');
@@ -36,8 +36,8 @@ async function SetupApolloServer(app, port) {
             return {
                 models: {
                     User: UserModel,
-                    Student,
-                    School
+                    Student: StudentModel,
+                    School: SchoolModel
                 },
                 dataLoaders: {
                     StudentLoader: StudentLoader()
