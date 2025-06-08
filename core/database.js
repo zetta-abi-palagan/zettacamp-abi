@@ -1,7 +1,7 @@
 // *************** IMPORT LIBRARY ***************
 const mongoose = require('mongoose');
 
-// *************** IMPORT CORE ***************
+// *************** IMPORT MODULE ***************
 const config = require('./config');
 
 const mongo_uri = config.MONGO_URI
