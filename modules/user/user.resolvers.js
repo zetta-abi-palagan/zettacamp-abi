@@ -65,7 +65,7 @@ async function CreateUser(_, { input }) {
     } = input;
 
     const validRoles = ['ADMIN', 'USER'];
-    const validStatus = ['ACTIVE', 'INACTIVE', 'DELETED'];
+    const validStatus = ['ACTIVE', 'INACTIVE'];
 
     if (!first_name || validator.isEmpty(first_name, { ignore_whitespace: true })) {
         throw new ApolloError('First name is required.', 'BAD_USER_INPUT', {
@@ -161,7 +161,7 @@ async function UpdateUser(_, { id, input }) {
     } = input;
 
     const validRoles = ['ADMIN', 'USER'];
-    const validStatus = ['ACTIVE', 'INACTIVE', 'DELETED'];
+    const validStatus = ['ACTIVE', 'INACTIVE'];
 
     const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
     if (!isValidObjectId) {

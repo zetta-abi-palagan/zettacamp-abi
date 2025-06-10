@@ -64,7 +64,7 @@ async function CreateSchool(_, { input }) {
         school_status
     } = input;
 
-    const validStatus = ['ACTIVE', 'INACTIVE', 'DELETED'];
+    const validStatus = ['ACTIVE', 'INACTIVE'];
 
     if (!commercial_name || validator.isEmpty(commercial_name, { ignore_whitespace: true })) {
         throw new ApolloError('Commercial name is required.', 'BAD_USER_INPUT', {
@@ -159,7 +159,7 @@ async function UpdateSchool(_, { id, input }) {
         school_status
     } = input;
 
-    const validStatus = ['ACTIVE', 'INACTIVE', 'DELETED'];
+    const validStatus = ['ACTIVE', 'INACTIVE'];
 
     const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
     if (!isValidObjectId) {
@@ -272,14 +272,14 @@ async function DeleteSchool(_, { id }) {
 /**
  * Loads the students associated with a school using a DataLoader.
  * @param {object} parent - The parent school object.
- * @param {string} parent.id - The ID of the school for which to load students.
+ * @param {string} parent.students - The list of student IDs to load for the school.
  * @param {object} _ - The arguments object, not used here.
  * @param {object} context - The GraphQL context containing dataLoaders.
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of student objects.
  */
 async function StudentLoader(parent, _, context) {
   try {
-    return await context.dataLoaders.StudentLoader.load(parent.id);
+    return await context.dataLoaders.StudentLoader.loadMany(parent.students);
   } catch (error) {
     console.error("Error fetching students:", error);
 

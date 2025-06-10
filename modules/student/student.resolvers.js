@@ -64,7 +64,7 @@ async function CreateStudent(_, { input }) {
         school
     } = input;
 
-    const validStatus = ['ACTIVE', 'INACTIVE', 'DELETED'];
+    const validStatus = ['ACTIVE', 'INACTIVE'];
 
     if (!first_name || validator.isEmpty(first_name, { ignore_whitespace: true })) {
         throw new ApolloError('First name is required.', 'BAD_USER_INPUT', {
@@ -139,8 +139,10 @@ async function CreateStudent(_, { input }) {
             school: school
         }
 
+        // *************** Create new student data in the MongoDB
         const newStudent = await StudentModel.create(studentData);
 
+        // *************** Add the new student to the associated active school
         await SchoolModel.updateOne({ _id: school, school_status: 'ACTIVE' }, { $addToSet: { students: newStudent._id } });
 
         return newStudent;
@@ -170,7 +172,7 @@ async function UpdateStudent(_, { id, input }) {
         school
     } = input;
 
-    const validStatus = ['ACTIVE', 'INACTIVE', 'DELETED'];
+    const validStatus = ['ACTIVE', 'INACTIVE'];
 
     const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
     if (!isValidObjectId) {
@@ -236,6 +238,7 @@ async function UpdateStudent(_, { id, input }) {
         // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
         const updatedByUserId = '6846e5769e5502fce150eb67';
 
+        // *************** Check if student data is already in database
         const existingStudent = await StudentModel.findOne({ _id: id, student_status: 'ACTIVE' });
         if (!existingStudent) {
             throw new ApolloError('Student not found', 'NOT_FOUND', {
@@ -243,8 +246,10 @@ async function UpdateStudent(_, { id, input }) {
             });
         }
 
-        const hasSchoolChanged = existingStudent.school.toString() !== school;
+        // *************** Determine if school has changed
+        const hasSchoolChanged = String(existingStudent.school) !== school;
 
+        // *************** If student change school, remove student data from old school
         if (hasSchoolChanged) {
             await SchoolModel.updateOne(
                 { _id: existingStudent.school },
@@ -263,8 +268,10 @@ async function UpdateStudent(_, { id, input }) {
             school: school
         }
 
+        // *************** Update the student data
         const updatedStudent = await StudentModel.findOneAndUpdate({ _id: id, student_status: 'ACTIVE' }, studentData, { new: true });
 
+        // *************** If student change school, add student data to new school
         if (hasSchoolChanged) {
             await SchoolModel.updateOne({ _id: school, school_status: 'ACTIVE' }, { $addToSet: { students: updatedStudent._id } });
         }

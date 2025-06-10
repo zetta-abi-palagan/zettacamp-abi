@@ -1,6 +1,5 @@
 // *************** IMPORT LIBRARY ***************
 const DataLoader = require('dataloader');
-const { keyBy } = require('lodash');
 const { ApolloError } = require('apollo-server');
 
 // *************** IMPORT MODULE ***************
@@ -13,19 +12,15 @@ const UserModel = require('./user.model');
  * @returns {DataLoader} - An instance of DataLoader for fetching users by ID.
  */
 function UserLoader() {
-    return new DataLoader(async function (userIds) {
+    return new DataLoader(async (userIds) => {
         try {
             const users = await UserModel.find({
                 _id: { $in: userIds },
             });
 
-            const usersById = keyBy(users, function(user) {
-                return user._id.toString();
-            });
+            const usersById = new Map(users.map(user => [String(user._id), user]));
 
-            return userIds.map(function(userId) {
-                return usersById[userId.toString()]
-            });
+            return userIds.map(userId => usersById.get(String(userId)));
         } catch (error) {
             console.error('Error batch fetching users:', error);
             throw new ApolloError(`Failed to batch fetch users: ${error.message}`, 'USER_BATCH_FETCH_FAILED');

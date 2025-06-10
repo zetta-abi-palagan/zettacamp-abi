@@ -29,7 +29,7 @@ async function StartExpressServer(app, port) {
     }
     if (!port) {
         console.warn("Port not provided; defaulting to 5000");
-        port = 3000;
+        port = 5000;
     }
 
     return new Promise(function(resolve, reject) {

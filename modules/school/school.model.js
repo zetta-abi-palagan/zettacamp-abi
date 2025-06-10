@@ -34,7 +34,7 @@ const schoolSchema = mongoose.Schema({
 
     // Postal code of the school's location
     zipcode: {
-        type: Date,
+        type: String,
         required: true
     },
 

@@ -1,17 +1,10 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloServer } = require('apollo-server-express');
-const { mergeTypeDefs, mergeResolvers } = require('@graphql-tools/merge');
 
 // *************** IMPORT MODULE ***************
-const userTypeDefs = require('../modules/user/user.typedef');
-const studentTypeDefs = require('../modules/student/student.typedef');
-const schoolTypeDefs = require('../modules/school/school.typedef');
-const userResolvers = require('../modules/user/user.resolvers');
-const studentResolvers = require('../modules/student/student.resolvers');
-const schoolResolvers = require('../modules/school/school.resolvers');
-const UserLoader = require('../modules/user/user.loader');
-const StudentLoader = require('../modules/student/student.loader');
-const SchoolLoader = require('../modules/school/school.loader');
+const typeDefs = require('./typedef');
+const resolvers = require('./resolvers');
+const CreateContext = require('./loaders');
 
 /**
  * Creates and applies Apollo Server middleware to the Express app.
@@ -29,17 +22,9 @@ async function SetupApolloServer(app, port) {
         port = '[UNKNOWN_PORT]';
     }
     const server = new ApolloServer({
-        typeDefs: mergeTypeDefs([userTypeDefs, studentTypeDefs, schoolTypeDefs]),
-        resolvers: mergeResolvers([userResolvers, schoolResolvers, studentResolvers]),
-        context: function () {
-            return {
-                dataLoaders: {
-                    UserLoader: UserLoader(),
-                    StudentLoader: StudentLoader(),
-                    SchoolLoader: SchoolLoader()
-                }
-            }
-        }
+        typeDefs,
+        resolvers,
+        context: CreateContext
     });
     await server.start();
     // *************** Apply the GraphQL middleware to the existing Express app with /graphql endpoint
