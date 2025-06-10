@@ -4,7 +4,7 @@ const { ApolloServer } = require('apollo-server-express');
 // *************** IMPORT MODULE ***************
 const typeDefs = require('./typedef');
 const resolvers = require('./resolvers');
-const CreateContext = require('./loaders');
+const CreateLoaders = require('./loaders');
 
 /**
  * Creates and applies Apollo Server middleware to the Express app.
@@ -24,7 +24,11 @@ async function SetupApolloServer(app, port) {
     const server = new ApolloServer({
         typeDefs,
         resolvers,
-        context: CreateContext
+        context: () => {
+            return {
+                dataLoaders: CreateLoaders()
+            }
+        }
     });
     await server.start();
     // *************** Apply the GraphQL middleware to the existing Express app with /graphql endpoint
