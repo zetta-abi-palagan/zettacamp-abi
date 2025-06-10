@@ -6,6 +6,12 @@ const { ApolloError } = require('apollo-server');
 // *************** IMPORT MODULE ***************
 const SchoolModel = require('./school.model');
 
+/**
+ * Creates a new DataLoader for batch-loading school data.
+ * This function is used to solve the N+1 problem by collecting individual school ID requests
+ * and fetching them in a single database query.
+ * @returns {DataLoader} - An instance of DataLoader for fetching schools by ID.
+ */
 function SchoolLoader() {
     return new DataLoader(async function (schoolIds) {
         try {
