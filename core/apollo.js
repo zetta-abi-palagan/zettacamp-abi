@@ -28,17 +28,6 @@ async function SetupApolloServer(app, port) {
         console.warn("Port not provided to SetupApolloServer; log message might be incomplete.");
         port = '[UNKNOWN_PORT]';
     }
-    // const server = new ApolloServer({
-    //     typeDefs: mergeTypeDefs([userTypeDefs, studentTypeDefs, schoolTypeDefs]),
-    //     resolvers: mergeResolvers([userResolvers, studentResolvers, schoolResolvers]),
-    //     context: function () {
-    //         return {
-    //             dataLoaders: {
-    //                 StudentLoader: StudentLoader()
-    //             }
-    //         }
-    //     }
-    // });
     const server = new ApolloServer({
         typeDefs: mergeTypeDefs([userTypeDefs, studentTypeDefs, schoolTypeDefs]),
         resolvers: mergeResolvers([userResolvers, schoolResolvers, studentResolvers]),
