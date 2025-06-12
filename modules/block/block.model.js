@@ -14,10 +14,29 @@ const blockSchema = mongoose.Schema({
         required: true
     },
 
-    // Type of the block: COMPETENCY or SCORE
-    block_type: {
+    // Type of the evaluation: COMPETENCY or SCORE
+    evaluation_type: {
         type: String,
         enum: ['COMPETENCY', 'SCORE'],
+        required: true
+    },
+
+    // Type of the block: REGULAR, COMPETENCY, SOFT_SKILL, ACADEMIC_RECOMMENDATION, SPECIALIZATION, TRANSVERSAL, RETAKE
+    block_type: {
+        type: String,
+        enum: ['REGULAR', 'COMPETENCY', 'SOFT_SKILL', 'ACADEMIC_RECOMMENDATION', 'SPECIALIZATION', 'TRANSVERSAL', 'RETAKE'],
+        required: true
+    },
+
+    // Other block that is connected to this block, only for block type: RETAKE
+    connected_block: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Block"
+    },
+
+    // Check whether the block is counted in the final transcript or not
+    is_counted_in_final_transcript: {
+        type: Boolean,
         required: true
     },
 
