@@ -8,7 +8,7 @@ const subjectSchema = mongoose.Schema({
         ref: "Block",
         required: true
     },
-    
+
     // Subject’s name
     name: {
         type: String,
@@ -27,6 +27,18 @@ const subjectSchema = mongoose.Schema({
         required: true,
         min: 0
     },
+
+    // Check if this is a subject in transversal block or not
+    is_transversal: {
+        type: Boolean,
+        required: true
+    },
+
+    // List of blocks that are connected to this subject (only for subject in transversal block)
+    connected_blocks: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Block"
+    }],
 
     // List of test IDs associated with the subject
     tests: [{

@@ -67,10 +67,10 @@ async function CreateBlockHelper(input) {
         block_status: block_status.toUpperCase(),
         created_by: createdByUserId,
         updated_by: createdByUserId
-    }
+    };
 
     try {
-        return await BlockModel.create(blockData)
+        return await BlockModel.create(blockData);
     } catch (error) {
         throw new ApolloError('Failed to create block', 'BLOCK_CREATION_FAILED', {
             error: error.message
@@ -142,9 +142,6 @@ async function DeleteBlockHelper(id) {
         });
     }
 }
-
-// *************** LOADER ***************
-
 
 // *************** EXPORT MODULE ***************
 module.exports = {

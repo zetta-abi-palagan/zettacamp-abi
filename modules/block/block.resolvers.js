@@ -159,7 +159,7 @@ async function DeleteBlock(_, { id }) {
             throw error;
         }
 
-        console.error('Unexpected error in Deletelock:', error);
+        console.error('Unexpected error in DeleteBlock:', error);
 
         throw new ApolloError('Failed to delete block', 'DELETE_BLOCK_FAILED');
     }
