@@ -1,4 +1,4 @@
-// *************** IMPORT LIBRARY ***************
+// *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
 // *************** IMPORT MODULE ***************

@@ -1,4 +1,4 @@
-// *************** IMPORT LIBRARY ***************
+// *************** IMPORT CORE ***************
 const express = require('express');
 
 /**

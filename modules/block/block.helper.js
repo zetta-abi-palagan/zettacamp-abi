@@ -72,7 +72,72 @@ async function CreateBlockHelper(input) {
     try {
         return await BlockModel.create(blockData)
     } catch (error) {
-        throw new ApolloError('Failed to create school', 'SCHOOL_CREATION_FAILED', {
+        throw new ApolloError('Failed to create block', 'BLOCK_CREATION_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Updates an existing block in the database with the provided data.
+ * @param {object} input - An object containing the block's ID and the fields to be updated.
+ * @returns {Promise<object>} - A promise that resolves to the updated block object.
+ */
+async function UpdateBlockHelper(input) {
+    const {
+        id,
+        name,
+        description,
+        evaluation_type,
+        block_type,
+        connected_block,
+        is_counted_in_final_transcript,
+        block_status
+    } = input;
+
+    // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+    const updatedByUserId = '6846e5769e5502fce150eb67';
+
+    const blockData = {
+        name: name,
+        description: description,
+        evaluation_type: evaluation_type.toUpperCase(),
+        block_type: block_type.toUpperCase(),
+        connected_block: connected_block,
+        is_counted_in_final_transcript: is_counted_in_final_transcript,
+        block_status: block_status.toUpperCase(),
+        updated_by: updatedByUserId
+    }
+
+    try {
+        return await BlockModel.findOneAndUpdate({ _id: id }, blockData, { new: true });
+    } catch (error) {
+        throw new ApolloError('Failed to update block', 'BLOCK_UPDATE_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Performs a soft delete on a block by updating its status to 'DELETED'.
+ * @param {string} id - The unique identifier of the block to be deleted.
+ * @returns {Promise<object>} - A promise that resolves to the block object before the update.
+ */
+async function DeleteBlockHelper(id) {
+    try {
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const deletedByUserId = '6846e5769e5502fce150eb67';
+
+        const blockData = {
+            block_status: 'DELETED',
+            updated_at: deletedByUserId,
+            deleted_by: deletedByUserId,
+            deleted_at: Date.now()
+        }
+
+        return await BlockModel.findOneAndUpdate({ _id: id }, blockData);
+    } catch (error) {
+        throw new ApolloError('Failed to delete block', 'BLOCK_DELETION_FAILED', {
             error: error.message
         });
     }
@@ -85,5 +150,7 @@ async function CreateBlockHelper(input) {
 module.exports = {
     GetAllBlocksHelper,
     GetOneBlockHelper,
-    CreateBlockHelper
+    CreateBlockHelper,
+    UpdateBlockHelper,
+    DeleteBlockHelper
 }

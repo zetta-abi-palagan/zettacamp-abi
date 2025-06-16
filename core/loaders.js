@@ -2,18 +2,20 @@
 const UserLoader = require('../modules/user/user.loader');
 const StudentLoader = require('../modules/student/student.loader');
 const SchoolLoader = require('../modules/school/school.loader');
+const BlockLoader = require('../modules/block/block.loader');
 
 /**
  * Creates and returns an object containing all DataLoader instances.
  * This function centralizes the instantiation of all data loaders, which can then be
  * added to the GraphQL context for each request.
- * @returns {object} An object with initialized DataLoader instances for User, Student, and School.
+ * @returns {object} An object with initialized DataLoader instances for User, Student, School, and Block.
  */
 function CreateLoaders() {
     return {
         UserLoader: UserLoader(),
         StudentLoader: StudentLoader(),
-        SchoolLoader: SchoolLoader()
+        SchoolLoader: SchoolLoader(),
+        BlockLoaer: BlockLoader()
     };
 }
 

@@ -1,5 +1,5 @@
 // *************** IMPORT LIBRARY ***************
-const { mergeTypeDefs, mergeResolvers } = require('@graphql-tools/merge');
+const { mergeTypeDefs } = require('@graphql-tools/merge');
 
 // *************** IMPORT MODULE *************** 
 const userTypeDefs = require('../modules/user/user.typedef');

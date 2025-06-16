@@ -1,4 +1,4 @@
-// *************** IMPORT LIBRARY ***************
+// *************** IMPORT CORE ***************
 const { ApolloServer } = require('apollo-server-express');
 
 // *************** IMPORT MODULE ***************

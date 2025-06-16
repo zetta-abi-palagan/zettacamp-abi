@@ -278,13 +278,13 @@ async function DeleteSchool(_, { id }) {
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of student objects.
  */
 async function StudentLoader(parent, _, context) {
-  try {
-    return await context.dataLoaders.StudentLoader.loadMany(parent.students);
-  } catch (error) {
-    console.error("Error fetching students:", error);
+    try {
+        return await context.dataLoaders.StudentLoader.loadMany(parent.students);
+    } catch (error) {
+        console.error("Error fetching students:", error);
 
-    throw new ApolloError(`Failed to fetch students for ${parent.name}: ${error.message}`, 'STUDENT_FETCH_FAILED');
-  }
+        throw new ApolloError(`Failed to fetch students for ${parent.name}: ${error.message}`, 'STUDENT_FETCH_FAILED');
+    }
 }
 
 /**
@@ -297,10 +297,10 @@ async function StudentLoader(parent, _, context) {
  */
 async function CreatedByLoader(parent, _, context) {
     try {
-    return await context.dataLoaders.UserLoader.load(parent.created_by);
-  } catch (error) {
-    throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
-  }
+        return await context.dataLoaders.UserLoader.load(parent.created_by);
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
+    }
 }
 
 /**
@@ -313,10 +313,10 @@ async function CreatedByLoader(parent, _, context) {
  */
 async function UpdatedByLoader(parent, _, context) {
     try {
-    return await context.dataLoaders.UserLoader.load(parent.updated_by);
-  } catch (error) {
-    throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
-  }
+        return await context.dataLoaders.UserLoader.load(parent.updated_by);
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
+    }
 }
 
 // *************** EXPORT MODULE ***************
