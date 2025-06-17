@@ -7,6 +7,7 @@ const studentResolvers = require('../modules/student/student.resolvers');
 const schoolResolvers = require('../modules/school/school.resolvers');
 const blockResolvers = require('../modules/block/block.resolvers');
 const subjectResolvers = require('../modules/subject/subject.resolvers');
+const testResolvers = require('../modules/test/test.resolvers');
 
 // *************** EXPORT MODULE ***************
-module.exports = mergeResolvers([userResolvers, schoolResolvers, studentResolvers, blockResolvers, subjectResolvers]);
+module.exports = mergeResolvers([userResolvers, schoolResolvers, studentResolvers, blockResolvers, subjectResolvers, testResolvers]);
