@@ -4,10 +4,6 @@ const mongoose = require('mongoose');
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
-const SubjectModel = require('./subject.model');
-const BlockModel = require('../block/block.model');
-
 /**
  * Validates that the provided input is a non-array object.
  * @param {object} input - The input variable to be validated.

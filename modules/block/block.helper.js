@@ -114,6 +114,10 @@ async function CreateBlockHelper(name, description, evaluation_type, block_type,
         };
         const newBlock = await BlockModel.create(blockData);
 
+        if (!newBlock) {
+            throw new ApolloError('Block Creation failed', 'BLOCK_CREATION_FAILED');
+        }
+
         return newBlock;
     } catch (error) {
         throw new ApolloError('Failed to create block', 'BLOCK_CREATION_FAILED', {
@@ -188,6 +192,10 @@ async function UpdateBlockHelper(id, name, description, evaluation_type, block_t
         }
 
         const updatedBlock = await BlockModel.findOneAndUpdate({ _id: id }, blockData, { new: true });
+
+        if (!updatedBlock) {
+            throw new ApolloError('Block update failed', 'BLOCK_UPDATE_FAILED');
+        }
 
         return updatedBlock;
     } catch (error) {

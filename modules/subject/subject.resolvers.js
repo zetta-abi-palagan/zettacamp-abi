@@ -74,7 +74,7 @@ async function CreateSubject(_, { createSubjectInput }) {
             subject_status
         } = input;
 
-        await validator.ValidateCreateSubjectInput(block, name, description, coefficient, subject_status);
+        validator.ValidateCreateSubjectInput(block, name, description, coefficient, subject_status);
 
         const newSubject = await helper.CreateSubjectHelper(validatedInput);
 
@@ -108,7 +108,7 @@ async function UpdateSubject(_, { id, updateSubjectInput }) {
             subject_status
         } = input
 
-        await validator.ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
+        validator.ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
 
         const updatedSubject = await helper.UpdateSubjectHelper(id, name, description, coefficient, connected_blocks, subject_status);
 

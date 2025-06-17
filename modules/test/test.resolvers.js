@@ -24,13 +24,11 @@ async function GetAllTests(_, { test_status }) {
 
         return tests;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in GetAllTests:', error);
 
-        throw new ApolloError('Failed to retrieve tests', 'GET_TESTS_FAILED');
+        throw new ApolloError('Failed to retrieve tests', 'GET_TESTS_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -60,19 +58,17 @@ async function CreateTest(_, { createTestInput }) {
             test_status
         } = createTestInput;
 
-        await validator.ValidateCreateTestInput(subject, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status);
+        validator.ValidateCreateTestInput(subject, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status);
 
         const newTest = await helper.CreateTestHelper(validatedInput);
 
         return newTest;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in CreateTest:', error);
 
-        throw new ApolloError('Failed to create test', 'CREATE_TEST_FAILED');
+        throw new ApolloError('Failed to create test', 'CREATE_TEST_FAILED', {
+            error: error.message
+        });
     }
 }
 

@@ -45,6 +45,10 @@ async function GetOneSubjectHelper(id) {
 
         const subject = await SubjectModel.findOne({ _id: id });
 
+        if (!subject) {
+            throw new ApolloError('Subject not found', 'SUBJECT_NOT_FOUND');
+        }
+
         return subject;
     } catch (error) {
         throw new ApolloError(`Failed to fetch subject: ${error.message}`, "INTERNAL_SERVER_ERROR");
@@ -171,6 +175,10 @@ async function UpdateSubjectHelper(id, name, description, coefficient, connected
 
         const updatedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, subjectData, { new: true });
 
+        if (!updatedSubject) {
+            throw new ApolloError('Subject update failed', 'SUBJECT_UPDATE_FAILED');
+        }
+
         return updatedSubject;
     } catch (error) {
         throw new ApolloError('Failed to update subject', 'SUBJECT_UPDATE_FAILED', {
@@ -180,9 +188,9 @@ async function UpdateSubjectHelper(id, name, description, coefficient, connected
 }
 
 /**
- * Performs a soft delete on a subject by updating its status to 'DELETED'.
+ * Soft deletes a subject and removes its reference from the parent block.
  * @param {string} id - The unique identifier of the subject to be deleted.
- * @returns {Promise<object>} - A promise that resolves to the subject object before the update.
+ * @returns {Promise<object>} - A promise that resolves to the subject object as it was before being updated.
  */
 async function DeleteSubjectHelper(id) {
     try {

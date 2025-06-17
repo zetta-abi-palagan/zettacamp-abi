@@ -65,16 +65,6 @@ async function ValidateCreateTestInput(subject, name, description, test_type, re
         });
     }
 
-    const subjectCheck = await SubjectModel.findOne({
-        _id: subject,
-        subject_status: 'ACTIVE'
-    });
-    if (!subjectCheck) {
-        throw new ApolloError('Subject not found or is not active', 'NOT_FOUND', {
-            field: 'subject'
-        });
-    }
-
     if (!name || typeof name !== 'string' || name.trim() === '') {
         throw new ApolloError('Name is required.', 'BAD_USER_INPUT', {
             field: 'name'
@@ -147,15 +137,6 @@ async function ValidateCreateTestInput(subject, name, description, test_type, re
         }
         if (!mongoose.Types.ObjectId.isValid(connected_test)) {
             throw new ApolloError(`Invalid connected test ID: ${connected_test}`, "BAD_USER_INPUT", {
-                field: 'connected_test'
-            });
-        }
-        const connectedTestCheck = await TestModel.findOne({
-            _id: connected_test,
-            test_status: 'ACTIVE'
-        });
-        if (!connectedTestCheck) {
-            throw new ApolloError('Connected test not found or is not active', 'NOT_FOUND', {
                 field: 'connected_test'
             });
         }

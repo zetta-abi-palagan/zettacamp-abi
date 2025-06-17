@@ -32,7 +32,7 @@ async function GetAllTestsHelper(test_status) {
 }
 
 /**
- * Creates a new test after validating the input, and updates the parent subject.
+ * Validates inputs and creates a new test, then links it to the parent subject.
  * @param {string} subject - The ID of the subject to which the test will be added.
  * @param {string} name - The name of the test.
  * @param {string} description - The description of the test.
@@ -48,8 +48,84 @@ async function GetAllTestsHelper(test_status) {
  */
 async function CreateTestHelper(subject, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status) {
     try {
-        await validator.ValidateCreateTestInput(subject, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status)
-        
+        validator.ValidateCreateTestInput(subject, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status)
+
+        const subjectCheck = await SubjectModel.findOne({
+            _id: subject,
+            subject_status: 'ACTIVE'
+        });
+        if (!subjectCheck) {
+            throw new ApolloError('Subject not found or is not active', 'NOT_FOUND', {
+                field: 'subject'
+            });
+        }
+
+        const blockCheck = await BlockModel.findOne({
+            _id: subjectCheck.block,
+            block_status: 'ACTIVE'
+        }).lean();
+
+        if (!blockCheck) {
+            throw new ApolloError('Block not found or is not active', 'NOT_FOUND', {
+                field: 'block'
+            });
+        }
+
+        if (typeof test_type !== 'string') {
+            throw new ApolloError('Test type must be a string.', 'BAD_USER_INPUT', {
+                field: 'test_type'
+            });
+        }
+
+        if (typeof result_visibility !== 'string') {
+            throw new ApolloError('Result visibility must be a string.', 'BAD_USER_INPUT', {
+                field: 'result_visibility'
+            });
+        }
+
+        if (typeof correction_type !== 'string') {
+            throw new ApolloError('Correction type must be a string.', 'BAD_USER_INPUT', {
+                field: 'correction_type'
+            });
+        }
+
+        if (typeof test_status !== 'string') {
+            throw new ApolloError('Test status must be a string.', 'BAD_USER_INPUT', {
+                field: 'test_status'
+            });
+        }
+
+        const evaluationType = blockCheck.evaluation_type;
+        const upperTestType = test_type.toUpperCase();
+
+        const allowedTestTypes = evaluationType === 'COMPETENCY'
+            ? ['ORAL', 'WRITTEN', 'MEMOIRE_WRITTEN', 'FREE_CONTINUOUS_CONTROL', 'MENTOR_EVALUATION']
+            : evaluationType === 'SCORE'
+                ? ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN']
+                : [];
+
+        if (!allowedTestTypes.includes(upperTestType)) {
+            throw new ApolloError(`Test type '${upperTestType}' is not allowed for block with evaluation_type '${evaluationType}'.`, 'BAD_USER_INPUT', {
+                field: 'test_type'
+            });
+        }
+
+        if (is_retake && connected_test.length) {
+            const connectedTestCheck = await TestModel.findOne({
+                _id: connected_test,
+                test_status: 'ACTIVE'
+            });
+            if (!connectedTestCheck) {
+                throw new ApolloError('Connected test not found or is not active', 'NOT_FOUND', {
+                    field: 'connected_test'
+                });
+            }
+        }
+
+        const upperResultVisibility = result_visibility.toUpperCase();
+        const upperCorrectionType = correction_type.toUpperCase();
+        const upperTestStatus = test_status.toUpperCase();
+
         // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
         const createdByUserId = '6846e5769e5502fce150eb67';
 
@@ -57,19 +133,23 @@ async function CreateTestHelper(subject, name, description, test_type, result_vi
             subject: subject,
             name: name,
             description: description,
-            test_type: test_type,
-            result_visibility: result_visibility,
+            test_type: upperTestType,
+            result_visibility: upperResultVisibility,
             weight: weight,
-            correction_type: correction_type,
+            correction_type: upperCorrectionType,
             notations: notations,
             is_retake: is_retake,
             connected_test: connected_test,
-            test_status: test_status,
+            test_status: upperTestStatus,
             created_by: createdByUserId,
             updated_by: createdByUserId
         }
 
         const newTest = await TestModel.create(testData);
+
+        if (!newTest) {
+            throw new ApolloError('Test creation failed', 'TEST_CREATION_FAILED');
+        }
 
         await SubjectModel.updateOne(
             { _id: subject, subject_status: 'ACTIVE' },
