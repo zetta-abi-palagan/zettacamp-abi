@@ -9,6 +9,29 @@ const SubjectModel = require('../subject/subject.model');
 const validator = require('./test.validator');
 
 /**
+ * Fetches all tests from the database, after validating the optional status filter.
+ * @param {string} [test_status] - Optional. The status of the tests to fetch (e.g., 'ACTIVE').
+ * @returns {Promise<Array<object>>} - A promise that resolves to an array of test objects.
+ */
+async function GetAllTestsHelper(test_status) {
+    try {
+        validator.ValidateGetAllTestsInput(test_status);
+
+        const filter = {};
+
+        if (test_status) {
+            filter.test_status = test_status;
+        }
+
+        const tests = await TestModel.find(filter);
+
+        return tests;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch tests: ${error.message}`, "INTERNAL_SERVER_ERROR");
+    }
+}
+
+/**
  * Creates a new test after validating the input, and updates the parent subject.
  * @param {string} subject - The ID of the subject to which the test will be added.
  * @param {string} name - The name of the test.

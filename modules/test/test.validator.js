@@ -20,6 +20,25 @@ function ValidateInputTypeObject(input) {
 }
 
 /**
+ * Validates the optional test_status input for fetching all tests.
+ * @param {string} test_status - The status of the tests to filter by (e.g., 'ACTIVE').
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateGetAllTestsInput(test_status) {
+    const validStatus = ['ACTIVE', 'INACTIVE', 'DELETED'];
+
+    if (!test_status) {
+        return;
+    }
+
+    if (typeof test_status !== 'string' || !validStatus.includes(test_status.toUpperCase())) {
+        throw new ApolloError(`Test status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
+            field: 'test_status'
+        });
+    }
+}
+
+/**
  * Validates the input fields for creating a new test.
  * @param {string} subject - The ID of the parent subject for the test.
  * @param {string} name - The name of the test.

@@ -9,7 +9,30 @@ const validator = require('./test.validator');
 
 
 // *************** QUERY ***************
+/**
+ * GraphQL resolver to fetch all tests, with an optional filter for test status.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the query.
+ * @param {string} [args.test_status] - Optional. The status to filter tests by (e.g., 'ACTIVE').
+ * @returns {Promise<Array<object>>} - A promise that resolves to an array of test objects.
+ */
+async function GetAllTests(_, { test_status }) {
+    try {
+        validator.ValidateGetAllTestsInput(test_status);
 
+        const tests = await helper.GetAllTestsHelper(test_status);
+
+        return tests;
+    } catch (error) {
+        if (error instanceof ApolloError) {
+            throw error;
+        }
+
+        console.error('Unexpected error in GetAllTests:', error);
+
+        throw new ApolloError('Failed to retrieve tests', 'GET_TESTS_FAILED');
+    }
+}
 
 // *************** MUTATION ***************
 /**
