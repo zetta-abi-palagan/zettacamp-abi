@@ -32,6 +32,29 @@ async function GetAllTests(_, { test_status }) {
     }
 }
 
+/**
+ * GraphQL resolver to fetch a single test by its unique ID.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the query.
+ * @param {string} args.id - The unique identifier of the test to retrieve.
+ * @returns {Promise<object>} - A promise that resolves to the found test object.
+ */
+async function GetOneTest(_, { id }) {
+    try {
+        validator.ValidateGetOneTestInput(id);
+
+        const test = await helper.GetOneTestHelper(id);
+
+        return test;
+    } catch (error) {
+        console.error('Unexpected error in GetOneTest:', error);
+
+        throw new ApolloError('Failed to retrieve test', 'GET_TEST_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 // *************** MUTATION ***************
 /**
  * GraphQL resolver to create a new test.
@@ -67,6 +90,31 @@ async function CreateTest(_, { createTestInput }) {
         console.error('Unexpected error in CreateTest:', error);
 
         throw new ApolloError('Failed to create test', 'CREATE_TEST_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * GraphQL resolver to publish a test, setting its due dates.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.id - The unique identifier of the test to publish.
+ * @param {Date} args.assign_corrector_due_date - The deadline for assigning a corrector.
+ * @param {Date} args.test_due_date - The deadline for completing the test.
+ * @returns {Promise<object>} - A promise that resolves to the published test object.
+ */
+async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }) {
+    try {
+        validator.ValidatePublishTestInput(id, assign_corrector_due_date, test_due_date);
+
+        const publishedTest = await helper.PublishTestHelper(id, assign_corrector_due_date, test_due_date);
+
+        return publishedTest;
+    } catch (error) {
+        console.error('Unexpected error in PublishTest:', error);
+
+        throw new ApolloError('Failed to publish test', 'PUBLISH_TEST_FAILED', {
             error: error.message
         });
     }

@@ -4,10 +4,6 @@ const mongoose = require('mongoose');
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE ***************
-const TestModel = require('./test.model');
-const SubjectModel = require('../subject/subject.model');
-
 /**
  * Validates that the provided input is a non-array object.
  * @param {object} input - The input variable to be validated.
@@ -39,6 +35,18 @@ function ValidateGetAllTestsInput(test_status) {
 }
 
 /**
+ * Validates if the provided value is a valid MongoDB ObjectId.
+ * @param {string} id - The ID to be validated.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateGetOneTestInput(id) {
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+    if (!isValidObjectId) {
+        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
+    }
+}
+
+/**
  * Validates the input fields for creating a new test.
  * @param {string} subject - The ID of the parent subject for the test.
  * @param {string} name - The name of the test.
@@ -53,7 +61,7 @@ function ValidateGetAllTestsInput(test_status) {
  * @param {string} test_status - The initial status of the test (e.g., 'ACTIVE').
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-async function ValidateCreateTestInput(subject, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status) {
+function ValidateCreateTestInput(subject, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status) {
     const validTestType = ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN'];
     const validResultVisibility = ['NEVER', 'AFTER_CORRECTION', 'AFTER_JURY_DECISION_FOR_FINAL_TRANSCRIPT'];
     const validCorrectionType = ['ADMTC', 'CERTIFIER', 'ACADEMIC_CORRECTOR', 'PREPARATION_CENTER'];
@@ -145,6 +153,32 @@ async function ValidateCreateTestInput(subject, name, description, test_type, re
     if (!test_status || typeof test_status !== 'string' || !validStatus.includes(test_status.toUpperCase())) {
         throw new ApolloError(`Test status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
             field: 'test_status'
+        });
+    }
+}
+
+/**
+ * Validates the inputs for publishing a test.
+ * @param {string} id - The ID of the test to be published.
+ * @param {Date|string} assign_corrector_due_date - The due date for assigning a corrector.
+ * @param {Date|string} test_due_date - The due date for the test.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidatePublishTestInput(id, assign_corrector_due_date, test_due_date) {
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+    if (!isValidObjectId) {
+        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
+    }
+    
+    if (!(assign_corrector_due_date instanceof Date ? !isNaN(assign_corrector_due_date.getTime()) : !isNaN(new Date(assign_corrector_due_date).getTime()))) {
+        throw new ApolloError('A valid date of birth format is required.', 'BAD_USER_INPUT', {
+            field: 'assign_corrector_due_date'
+        });
+    }
+
+    if (!(test_due_date instanceof Date ? !isNaN(test_due_date.getTime()) : !isNaN(new Date(test_due_date).getTime()))) {
+        throw new ApolloError('A valid date of birth format is required.', 'BAD_USER_INPUT', {
+            field: 'test_due_date'
         });
     }
 }

@@ -32,6 +32,27 @@ async function GetAllTestsHelper(test_status) {
 }
 
 /**
+ * Fetches a single test by its unique ID after validating the ID.
+ * @param {string} id - The unique identifier of the test to retrieve.
+ * @returns {Promise<object>} - A promise that resolves to the found test object.
+ */
+async function GetOneTestHelper(id) {
+    try {
+        validator.ValidateGetOneTestInput(id);
+
+        const test = TestModel.findOne({ _id: id });
+
+        if (!test) {
+            throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
+        }
+
+        return test;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch test: ${error.message}`, "INTERNAL_SERVER_ERROR");
+    }
+}
+
+/**
  * Validates inputs and creates a new test, then links it to the parent subject.
  * @param {string} subject - The ID of the subject to which the test will be added.
  * @param {string} name - The name of the test.
@@ -166,6 +187,61 @@ async function CreateTestHelper(subject, name, description, test_type, result_vi
         });
     }
 }
+
+/**
+ * Publishes a test, updating its status and creating a follow-up task to assign a corrector.
+ * @param {string} id - The unique identifier of the test to publish.
+ * @param {Date|string} assign_corrector_due_date - The deadline for assigning a corrector.
+ * @param {Date|string} test_due_date - The deadline for the test itself.
+ * @returns {Promise<void>} - This function does not return a value but performs database operations.
+ */
+async function PublishTestHelper(id, assign_corrector_due_date, test_due_date) {
+    try {
+        validator.ValidatePublishTestInput(id, assign_corrector_due_date, test_due_date);
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const publishedByUserId = '6846e5769e5502fce150eb67';
+
+        const testData = {
+            is_published: true,
+            published_date: Date.now(),
+            published_by: publishedByUserId,
+            test_due_date: test_due_date,
+        }
+
+        const publishedTest = TestModel.findOneAndUpdate({ _id: id }, testData, { new: true });
+
+        if (publishedTest) {
+            throw new ApolloError('Test publish failed', 'TEST_PUBLISH_FAILED');
+        }
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const academicDirectorId = '6846e5769e5502fce150eb67';
+
+        const taskData = {
+            test: publishedTest.id,
+            user: academicDirectorId,
+            title: 'Assign Corrector',
+            description: 'Academic Director should assign corrector for student test',
+            task_type: 'ASSIGN_CORRECTOR',
+            task_status: 'PENDING',
+            due_date: assign_corrector_due_date,
+            created_by: publishedByUserId,
+            updated_by: publishedByUserId
+        }
+
+        const assignCorrector = TaskModel.create(taskData)
+
+        if (!assignCorrector) {
+            throw new ApolloError('Task assign corrector creation failed', 'TASK_CREATION_FAILED');
+        }
+    } catch (error) {
+        throw new ApolloError('Failed to publish test', 'TEST_CREATION_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 
 // *************** EXPORT MODULE ***************
 module.exports = {

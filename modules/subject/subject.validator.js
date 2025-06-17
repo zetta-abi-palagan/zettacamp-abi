@@ -71,7 +71,7 @@ function ValidateGetOneSubjectInput(id) {
  * @param {string} subject_status - The initial status of the subject (e.g., 'ACTIVE').
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-async function ValidateCreateSubjectInput(block, name, description, coefficient, subject_status) {
+function ValidateCreateSubjectInput(block, name, description, coefficient, subject_status) {
     const validStatus = ['ACTIVE', 'INACTIVE'];
 
     if (!mongoose.Types.ObjectId.isValid(block)) {
@@ -115,7 +115,7 @@ async function ValidateCreateSubjectInput(block, name, description, coefficient,
  * @param {string} subject_status - The status of the subject (e.g., 'ACTIVE').
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-async function ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status) {
+function ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status) {
     const validStatus = ['ACTIVE', 'INACTIVE'];
 
     if (!mongoose.Types.ObjectId.isValid(id)) {

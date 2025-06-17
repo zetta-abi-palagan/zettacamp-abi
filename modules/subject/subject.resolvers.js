@@ -42,7 +42,7 @@ async function GetOneSubject(_, { id }) {
     try {
         validator.ValidateGetOneSubjectInput(id);
 
-        const subject = await helper.GetOneSubjectHelper(validatedId);
+        const subject = await helper.GetOneSubjectHelper(id);
 
         return subject;
     } catch (error) {
