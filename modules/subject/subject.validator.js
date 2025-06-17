@@ -20,6 +20,22 @@ function ValidateInputTypeObject(input) {
 }
 
 /**
+ * Validates if the provided value is a valid MongoDB ObjectId.
+ * @param {string} id - The ID to be validated.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateObjectId(id) {
+    if (!id) {
+        throw new ApolloError(`ID required: ${id}`, "INTERNAL_SERVER_ERROR");
+    }
+
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+    if (!isValidObjectId) {
+        throw new ApolloError(`Invalid ID: ${id}`, "INTERNAL_SERVER_ERROR");
+    }
+}
+
+/**
  * Validates the input for fetching all subjects.
  * @param {string} subject_status - The status of the subjects to filter by (optional).
  * @returns {void} - This function does not return a value but throws an error if validation fails.
@@ -300,6 +316,7 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
 // *************** EXPORT MODULE ***************
 module.exports = {
     ValidateInputTypeObject,
+    ValidateObjectId,
     ValidateGetAllSubjectsInput,
     ValidateGetOneSubjectInput,
     ValidateCreateSubjectInput,
