@@ -101,14 +101,6 @@ async function ValidateCreateSubjectInput(block, name, description, coefficient,
             field: 'subject_status'
         });
     }
-
-    return {
-        block,
-        name,
-        description,
-        coefficient,
-        subject_status
-    }
 }
 
 /**
