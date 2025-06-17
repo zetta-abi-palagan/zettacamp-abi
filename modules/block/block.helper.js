@@ -63,17 +63,52 @@ async function CreateBlockHelper(name, description, evaluation_type, block_type,
     try {
         validator.ValidateCreateBlockInput(name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
 
+        const competencyBlockTypes = ['COMPETENCY', 'SOFT_SKILL', 'ACADEMIC_RECOMMENDATION', 'RETAKE'];
+        const scoreBlockTypes = ['REGULAR', 'TRANSVERSAL', 'SPECIALIZATION', 'RETAKE'];
+
+        if (typeof evaluation_type !== 'string') {
+            throw new ApolloError('Invalid evaluation_type: must be a string.', 'INTERNAL_LOGIC_ERROR');
+        }
+        if (typeof block_type !== 'string') {
+            throw new ApolloError('Invalid block_type: must be a string.', 'INTERNAL_LOGIC_ERROR');
+        }
+
+        const upperEvalType = evaluation_type.toUpperCase();
+        const upperBlockType = block_type.toUpperCase();
+
+        if (
+            (upperEvalType === 'COMPETENCY' && !competencyBlockTypes.includes(upperBlockType)) ||
+            (upperEvalType === 'SCORE' && !scoreBlockTypes.includes(upperBlockType))
+        ) {
+            throw new ApolloError(
+                `Invalid combination: ${upperEvalType} evaluation cannot be used with ${upperBlockType} block type.`,
+                'LOGIC_SANITY_ERROR'
+            );
+        }
+
+        if (connected_block && block_type.toUpperCase() !== 'RETAKE') {
+            throw new ApolloError('Block type must be RETAKE to have a connected block.', 'BAD_USER_INPUT', {
+                field: 'connected_block'
+            });
+        }
+
+        if (typeof block_status !== 'string') {
+            throw new ApolloError('Invalid block_status: must be a string.', 'INTERNAL_LOGIC_ERROR');
+        }
+
+        const upperBlockStatus = block_status.toUpperCase()
+
         // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
         const createdByUserId = '6846e5769e5502fce150eb67';
 
         const blockData = {
             name: name,
             description: description,
-            evaluation_type: evaluation_type.toUpperCase(),
-            block_type: block_type.toUpperCase(),
+            evaluation_type: upperEvalType,
+            block_type: upperBlockType,
             connected_block: connected_block,
             is_counted_in_final_transcript: is_counted_in_final_transcript,
-            block_status: block_status.toUpperCase(),
+            block_status: upperBlockStatus,
             created_by: createdByUserId,
             updated_by: createdByUserId
         };
@@ -103,17 +138,52 @@ async function UpdateBlockHelper(id, name, description, evaluation_type, block_t
     try {
         validator.ValidateUpdateBlockInput(id, name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status)
 
+        const competencyBlockTypes = ['COMPETENCY', 'SOFT_SKILL', 'ACADEMIC_RECOMMENDATION', 'RETAKE'];
+        const scoreBlockTypes = ['REGULAR', 'TRANSVERSAL', 'SPECIALIZATION', 'RETAKE'];
+
+        if (typeof evaluation_type !== 'string') {
+            throw new ApolloError('Invalid evaluation_type: must be a string.', 'INTERNAL_LOGIC_ERROR');
+        }
+        if (typeof block_type !== 'string') {
+            throw new ApolloError('Invalid block_type: must be a string.', 'INTERNAL_LOGIC_ERROR');
+        }
+
+        const upperEvalType = evaluation_type.toUpperCase();
+        const upperBlockType = block_type.toUpperCase();
+
+        if (
+            (upperEvalType === 'COMPETENCY' && !competencyBlockTypes.includes(upperBlockType)) ||
+            (upperEvalType === 'SCORE' && !scoreBlockTypes.includes(upperBlockType))
+        ) {
+            throw new ApolloError(
+                `Invalid combination: ${upperEvalType} evaluation cannot be used with ${upperBlockType} block type.`,
+                'LOGIC_SANITY_ERROR'
+            );
+        }
+
+        if (connected_block && block_type.toUpperCase() !== 'RETAKE') {
+            throw new ApolloError('Block type must be RETAKE to have a connected block.', 'BAD_USER_INPUT', {
+                field: 'connected_block'
+            });
+        }
+
+        if (typeof block_status !== 'string') {
+            throw new ApolloError('Invalid block_status: must be a string.', 'INTERNAL_LOGIC_ERROR');
+        }
+
+        const upperBlockStatus = block_status.toUpperCase()
+
         // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
         const updatedByUserId = '6846e5769e5502fce150eb67';
 
         const blockData = {
             name: name,
             description: description,
-            evaluation_type: evaluation_type.toUpperCase(),
-            block_type: block_type.toUpperCase(),
+            evaluation_type: upperEvalType,
+            block_type: upperBlockType,
             connected_block: connected_block,
             is_counted_in_final_transcript: is_counted_in_final_transcript,
-            block_status: block_status.toUpperCase(),
+            block_status: upperBlockStatus,
             updated_by: updatedByUserId
         }
 
@@ -171,6 +241,10 @@ async function DeleteBlockHelper(id) {
                 deleted_at: deletionTimestamp
             }
         );
+
+        if (!deletedBlock) {
+            throw new ApolloError('Block deletion failed', 'BLOCK_DELETION_FAILED');
+        }
 
         return deletedBlock;
     } catch (error) {

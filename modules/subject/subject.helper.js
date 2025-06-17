@@ -62,7 +62,23 @@ async function GetOneSubjectHelper(id) {
  */
 async function CreateSubjectHelper(block, name, description, coefficient, subject_status) {
     try {
-        await validator.ValidateCreateSubjectInput(block, name, description, coefficient, subject_status);
+        validator.ValidateCreateSubjectInput(block, name, description, coefficient, subject_status);
+
+        const blockCheck = await BlockModel.findOne({
+            _id: block,
+            block_status: 'ACTIVE'
+        });
+        if (!blockCheck) {
+            throw new ApolloError('Block not found or is not active', 'NOT_FOUND', {
+                field: 'block'
+            });
+        }
+
+        if (typeof subject_status !== 'string') {
+            throw new ApolloError('Invalid subject_status: must be a string.', 'INTERNAL_LOGIC_ERROR');
+        }
+
+        const upperSubjectStatus = subject_status.toUpperCase();
 
         const checkTransversalBlock = await BlockModel.findOne({ _id: block, block_type: 'TRANSVERSAL' });
         const isTransversal = checkTransversalBlock ? true : false;
@@ -76,7 +92,7 @@ async function CreateSubjectHelper(block, name, description, coefficient, subjec
             description: description,
             coefficient: coefficient,
             is_transversal: isTransversal,
-            subject_status: subject_status,
+            subject_status: upperSubjectStatus,
             created_by: createdByUserId,
             updated_by: createdByUserId
         };
@@ -119,7 +135,26 @@ async function CreateSubjectHelper(block, name, description, coefficient, subjec
  */
 async function UpdateSubjectHelper(id, name, description, coefficient, connected_blocks, subject_status) {
     try {
-        await validator.ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
+        validator.ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
+
+        const subject = await SubjectModel.findById(id);
+        if (!subject) {
+            throw new ApolloError(`Subject with ID ${id} not found.`, 'NOT_FOUND', {
+                field: 'id'
+            });
+        }
+
+        if (connected_blocks?.length && !subject.is_transversal) {
+            throw new ApolloError('Connected blocks are only allowed when the subject is transversal.', 'BAD_USER_INPUT', {
+                field: 'connected_blocks'
+            });
+        }
+
+        if (typeof subject_status !== 'string') {
+            throw new ApolloError('Invalid subject_status: must be a string.', 'INTERNAL_LOGIC_ERROR');
+        }
+
+        const upperSubjectStatus = subject_status.toUpperCase();
 
         // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
         const updatedByUserId = '6846e5769e5502fce150eb67';
@@ -130,7 +165,7 @@ async function UpdateSubjectHelper(id, name, description, coefficient, connected
             coefficient: coefficient,
             connected_blocks: connected_blocks,
             is_transversal: isTransversal,
-            subject_status: subject_status,
+            subject_status: upperSubjectStatus,
             updated_by: updatedByUserId
         };
 

@@ -111,12 +111,6 @@ function ValidateCreateBlockInput(
             field: 'connected_block'
         });
     }
-
-    if (connected_block && block_type.toUpperCase() !== 'RETAKE') {
-        throw new ApolloError('Block type must be RETAKE to have a connected block.', 'BAD_USER_INPUT', {
-            field: 'connected_block'
-        });
-    }
 }
 
 /**
@@ -187,12 +181,6 @@ function ValidateUpdateBlockInput(
 
     if (connected_block && !mongoose.Types.ObjectId.isValid(connected_block)) {
         throw new ApolloError(`Invalid connected_block ID: ${connected_block}`, "BAD_USER_INPUT", {
-            field: 'connected_block'
-        });
-    }
-
-    if (connected_block && block_type.toUpperCase() !== 'RETAKE') {
-        throw new ApolloError('Block type must be RETAKE to have a connected block.', 'BAD_USER_INPUT', {
             field: 'connected_block'
         });
     }

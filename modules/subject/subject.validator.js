@@ -84,16 +84,6 @@ async function ValidateCreateSubjectInput(block, name, description, coefficient,
         });
     }
 
-    const blockCheck = await BlockModel.findOne({
-        _id: block,
-        block_status: 'ACTIVE'
-    });
-    if (!blockCheck) {
-        throw new ApolloError('Block not found or is not active', 'NOT_FOUND', {
-            field: 'block'
-        });
-    }
-
     if (!name || typeof name !== 'string' || name.trim() === '') {
         throw new ApolloError('Name is required.', 'BAD_USER_INPUT', {
             field: 'name'
@@ -136,13 +126,6 @@ async function ValidateUpdateSubjectInput(id, name, description, coefficient, co
         throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
     }
 
-    const subject = await SubjectModel.findById(id);
-    if (!subject) {
-        throw new ApolloError(`Subject with ID ${id} not found.`, 'NOT_FOUND', {
-            field: 'id'
-        });
-    }
-
     if (!name || typeof name !== 'string' || name.trim() === '') {
         throw new ApolloError('Name is required.', 'BAD_USER_INPUT', {
             field: 'name'
@@ -168,19 +151,11 @@ async function ValidateUpdateSubjectInput(id, name, description, coefficient, co
             });
         }
 
-        if (connected_blocks.length) {
-            if (!subject.is_transversal) {
-                throw new ApolloError('Connected blocks are only allowed when the subject is transversal.', 'BAD_USER_INPUT', {
+        for (const blockId of connected_blocks) {
+            if (!mongoose.Types.ObjectId.isValid(blockId)) {
+                throw new ApolloError(`Invalid connected block ID: ${blockId}`, 'BAD_USER_INPUT', {
                     field: 'connected_blocks'
                 });
-            }
-
-            for (const blockId of connected_blocks) {
-                if (!mongoose.Types.ObjectId.isValid(blockId)) {
-                    throw new ApolloError(`Invalid connected block ID: ${blockId}`, 'BAD_USER_INPUT', {
-                        field: 'connected_blocks'
-                    });
-                }
             }
         }
     }
