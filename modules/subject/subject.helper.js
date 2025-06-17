@@ -1,3 +1,6 @@
+// *************** IMPORT CORE ***************
+const mongoose = require('mongoose');
+
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
@@ -23,9 +26,9 @@ async function GetAllSubjectsHelper(subject_status) {
             filter.subject_status = subject_status;
         }
 
-        const blocks = await SubjectModel.find(filter);
+        const subjects = await SubjectModel.find(filter);
 
-        return blocks;
+        return subjects;
     } catch (error) {
         throw new ApolloError(`Failed to fetch subjects: ${error.message}`, "INTERNAL_SERVER_ERROR");
     }
@@ -80,6 +83,14 @@ async function CreateSubjectHelper(block, name, description, coefficient, subjec
 
         const newSubject = await SubjectModel.create(subjectData);
 
+        if (!newSubject) {
+            throw new ApolloError('Subject creation failed', 'SUBJECT_CREATION_FAILED');
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(newSubject._id)) {
+            throw new ApolloError('Generated subject ID is invalid', 'INVALID_SUBJECT_ID');
+        }
+
         await BlockModel.updateOne(
             { _id: block, block_status: 'ACTIVE' },
             {
@@ -107,22 +118,22 @@ async function CreateSubjectHelper(block, name, description, coefficient, subjec
  * @returns {Promise<object>} - A promise that resolves to the updated subject object.
  */
 async function UpdateSubjectHelper(id, name, description, coefficient, connected_blocks, subject_status) {
-    await validator.ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
-
-    // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-    const updatedByUserId = '6846e5769e5502fce150eb67';
-
-    const subjectData = {
-        name: name,
-        description: description,
-        coefficient: coefficient,
-        connected_blocks: connected_blocks,
-        is_transversal: isTransversal,
-        subject_status: subject_status,
-        updated_by: updatedByUserId
-    };
-
     try {
+        await validator.ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const updatedByUserId = '6846e5769e5502fce150eb67';
+
+        const subjectData = {
+            name: name,
+            description: description,
+            coefficient: coefficient,
+            connected_blocks: connected_blocks,
+            is_transversal: isTransversal,
+            subject_status: subject_status,
+            updated_by: updatedByUserId
+        };
+
         const updatedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, subjectData, { new: true });
 
         return updatedSubject;
@@ -140,6 +151,8 @@ async function UpdateSubjectHelper(id, name, description, coefficient, connected
  */
 async function DeleteSubjectHelper(id) {
     try {
+        validator.ValidateDeleteSubjectInput(id);
+
         // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
         const deletedByUserId = '6846e5769e5502fce150eb67';
 
@@ -150,7 +163,25 @@ async function DeleteSubjectHelper(id) {
             deleted_at: Date.now()
         }
 
-        return await SubjectModel.findOneAndUpdate({ _id: id }, subjectData);
+        const deletedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, subjectData);
+
+        if (!deletedSubject) {
+            throw new ApolloError('Subject deletion failed', 'SUBJECT_DELETION_FAILED');
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(deletedSubject._id)) {
+            throw new ApolloError('Generated subject ID is invalid', 'INVALID_SUBJECT_ID');
+        }
+
+        await BlockModel.updateOne(
+            { _id: block, block_status: 'ACTIVE' },
+            {
+                $pull: { subjects: deletedSubject._id },
+                $set: { updated_by: deletedByUserId }
+            }
+        );
+
+        return deletedSubject;
     } catch (error) {
         throw new ApolloError('Failed to delete subject', 'SUBJECT_DELETION_FAILED', {
             error: error.message

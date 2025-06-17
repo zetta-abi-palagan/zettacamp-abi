@@ -23,13 +23,11 @@ async function GetAllBlocks(_, { block_status }) {
 
         return blocks;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in GetAllBlocks:', error);
 
-        throw new ApolloError('Failed to retrieve blocks', 'GET_BLOCKS_FAILED');
+        throw new ApolloError('Failed to retrieve blocks', 'GET_BLOCKS_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -44,17 +42,15 @@ async function GetOneBlock(_, { id }) {
     try {
         ValidateGetOneBlockInput(id);
 
-        const block = GetOneBlockHelper(validatedId);
+        const block = GetOneBlockHelper(id);
 
         return block;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in GetOneBlocks:', error);
 
-        throw new ApolloError('Failed to retrieve block', 'GET_BLOCK_FAILED');
+        throw new ApolloError('Failed to retrieve block', 'GET_BLOCK_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -86,13 +82,11 @@ async function CreateBlock(_, { createBlockInput }) {
 
         return newBlock;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in CreateBlock:', error);
 
-        throw new ApolloError('Failed to create block', 'CREATE_BLOCK_FAILED');
+        throw new ApolloError('Failed to create block', 'CREATE_BLOCK_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -124,13 +118,11 @@ async function UpdateBlock(_, { id, updateBlockInput }) {
 
         return updatedBlock;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in UpdateBlock:', error);
 
-        throw new ApolloError('Failed to update block', 'UPDATE_BLOCK_FAILED');
+        throw new ApolloError('Failed to update block', 'UPDATE_BLOCK_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -149,13 +141,11 @@ async function DeleteBlock(_, { id }) {
 
         return deletedBlock;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in DeleteBlock:', error);
 
-        throw new ApolloError('Failed to delete block', 'DELETE_BLOCK_FAILED');
+        throw new ApolloError('Failed to delete block', 'DELETE_BLOCK_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -178,7 +168,9 @@ async function SubjectLoader(block, _, context) {
     } catch (error) {
         console.error("Error fetching subjects:", error);
 
-        throw new ApolloError(`Failed to fetch subjects for ${block.name}: ${error.message}`, 'SUBJECT_FETCH_FAILED');
+        throw new ApolloError(`Failed to fetch subjects for ${block.name}`, 'SUBJECT_FETCH_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -198,7 +190,9 @@ async function CreatedByLoader(block, _, context) {
 
         return created_by;
     } catch (error) {
-        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
+        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -218,7 +212,9 @@ async function UpdatedByLoader(block, _, context) {
 
         return updated_by;
     } catch (error) {
-        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
+        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -238,7 +234,9 @@ async function DeletedByLoader(block, _, context) {
 
         return deleted_by;
     } catch (error) {
-        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
+        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
+            error: error.message
+        });
     }
 }
 

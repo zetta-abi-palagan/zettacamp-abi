@@ -23,13 +23,11 @@ async function GetAllSubjects(_, { subject_status }) {
 
         return subjects;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in GetAllSubjects:', error);
 
-        throw new ApolloError('Failed to retrieve subjects', 'GET_SUBJECTS_FAILED');
+        throw new ApolloError('Failed to retrieve subjects', 'GET_SUBJECTS_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -48,13 +46,11 @@ async function GetOneSubject(_, { id }) {
 
         return subject;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in GetOneSubject:', error);
 
-        throw new ApolloError('Failed to retrieve subject', 'GET_SUBJECT_FAILED');
+        throw new ApolloError('Failed to retrieve subject', 'GET_SUBJECT_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -66,7 +62,6 @@ async function GetOneSubject(_, { id }) {
  * @param {object} args.input - An object containing the details for the new subject.
  * @returns {Promise<object>} - A promise that resolves to the newly created subject object.
  */
-
 async function CreateSubject(_, { createSubjectInput }) {
     try {
         validator.ValidateInputTypeObject(createSubjectInput);
@@ -85,13 +80,11 @@ async function CreateSubject(_, { createSubjectInput }) {
 
         return newSubject;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in CreateSubject:', error);
 
-        throw new ApolloError('Failed to create subject', 'CREATE_SUBJECT_FAILED');
+        throw new ApolloError('Failed to create subject', 'CREATE_SUBJECT_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -121,13 +114,11 @@ async function UpdateSubject(_, { id, updateSubjectInput }) {
 
         return updatedSubject;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in UpdateSubject:', error);
 
-        throw new ApolloError('Failed to update subject', 'UPDATE_SUBJECT_FAILED');
+        throw new ApolloError('Failed to update subject', 'UPDATE_SUBJECT_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -146,13 +137,11 @@ async function DeleteSubject(_, { id }) {
 
         return deletedSubject;
     } catch (error) {
-        if (error instanceof ApolloError) {
-            throw error;
-        }
-
         console.error('Unexpected error in DeleteSubject:', error);
 
-        throw new ApolloError('Failed to delete subject', 'DELETE_SUBJECT_FAILED');
+        throw new ApolloError('Failed to delete subject', 'DELETE_SUBJECT_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -173,7 +162,9 @@ async function BlockLoader(subject, _, context) {
 
         return block;
     } catch (error) {
-        throw new ApolloError(`Failed to fetch block: ${error.message}`, 'BLOCK_FETCH_FAILED');
+        throw new ApolloError(`Failed to fetch block`, 'BLOCK_FETCH_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -195,7 +186,9 @@ async function ConnectedBlocksLoader(subject, _, context) {
     } catch (error) {
         console.error("Error fetching connected_blocks:", error);
 
-        throw new ApolloError(`Failed to fetch connected_blocks for ${subject.name}: ${error.message}`, 'CONNECTED_BLOCKS_FETCH_FAILED');
+        throw new ApolloError(`Failed to fetch connected_blocks for ${subject.name}`, 'CONNECTED_BLOCKS_FETCH_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -217,7 +210,9 @@ async function TestLoader(subject, _, context) {
     } catch (error) {
         console.error("Error fetching tests:", error);
 
-        throw new ApolloError(`Failed to fetch tests for ${subject.name}: ${error.message}`, 'TEST_FETCH_FAILED');
+        throw new ApolloError(`Failed to fetch tests for ${subject.name}`, 'TEST_FETCH_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -237,7 +232,9 @@ async function CreatedByLoader(subject, _, context) {
 
         return created_by;
     } catch (error) {
-        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
+        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -257,7 +254,9 @@ async function UpdatedByLoader(subject, _, context) {
 
         return updated_by;
     } catch (error) {
-        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
+        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+            error: error.message
+        });
     }
 }
 
@@ -277,7 +276,9 @@ async function DeletedByLoader(subject, _, context) {
 
         return deleted_by;
     } catch (error) {
-        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
+        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+            error: error.message
+        });
     }
 }
 
