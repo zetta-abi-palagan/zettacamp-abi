@@ -1,21 +1,11 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
-const {
-    ValidateGetAllBlocksInput,
-    ValidateGetOneBlockInput,
-    ValidateCreateBlockInput,
-    ValidateUpdateBlockInput,
-    ValidateDeleteBlockInput
-} = require('./block.validator');
-const {
-    GetAllBlocksHelper,
-    GetOneBlockHelper,
-    CreateBlockHelper,
-    UpdateBlockHelper,
-    DeleteBlockHelper
-} = require('./block.helper');
+// *************** IMPORT HELPER FUNCTION *************** 
+const helper = require('./block.helper');
+
+// *************** IMPORT VALIDATOR ***************
+const validator = require('./block.validator');
 
 // *************** QUERY ***************
 /**
@@ -27,9 +17,9 @@ const {
  */
 async function GetAllBlocks(_, { block_status }) {
     try {
-        const validatedBlockStatus = ValidateGetAllBlocksInput(block_status);
+        validator.ValidateGetAllBlocksInput(block_status);
 
-        const blocks = await GetAllBlocksHelper(validatedBlockStatus);
+        const blocks = await helper.GetAllBlocksHelper(block_status);
 
         return blocks;
     } catch (error) {
@@ -52,7 +42,7 @@ async function GetAllBlocks(_, { block_status }) {
  */
 async function GetOneBlock(_, { id }) {
     try {
-        const validatedId = ValidateGetOneBlockInput(id);
+        ValidateGetOneBlockInput(id);
 
         const block = GetOneBlockHelper(validatedId);
 
@@ -76,21 +66,23 @@ async function GetOneBlock(_, { id }) {
  * @param {object} args.input - An object containing the details for the new block.
  * @returns {Promise<object>} - A promise that resolves to the newly created block object.
  */
-async function CreateBlock(_, { input }) {
-    const {
-        name,
-        description,
-        evaluation_type,
-        block_type,
-        connected_block,
-        is_counted_in_final_transcript,
-        block_status
-    } = input;
-
+async function CreateBlock(_, { createBlockInput }) {
     try {
-        const validatedInput = ValidateCreateBlockInput(name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
+        validator.ValidateInputTypeObject(createBlockInput);
 
-        const newBlock = await CreateBlockHelper(validatedInput);
+        const {
+            name,
+            description,
+            evaluation_type,
+            block_type,
+            connected_block,
+            is_counted_in_final_transcript,
+            block_status
+        } = createBlockInput;
+
+        validator.ValidateCreateBlockInput(name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
+
+        const newBlock = await CreateBlockHelper(name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
 
         return newBlock;
     } catch (error) {
@@ -112,21 +104,23 @@ async function CreateBlock(_, { input }) {
  * @param {object} args.input - An object containing the new details for the block.
  * @returns {Promise<object>} - A promise that resolves to the updated block object.
  */
-async function UpdateBlock(_, { id, input }) {
-    const {
-        name,
-        description,
-        evaluation_type,
-        block_type,
-        connected_block,
-        is_counted_in_final_transcript,
-        block_status
-    } = input;
-
+async function UpdateBlock(_, { id, updateBlockInput }) {
     try {
-        const validatedInput = ValidateUpdateBlockInput(id, name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
+        validator.ValidateInputTypeObject(updateBlockInput)
 
-        const updatedBlock = await UpdateBlockHelper(validatedInput);
+        const {
+            name,
+            description,
+            evaluation_type,
+            block_type,
+            connected_block,
+            is_counted_in_final_transcript,
+            block_status
+        } = updateBlockInput;
+
+        validator.ValidateUpdateBlockInput(id, name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
+
+        const updatedBlock = await UpdateBlockHelper(id, name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
 
         return updatedBlock;
     } catch (error) {
@@ -149,9 +143,9 @@ async function UpdateBlock(_, { id, input }) {
  */
 async function DeleteBlock(_, { id }) {
     try {
-        const validatedId = ValidateDeleteBlockInput(id);
+        validator.ValidateDeleteBlockInput(id);
 
-        const deletedBlock = DeleteBlockHelper(validatedId);
+        const deletedBlock = DeleteBlockHelper(id);
 
         return deletedBlock;
     } catch (error) {
@@ -176,7 +170,11 @@ async function DeleteBlock(_, { id }) {
  */
 async function SubjectLoader(block, _, context) {
     try {
-        return await context.dataLoaders.SubjectLoader.loadMany(block.subjects);
+        validator.ValidateSubjectLoaderInput(block, context);
+
+        const subjects = await context.dataLoaders.SubjectLoader.loadMany(block.subjects);
+
+        return subjects;
     } catch (error) {
         console.error("Error fetching subjects:", error);
 
@@ -194,7 +192,11 @@ async function SubjectLoader(block, _, context) {
  */
 async function CreatedByLoader(block, _, context) {
     try {
-        return await context.dataLoaders.UserLoader.load(block.created_by);
+        validator.ValidateUserLoaderInput(block, context, 'created_by');
+
+        const created_by =  await context.dataLoaders.UserLoader.load(block.created_by);
+
+        return created_by;
     } catch (error) {
         throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
     }
@@ -210,7 +212,11 @@ async function CreatedByLoader(block, _, context) {
  */
 async function UpdatedByLoader(block, _, context) {
     try {
-        return await context.dataLoaders.UserLoader.load(block.updated_by);
+        validator.ValidateUserLoaderInput(block, context, 'updated_by');
+        
+        const updated_by = await context.dataLoaders.UserLoader.load(block.updated_by);
+
+        return updated_by;
     } catch (error) {
         throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
     }
@@ -226,7 +232,11 @@ async function UpdatedByLoader(block, _, context) {
  */
 async function DeletedByLoader(block, _, context) {
     try {
-        return await context.dataLoaders.UserLoader.load(block.updated_by);
+        validator.ValidateUserLoaderInput(block, context, 'deleted_by');
+
+        const deleted_by = await context.dataLoaders.UserLoader.load(block.updated_by);
+
+        return deleted_by;
     } catch (error) {
         throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
     }

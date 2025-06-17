@@ -3,8 +3,11 @@ const { ApolloError } = require('apollo-server');
 
 // *************** IMPORT MODULE *************** 
 const BlockModel = require('./block.model');
+const SubjectModel = require('../subject/subject.model');
 
-// *************** QUERY ***************
+// *************** IMPORT VALIDATOR ***************
+const validator = require('./block.validator');
+
 /**
  * Fetches all blocks from the database, with an optional filter for block status.
  * @param {string} block_status - Optional. The status of the blocks to fetch (e.g., 'ACTIVE'). If not provided, blocks with any status are returned.
@@ -12,13 +15,17 @@ const BlockModel = require('./block.model');
  */
 async function GetAllBlocksHelper(block_status) {
     try {
+        validator.ValidateGetAllBlocksInput(block_status);
+
         const filter = {};
 
         if (block_status) {
             filter.block_status = block_status;
         }
 
-        return await BlockModel.find(filter);
+        const blocks = await BlockModel.find(filter);
+
+        return blocks;
     } catch (error) {
         throw new ApolloError(`Failed to fetch blocks: ${error.message}`, "INTERNAL_SERVER_ERROR");
     }
@@ -31,46 +38,48 @@ async function GetAllBlocksHelper(block_status) {
  */
 async function GetOneBlockHelper(id) {
     try {
-        return await BlockModel.findOne({ _id: id });
+        validator.ValidateGetOneBlockInput(id);
+
+        const block = await BlockModel.findOne({ _id: id });
+
+        return block;
     } catch (error) {
         throw new ApolloError(`Failed to fetch block: ${error.message}`, "INTERNAL_SERVER_ERROR");
     }
 }
 
-// *************** MUTATION ***************
 /**
- * Creates a new block with the provided input data.
- * @param {object} input - An object containing the details for the new block.
+ * Creates a new block after validating the provided data.
+ * @param {string} name - The name of the block.
+ * @param {string} description - The description of the block.
+ * @param {string} evaluation_type - The evaluation methodology (e.g., 'COMPETENCY', 'SCORE').
+ * @param {string} block_type - The type of block (e.g., 'REGULAR', 'RETAKE').
+ * @param {string} connected_block - The ID of a related block, required if block_type is 'RETAKE'.
+ * @param {boolean} is_counted_in_final_transcript - Flag to indicate if the block affects the final transcript.
+ * @param {string} block_status - The initial status of the block (e.g., 'ACTIVE').
  * @returns {Promise<object>} - A promise that resolves to the newly created block object.
  */
-async function CreateBlockHelper(input) {
-    const {
-        name,
-        description,
-        evaluation_type,
-        block_type,
-        connected_block,
-        is_counted_in_final_transcript,
-        block_status
-    } = input;
-
-    // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-    const createdByUserId = '6846e5769e5502fce150eb67';
-
-    const blockData = {
-        name: name,
-        description: description,
-        evaluation_type: evaluation_type.toUpperCase(),
-        block_type: block_type.toUpperCase(),
-        connected_block: connected_block,
-        is_counted_in_final_transcript: is_counted_in_final_transcript,
-        block_status: block_status.toUpperCase(),
-        created_by: createdByUserId,
-        updated_by: createdByUserId
-    };
-
+async function CreateBlockHelper(name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status) {
     try {
-        return await BlockModel.create(blockData);
+        validator.ValidateCreateBlockInput(name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const createdByUserId = '6846e5769e5502fce150eb67';
+
+        const blockData = {
+            name: name,
+            description: description,
+            evaluation_type: evaluation_type.toUpperCase(),
+            block_type: block_type.toUpperCase(),
+            connected_block: connected_block,
+            is_counted_in_final_transcript: is_counted_in_final_transcript,
+            block_status: block_status.toUpperCase(),
+            created_by: createdByUserId,
+            updated_by: createdByUserId
+        };
+        const newBlock = await BlockModel.create(blockData);
+
+        return newBlock;
     } catch (error) {
         throw new ApolloError('Failed to create block', 'BLOCK_CREATION_FAILED', {
             error: error.message
@@ -79,38 +88,38 @@ async function CreateBlockHelper(input) {
 }
 
 /**
- * Updates an existing block in the database with the provided data.
- * @param {object} input - An object containing the block's ID and the fields to be updated.
+ * Updates an existing block after validating the provided data.
+ * @param {string} id - The unique identifier of the block to be updated.
+ * @param {string} name - The name of the block.
+ * @param {string} description - The description of the block.
+ * @param {string} evaluation_type - The evaluation methodology (e.g., 'COMPETENCY', 'SCORE').
+ * @param {string} block_type - The type of block (e.g., 'REGULAR', 'RETAKE').
+ * @param {string} connected_block - The ID of a related block, required if block_type is 'RETAKE'.
+ * @param {boolean} is_counted_in_final_transcript - Flag to indicate if the block affects the final transcript.
+ * @param {string} block_status - The status of the block (e.g., 'ACTIVE').
  * @returns {Promise<object>} - A promise that resolves to the updated block object.
  */
-async function UpdateBlockHelper(input) {
-    const {
-        id,
-        name,
-        description,
-        evaluation_type,
-        block_type,
-        connected_block,
-        is_counted_in_final_transcript,
-        block_status
-    } = input;
-
-    // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-    const updatedByUserId = '6846e5769e5502fce150eb67';
-
-    const blockData = {
-        name: name,
-        description: description,
-        evaluation_type: evaluation_type.toUpperCase(),
-        block_type: block_type.toUpperCase(),
-        connected_block: connected_block,
-        is_counted_in_final_transcript: is_counted_in_final_transcript,
-        block_status: block_status.toUpperCase(),
-        updated_by: updatedByUserId
-    }
-
+async function UpdateBlockHelper(id, name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status) {
     try {
-        return await BlockModel.findOneAndUpdate({ _id: id }, blockData, { new: true });
+        validator.ValidateUpdateBlockInput(id, name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status)
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const updatedByUserId = '6846e5769e5502fce150eb67';
+
+        const blockData = {
+            name: name,
+            description: description,
+            evaluation_type: evaluation_type.toUpperCase(),
+            block_type: block_type.toUpperCase(),
+            connected_block: connected_block,
+            is_counted_in_final_transcript: is_counted_in_final_transcript,
+            block_status: block_status.toUpperCase(),
+            updated_by: updatedByUserId
+        }
+
+        const updatedBlock = await BlockModel.findOneAndUpdate({ _id: id }, blockData, { new: true });
+
+        return updatedBlock;
     } catch (error) {
         throw new ApolloError('Failed to update block', 'BLOCK_UPDATE_FAILED', {
             error: error.message
@@ -119,23 +128,51 @@ async function UpdateBlockHelper(input) {
 }
 
 /**
- * Performs a soft delete on a block by updating its status to 'DELETED'.
+ * Performs a cascading soft delete on a block and all its associated subjects.
  * @param {string} id - The unique identifier of the block to be deleted.
- * @returns {Promise<object>} - A promise that resolves to the block object before the update.
+ * @returns {Promise<object>} - A promise that resolves to the block object as it was before being updated.
  */
 async function DeleteBlockHelper(id) {
     try {
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const deletedByUserId = '6846e5769e5502fce150eb67';
+        validator.ValidateDeleteBlockInput(id);
 
-        const blockData = {
-            block_status: 'DELETED',
-            updated_at: deletedByUserId,
-            deleted_by: deletedByUserId,
-            deleted_at: Date.now()
+        // *************** Dummy user ID (replace with real one later)
+        const deletedByUserId = '6846e5769e5502fce150eb67';
+        const deletionTimestamp = Date.now();
+
+        // *************** Fetch the block to get its associated subjects
+        const block = await BlockModel.findById(id);
+        if (!block) {
+            throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
         }
 
-        return await BlockModel.findOneAndUpdate({ _id: id }, blockData);
+        const subjectIds = block.subjects || [];
+
+        // *************** Soft delete all associated subjects
+        if (subjectIds.length) {
+            await SubjectModel.updateMany(
+                { _id: { $in: subjectIds } },
+                {
+                    subject_status: 'DELETED',
+                    updated_at: deletedByUserId,
+                    deleted_by: deletedByUserId,
+                    deleted_at: deletionTimestamp
+                }
+            );
+        }
+
+        // *************** Soft delete the block
+        const deletedBlock = await BlockModel.findOneAndUpdate(
+            { _id: id },
+            {
+                block_status: 'DELETED',
+                updated_at: deletedByUserId,
+                deleted_by: deletedByUserId,
+                deleted_at: deletionTimestamp
+            }
+        );
+
+        return deletedBlock;
     } catch (error) {
         throw new ApolloError('Failed to delete block', 'BLOCK_DELETION_FAILED', {
             error: error.message

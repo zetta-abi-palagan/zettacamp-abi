@@ -5,6 +5,12 @@ const { ApolloError } = require('apollo-server');
 // *************** IMPORT MODULE ***************
 const SubjectModel = require('./subject.model');
 
+/**
+ * Creates a new DataLoader for batch-loading active subject data by their IDs.
+ * This function is used to solve the N+1 problem by collecting individual subject ID
+ * requests and fetching them in a single database query.
+ * @returns {DataLoader} - An instance of DataLoader for fetching subjects by their unique ID.
+ */
 function SubjectLoader() {
     return new DataLoader(async (subjectIds) => {
         try {

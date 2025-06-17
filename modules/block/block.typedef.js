@@ -68,8 +68,8 @@ module.exports = gql`
     }
 
     type Mutation {
-        CreateBlock(input: CreateBlockInput!): Block!
-        UpdateBlock(id: ID!, input: UpdateBlockInput!): Block!
+        CreateBlock(createBlockInput: CreateBlockInput!): Block!
+        UpdateBlock(id: ID!, updateBlockInput: UpdateBlockInput!): Block!
         DeleteBlock(id: ID!): Block!
     }
 `

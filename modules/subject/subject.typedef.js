@@ -33,7 +33,7 @@ module.exports = gql`
         coefficient: Float!
         is_transversal: Boolean!
         connected_blocks: [Block!]!
-        # tests: [Test!]!
+        tests: [Test!]!
         subject_status: SubjectStatus!
         created_by: User!
         created_at: String!
@@ -49,8 +49,8 @@ module.exports = gql`
     }
 
     type Mutation {
-        CreateSubject(input: CreateSubjectInput!): Subject!
-        UpdateSubject(id: ID!, input: UpdateSubjectInput!): Subject!
+        CreateSubject(createSubjectInput: CreateSubjectInput!): Subject!
+        UpdateSubject(id: ID!, updateSubjectInput: UpdateSubjectInput!): Subject!
         DeleteSubject(id: ID!): Subject!
     }
 `

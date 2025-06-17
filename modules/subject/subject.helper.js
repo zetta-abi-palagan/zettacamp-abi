@@ -5,22 +5,27 @@ const { ApolloError } = require('apollo-server');
 const SubjectModel = require('./subject.model');
 const BlockModel = require('../block/block.model');
 
-// *************** QUERY ***************
+// *************** IMPORT VALIDATOR ***************
+const validator = require('./subject.validator');
+
 /**
  * Fetches all subjects from the database, with an optional filter for subject status.
  * @param {string} [subject_status] - Optional. The status of the subjects to fetch (e.g., 'ACTIVE').
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of subject objects.
  */
-
 async function GetAllSubjectsHelper(subject_status) {
     try {
+        validator.ValidateGetAllSubjectsInput(subject_status);
+
         const filter = {};
 
         if (subject_status) {
             filter.subject_status = subject_status;
         }
 
-        return await SubjectModel.find(filter);
+        const blocks = await SubjectModel.find(filter);
+
+        return blocks;
     } catch (error) {
         throw new ApolloError(`Failed to fetch subjects: ${error.message}`, "INTERNAL_SERVER_ERROR");
     }
@@ -33,46 +38,46 @@ async function GetAllSubjectsHelper(subject_status) {
  */
 async function GetOneSubjectHelper(id) {
     try {
-        return await SubjectModel.findOne({ _id: id });
+        validator.ValidateGetOneSubjectInput(id);
+
+        const subject = await SubjectModel.findOne({ _id: id });
+
+        return subject;
     } catch (error) {
         throw new ApolloError(`Failed to fetch subject: ${error.message}`, "INTERNAL_SERVER_ERROR");
     }
 }
 
-// *************** MUTATION ***************
 /**
- * Creates a new subject and associates it with a block.
- * It also determines if the subject is transversal based on the parent block's type.
- * @param {object} input - An object containing the details for the new subject.
+ * Creates a new subject after validating the input, and updates the parent block.
+ * @param {string} block - The ID of the block to which the subject will be added.
+ * @param {string} name - The name of the subject.
+ * @param {string} description - The description of the subject.
+ * @param {number} coefficient - The coefficient value of the subject.
+ * @param {string} subject_status - The initial status of the subject (e.g., 'ACTIVE').
  * @returns {Promise<object>} - A promise that resolves to the newly created subject object.
  */
-async function CreateSubjectHelper(input) {
-    const {
-        block,
-        name,
-        description,
-        coefficient,
-        subject_status
-    } = input;
-
-    const checkTransversalBlock = await BlockModel.findOne({ _id: block, block_type: 'TRANSVERSAL' })
-    const isTransversal = checkTransversalBlock ? true : false;
-
-    // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-    const createdByUserId = '6846e5769e5502fce150eb67';
-
-    const subjectData = {
-        block: block,
-        name: name,
-        description: description,
-        coefficient: coefficient,
-        is_transversal: isTransversal,
-        subject_status: subject_status,
-        created_by: createdByUserId,
-        updated_by: createdByUserId
-    };
-
+async function CreateSubjectHelper(block, name, description, coefficient, subject_status) {
     try {
+        await validator.ValidateCreateSubjectInput(block, name, description, coefficient, subject_status);
+
+        const checkTransversalBlock = await BlockModel.findOne({ _id: block, block_type: 'TRANSVERSAL' });
+        const isTransversal = checkTransversalBlock ? true : false;
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const createdByUserId = '6846e5769e5502fce150eb67';
+
+        const subjectData = {
+            block: block,
+            name: name,
+            description: description,
+            coefficient: coefficient,
+            is_transversal: isTransversal,
+            subject_status: subject_status,
+            created_by: createdByUserId,
+            updated_by: createdByUserId
+        };
+
         const newSubject = await SubjectModel.create(subjectData);
 
         await BlockModel.updateOne(
@@ -92,19 +97,17 @@ async function CreateSubjectHelper(input) {
 }
 
 /**
- * Updates an existing subject in the database with the provided data.
- * @param {object} input - An object containing the subject's ID and the fields to be updated.
+ * Updates an existing subject after validating the provided data.
+ * @param {string} id - The unique identifier of the subject to be updated.
+ * @param {string} name - The name of the subject.
+ * @param {string} description - The description of the subject.
+ * @param {number} coefficient - The coefficient value of the subject.
+ * @param {Array<string>} connected_blocks - An array of block IDs to connect to a transversal subject.
+ * @param {string} subject_status - The status of the subject (e.g., 'ACTIVE').
  * @returns {Promise<object>} - A promise that resolves to the updated subject object.
  */
-async function UpdateSubjectHelper(input) {
-    const {
-        id,
-        name,
-        description,
-        coefficient,
-        connected_blocks,
-        subject_status
-    } = input;
+async function UpdateSubjectHelper(id, name, description, coefficient, connected_blocks, subject_status) {
+    await validator.ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
 
     // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
     const updatedByUserId = '6846e5769e5502fce150eb67';

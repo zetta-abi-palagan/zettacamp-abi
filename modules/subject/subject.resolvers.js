@@ -1,21 +1,11 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
-const {
-    ValidateGetAllSubjectsInput,
-    ValidateGetOneSubjectInput,
-    ValidateCreateSubjectInput,
-    ValidateUpdateSubjectInput,
-    ValidateDeleteSubjectInput
-} = require('./subject.validator');
-const {
-    GetAllSubjectsHelper,
-    GetOneSubjectHelper,
-    CreateSubjectHelper,
-    UpdateSubjectHelper,
-    DeleteSubjectHelper
-} = require('./subject.helper');
+// *************** IMPORT HELPER FUNCTION *************** 
+const helper = require('./subject.helper');
+
+// *************** IMPORT VALIDATOR ***************
+const validator = require('./subject.validator');
 
 // *************** QUERY ***************
 /**
@@ -27,9 +17,9 @@ const {
  */
 async function GetAllSubjects(_, { subject_status }) {
     try {
-        const validatedSubjectStatus = ValidateGetAllSubjectsInput(subject_status);
+        validator.ValidateGetAllSubjectsInput(subject_status);
 
-        const subjects = await GetAllSubjectsHelper(validatedSubjectStatus);
+        const subjects = await helper.GetAllSubjectsHelper(subject_status);
 
         return subjects;
     } catch (error) {
@@ -52,9 +42,9 @@ async function GetAllSubjects(_, { subject_status }) {
  */
 async function GetOneSubject(_, { id }) {
     try {
-        const validatedId = ValidateGetOneSubjectInput(id);
+        validator.ValidateGetOneSubjectInput(id);
 
-        const subject = await GetOneSubjectHelper(validatedId);
+        const subject = await helper.GetOneSubjectHelper(validatedId);
 
         return subject;
     } catch (error) {
@@ -77,19 +67,21 @@ async function GetOneSubject(_, { id }) {
  * @returns {Promise<object>} - A promise that resolves to the newly created subject object.
  */
 
-async function CreateSubject(_, { input }) {
-    const {
-        block,
-        name,
-        description,
-        coefficient,
-        subject_status
-    } = input;
-
+async function CreateSubject(_, { createSubjectInput }) {
     try {
-        const validatedInput = await ValidateCreateSubjectInput(block, name, description, coefficient, subject_status);
+        validator.ValidateInputTypeObject(createSubjectInput);
 
-        const newSubject = await CreateSubjectHelper(validatedInput);
+        const {
+            block,
+            name,
+            description,
+            coefficient,
+            subject_status
+        } = input;
+
+        await validator.ValidateCreateSubjectInput(block, name, description, coefficient, subject_status);
+
+        const newSubject = await helper.CreateSubjectHelper(validatedInput);
 
         return newSubject;
     } catch (error) {
@@ -111,19 +103,21 @@ async function CreateSubject(_, { input }) {
  * @param {object} args.input - An object containing the new details for the subject.
  * @returns {Promise<object>} - A promise that resolves to the updated subject object.
  */
-async function UpdateSubject(_, { id, input }) {
-    const {
-        name,
-        description,
-        coefficient,
-        connected_blocks,
-        subject_status
-    } = input
-
+async function UpdateSubject(_, { id, updateSubjectInput }) {
     try {
-        const validatedInput = await ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
+        validator.ValidateInputTypeObject(updateSubjectInput);
 
-        const updatedSubject = await UpdateSubjectHelper(validatedInput);
+        const {
+            name,
+            description,
+            coefficient,
+            connected_blocks,
+            subject_status
+        } = input
+
+        await validator.ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
+
+        const updatedSubject = await helper.UpdateSubjectHelper(id, name, description, coefficient, connected_blocks, subject_status);
 
         return updatedSubject;
     } catch (error) {
@@ -146,11 +140,11 @@ async function UpdateSubject(_, { id, input }) {
  */
 async function DeleteSubject(_, { id }) {
     try {
-        const validatedId = ValidateDeleteSubjectInput(id);
+        validator.ValidateDeleteSubjectInput(id);
 
-        const deletedBlock = await DeleteSubjectHelper(validatedId);
+        const deletedSubject = await helper.DeleteSubjectHelper(id);
 
-        return deletedBlock;
+        return deletedSubject;
     } catch (error) {
         if (error instanceof ApolloError) {
             throw error;
@@ -173,8 +167,11 @@ async function DeleteSubject(_, { id }) {
  */
 async function BlockLoader(subject, _, context) {
     try {
-        console.log(subject._id);
-        return await context.dataLoaders.BlockLoader.load(subject.block)
+        validator.ValidateBlockLoaderInput(subject, context);
+
+        const block = await context.dataLoaders.BlockLoader.load(subject.block);
+
+        return block;
     } catch (error) {
         throw new ApolloError(`Failed to fetch block: ${error.message}`, 'BLOCK_FETCH_FAILED');
     }
@@ -190,7 +187,11 @@ async function BlockLoader(subject, _, context) {
  */
 async function ConnectedBlocksLoader(subject, _, context) {
     try {
-        return await context.dataLoaders.BlockLoader.loadMany(subject.connected_blocks);
+        validator.ValidateConnectedBlocksLoaderInput(subject, context);
+        
+        const connected_blocks = await context.dataLoaders.BlockLoader.loadMany(subject.connected_blocks);
+
+        return connected_blocks;
     } catch (error) {
         console.error("Error fetching connected_blocks:", error);
 
@@ -208,7 +209,11 @@ async function ConnectedBlocksLoader(subject, _, context) {
  */
 async function TestLoader(subject, _, context) {
     try {
-        return await context.dataLoaders.TestLoader.loadMany(subject.tests);
+        validator.ValidateTestLoaderInput(subject, context);
+
+        const tests = await context.dataLoaders.TestLoader.loadMany(subject.tests);
+
+        return tests;
     } catch (error) {
         console.error("Error fetching tests:", error);
 
@@ -226,7 +231,11 @@ async function TestLoader(subject, _, context) {
  */
 async function CreatedByLoader(subject, _, context) {
     try {
-        return await context.dataLoaders.UserLoader.load(subject.created_by);
+        validator.ValidateUserLoaderInput(subject, context, 'created_by');
+
+        const created_by = await context.dataLoaders.UserLoader.load(subject.created_by);
+
+        return created_by;
     } catch (error) {
         throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
     }
@@ -242,7 +251,11 @@ async function CreatedByLoader(subject, _, context) {
  */
 async function UpdatedByLoader(subject, _, context) {
     try {
-        return await context.dataLoaders.UserLoader.load(subject.updated_by);
+        validator.ValidateUserLoaderInput(subject, context, 'updated_by');
+
+        const updated_by = await context.dataLoaders.UserLoader.load(subject.updated_by);
+
+        return updated_by;
     } catch (error) {
         throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
     }
@@ -258,7 +271,11 @@ async function UpdatedByLoader(subject, _, context) {
  */
 async function DeletedByLoader(subject, _, context) {
     try {
-        return await context.dataLoaders.UserLoader.load(subject.updated_by);
+        validator.ValidateUserLoaderInput(subject, context, 'deleted_by');
+
+        const deleted_by = await context.dataLoaders.UserLoader.load(subject.updated_by);
+
+        return deleted_by;
     } catch (error) {
         throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
     }
