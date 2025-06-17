@@ -99,10 +99,7 @@ async function ValidateCreateTestInput(subject, name, description, test_type, re
     }
 
     for (const [index, notation] of notations.entries()) {
-        const {
-            notation_text,
-            max_points
-        } = notation;
+        const { notation_text, max_points } = notation;
 
         if (!notation_text || typeof notation_text !== 'string' || notation_text.trim() === '') {
             throw new ApolloError(`Notation at index ${index} must have non-empty text.`, 'BAD_USER_INPUT', {
@@ -123,13 +120,17 @@ async function ValidateCreateTestInput(subject, name, description, test_type, re
         });
     }
 
-    if (connected_test) {
+    if (is_retake) {
+        if (!connected_test) {
+            throw new ApolloError('connected_test is required when is_retake is true.', 'BAD_USER_INPUT', {
+                field: 'connected_test'
+            });
+        }
         if (!mongoose.Types.ObjectId.isValid(connected_test)) {
             throw new ApolloError(`Invalid connected test ID: ${connected_test}`, "BAD_USER_INPUT", {
                 field: 'connected_test'
             });
         }
-
         const connectedTestCheck = await TestModel.findOne({
             _id: connected_test,
             test_status: 'ACTIVE'
