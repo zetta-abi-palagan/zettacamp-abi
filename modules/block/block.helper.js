@@ -206,7 +206,7 @@ async function UpdateBlockHelper(id, name, description, evaluation_type, block_t
 }
 
 /**
- * Performs a cascading soft delete on a block and all its associated subjects.
+ * Performs a deep cascading soft delete on a block, its associated subjects, and their associated tests.
  * @param {string} id - The unique identifier of the block to be deleted.
  * @returns {Promise<object>} - A promise that resolves to the block object as it was before being updated.
  */
@@ -226,8 +226,34 @@ async function DeleteBlockHelper(id) {
 
         const subjectIds = block.subjects || [];
 
-        // *************** Soft delete all associated subjects
         if (subjectIds.length) {
+            const areAllSubjectIdsValid = subjectIds.every(id => mongoose.Types.ObjectId.isValid(id));
+            if (!areAllSubjectIdsValid) {
+                throw new ApolloError('One or more subject IDs are invalid', 'INVALID_SUBJECT_ID');
+            }
+
+            // *************** Fetch all subjects to get associated test IDs
+            const subjects = await SubjectModel.find({ _id: { $in: subjectIds } });
+
+            const testIds = [].concat(...subjects.map(subject => subject.tests || []));
+
+            if (testIds.length) {
+                const areAllTestIdsValid = testIds.every(id => mongoose.Types.ObjectId.isValid(id));
+                if (!areAllTestIdsValid) {
+                    throw new ApolloError('One or more test IDs are invalid', 'INVALID_TEST_ID');
+                }
+
+                await TestModel.updateMany(
+                    { _id: { $in: testIds } },
+                    {
+                        test_status: 'DELETED',
+                        updated_at: deletedByUserId,
+                        deleted_by: deletedByUserId,
+                        deleted_at: deletionTimestamp
+                    }
+                );
+            }
+
             await SubjectModel.updateMany(
                 { _id: { $in: subjectIds } },
                 {

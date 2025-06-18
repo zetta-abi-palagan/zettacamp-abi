@@ -158,6 +158,29 @@ async function UpdateTest(_, { id, updateTestInput }) {
     }
 }
 
+/**
+ * GraphQL resolver to delete a test by its ID.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.id - The unique identifier of the test to delete.
+ * @returns {Promise<object>} - A promise that resolves to the deleted test object.
+ */
+async function DeleteTest(_, { id }) {
+    try {
+        validator.ValidateDeleteTestInput(id);
+
+        const deletedTest = await helper.DeleteTestHelper(id);
+
+        return deletedTest;
+    } catch (error) {
+        console.error('Unexpected error in DeleteTest:', error);
+
+        throw new ApolloError('Failed to delete test', 'DELETE_TEST_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 // *************** LOADER ***************
 /**
  * Loads the parent subject for a test using a DataLoader.

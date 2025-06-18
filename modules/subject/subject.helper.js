@@ -188,7 +188,8 @@ async function UpdateSubjectHelper(id, name, description, coefficient, connected
 }
 
 /**
- * Soft deletes a subject and removes its reference from the parent block.
+ * Performs a cascading soft delete on a subject and its associated tests,
+ * and removes the subject's reference from its parent block.
  * @param {string} id - The unique identifier of the subject to be deleted.
  * @returns {Promise<object>} - A promise that resolves to the subject object as it was before being updated.
  */
@@ -198,12 +199,38 @@ async function DeleteSubjectHelper(id) {
 
         // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
         const deletedByUserId = '6846e5769e5502fce150eb67';
+        const deletionTimestamp = Date.now();
+
+        const subject = await SubjectModel.findById(id);
+        if (!subject) {
+            throw new ApolloError('Subject not found', 'BLOCK_NOT_FOUND');
+        }
+
+        const testIds = subject.tests || [];
+
+        if (testIds.length) {
+            const areAllValidIds = testIds.every(id => mongoose.Types.ObjectId.isValid(id));
+
+            if (!areAllValidIds) {
+                throw new ApolloError('One or more test IDs are invalid', 'INVALID_ID');
+            }
+
+            await testModel.updateMany(
+                { _id: { $in: testIds } },
+                {
+                    test_status: 'DELETED',
+                    updated_at: deletedByUserId,
+                    deleted_by: deletedByUserId,
+                    deleted_at: deletionTimestamp
+                }
+            )
+        }
 
         const subjectData = {
             subject_status: 'DELETED',
             updated_at: deletedByUserId,
             deleted_by: deletedByUserId,
-            deleted_at: Date.now()
+            deleted_at: deletionTimestamp
         }
 
         const deletedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, subjectData);
@@ -217,7 +244,7 @@ async function DeleteSubjectHelper(id) {
         }
 
         await BlockModel.updateOne(
-            { _id: block, block_status: 'ACTIVE' },
+            { _id: deletedSubject.block, block_status: 'ACTIVE' },
             {
                 $pull: { subjects: deletedSubject._id },
                 $set: { updated_by: deletedByUserId }

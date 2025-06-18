@@ -268,6 +268,20 @@ function ValidateUpdateTestInput(id, name, description, test_type, result_visibi
 }
 
 /**
+ * Validates the input ID for deleting a test.
+ * @param {string} id - The ID of the test to validate.
+ * @returns {string} - The validated test ID.
+ */
+function ValidateDeleteTestInput(id) {
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+    if (!isValidObjectId) {
+        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
+    }
+
+    return id;
+}
+
+/**
  * Validates the inputs for publishing a test.
  * @param {string} id - The ID of the test to be published.
  * @param {Date|string} assign_corrector_due_date - The due date for assigning a corrector.

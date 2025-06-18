@@ -380,6 +380,47 @@ async function UpdateTestHelper(id, name, description, test_type, result_visibil
     }
 }
 
+/**
+ * Soft deletes a test and removes its reference from the parent subject.
+ * @param {string} id - The unique identifier of the test to be deleted.
+ * @returns {Promise<object>} - A promise that resolves to the test object as it was before being updated.
+ */
+async function DeleteTestHelper(id) {
+    try {
+        validator.ValidateDeleteTestInput(id);
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const deletedByUserId = '6846e5769e5502fce150eb67';
+
+        const testData = {
+            test_status: 'DELETED',
+            updated_at: deletedByUserId,
+            deleted_by: deletedByUserId,
+            deleted_at: Date.now()
+        }
+
+        const deletedTest = await TestModel.findOneAndUpdate({ _id: id }, testData);
+
+        if (!deletedTest) {
+            throw new ApolloError('Test deletion failed', 'TEST_DELETION_FAILED');
+        }
+
+        await SubjectModel.updateOne(
+            { _id: deletedTest.Subject, subject_status: 'ACTIVE' },
+            {
+                $pull: { tests: deletedTest._id },
+                $set: { updated_by: deletedByUserId }
+            }
+        );
+
+        return deletedTest;
+    }catch (error) {
+        throw new ApolloError('Failed to delete test', 'TEST_DELETION_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 
 // *************** EXPORT MODULE ***************
 module.exports = {
