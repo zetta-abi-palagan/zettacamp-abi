@@ -148,7 +148,11 @@ async function UpdateSubjectHelper(id, name, description, coefficient, connected
             });
         }
 
-        if (connected_blocks?.length && !subject.is_transversal) {
+        if (
+            Array.isArray(connected_blocks) &&
+            connected_blocks.length &&
+            !subject.is_transversal
+        ) {
             throw new ApolloError('Connected blocks are only allowed when the subject is transversal.', 'BAD_USER_INPUT', {
                 field: 'connected_blocks'
             });

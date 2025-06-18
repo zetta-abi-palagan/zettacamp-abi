@@ -192,7 +192,10 @@ function ValidateBlockLoaderInput(subject, context) {
         throw new ApolloError('Input error: subject.block must be a valid ID.', 'BAD_USER_INPUT');
     }
 
-    if (!context || typeof context.dataLoaders?.BlockLoader?.load !== 'function') {
+    if (!context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.BlockLoader ||
+        typeof context.dataLoaders.BlockLoader.load !== 'function') {
         throw new ApolloError('Server configuration error: BlockLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
     }
 }
@@ -224,7 +227,12 @@ function ValidateConnectedBlocksLoaderInput(subject, context) {
         }
     }
 
-    if (!context || typeof context.dataLoaders?.BlockLoader?.loadMany !== 'function') {
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.BlockLoader ||
+        typeof context.dataLoaders.BlockLoader.loadMany !== 'function'
+    ) {
         throw new ApolloError('Server configuration error: BlockLoader with loadMany function not found on context.', 'INTERNAL_SERVER_ERROR');
     }
 }
@@ -256,7 +264,12 @@ function ValidateTestLoaderInput(subject, context) {
         }
     }
 
-    if (!context || typeof context.dataLoaders?.TestLoader?.loadMany !== 'function') {
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.TestLoader ||
+        typeof context.dataLoaders.TestLoader.loadMany !== 'function'
+    ) {
         throw new ApolloError('Server configuration error: TestLoader with loadMany function not found on context.', 'INTERNAL_SERVER_ERROR');
     }
 }
@@ -273,7 +286,12 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
         throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
     }
 
-    if (!context || typeof context.dataLoaders?.UserLoader?.load !== 'function') {
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.UserLoader ||
+        typeof context.dataLoaders.UserLoader.load !== 'function'
+    ) {
         throw new ApolloError('Server configuration error: UserLoader not found on context.', 'INTERNAL_SERVER_ERROR');
     }
 

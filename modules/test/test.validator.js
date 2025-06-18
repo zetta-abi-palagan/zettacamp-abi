@@ -293,7 +293,7 @@ function ValidatePublishTestInput(id, assign_corrector_due_date, test_due_date) 
     if (!isValidObjectId) {
         throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
     }
-    
+
     if (!(assign_corrector_due_date instanceof Date ? !isNaN(assign_corrector_due_date.getTime()) : !isNaN(new Date(assign_corrector_due_date).getTime()))) {
         throw new ApolloError('A valid date of birth format is required.', 'BAD_USER_INPUT', {
             field: 'assign_corrector_due_date'
@@ -326,7 +326,12 @@ function ValidateSubjectLoaderInput(test, context) {
         });
     }
 
-    if (!context || typeof context.dataLoaders?.SubjectLoader?.load !== 'function') {
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.SubjectLoader ||
+        typeof context.dataLoaders.SubjectLoader.load !== 'function'
+    ) {
         throw new ApolloError('Server configuration error: SubjectLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
     }
 }
@@ -358,7 +363,12 @@ function ValidateStudentTestResultLoaderInput(test, context) {
         }
     }
 
-    if (!context || typeof context.dataLoaders?.StudentTestResultLoader?.loadMany !== 'function') {
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.StudentTestResultLoader ||
+        typeof context.dataLoaders.StudentTestResultLoader.loadMany !== 'function'
+    ) {
         throw new ApolloError('Server configuration error: StudentTestResultLoader with loadMany function not found on context.', 'INTERNAL_SERVER_ERROR');
     }
 }
@@ -390,7 +400,12 @@ function ValidateTaskLoaderInput(test, context) {
         }
     }
 
-    if (!context || typeof context.dataLoaders?.TaskLoader?.loadMany !== 'function') {
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.TaskLoader ||
+        typeof context.dataLoaders.TaskLoader.loadMany !== 'function'
+    ) {
         throw new ApolloError('Server configuration error: TaskLoader with loadMany function not found on context.', 'INTERNAL_SERVER_ERROR');
     }
 }
@@ -407,7 +422,12 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
         throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
     }
 
-    if (!context || typeof context.dataLoaders?.UserLoader?.load !== 'function') {
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.UserLoader ||
+        typeof context.dataLoaders.UserLoader.load !== 'function'
+    ) {
         throw new ApolloError('Server configuration error: UserLoader not found on context.', 'INTERNAL_SERVER_ERROR');
     }
 
