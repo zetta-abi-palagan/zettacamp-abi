@@ -14,12 +14,7 @@ module.exports = gql`
     }
 
     input UpdateStudentTestResultInput {
-        student: ID!
-        test: ID!
         marks: [MarkInput!]!
-        average_mark: Float!
-        mark_entry_date: String!
-        student_test_result_status: StudentTestResultStatus!
     }
 
     type Mark {
@@ -44,12 +39,12 @@ module.exports = gql`
     }
 
     type Query {
-        GetAllStudentTestResult(student_test_result_status: StudentTestResultStatus): [StudentTestResult!]!
+        GetAllStudentTestResults(student_test_result_status: StudentTestResultStatus): [StudentTestResult!]!
         GetOneStudentTestResult(id: ID!): StudentTestResult
     }
 
     type Mutation {
-        UpdateStudentTestResult(id: ID!, UpdateStudentTestResultInput: UpdateStudentTestResultInput!): StudentTestResult!
+        UpdateStudentTestResult(id: ID!, updateStudentTestResultInput: UpdateStudentTestResultInput!): StudentTestResult!
         InvalidateStudentTestResult(id: ID!): StudentTestResult!
     }
 `
