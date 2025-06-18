@@ -84,7 +84,115 @@ async function UpdateStudentTestResult(_, { id, UpdateStudentTestResult }) {
 }
 
 // *************** LOADER ***************
+/**
+ * Loads the student associated with a test result using a DataLoader.
+ * @param {object} studentTestResult - The parent student test result object.
+ * @param {string} studentTestResult.student - The ID of the student to load.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the student object.
+ */
+async function StudentLoader(studentTestResult, _, context) {
+    try {
+        validator.ValidateStudentLoaderInput(studentTestResult, context);
 
+        const student = await context.dataLoaders.StudentLoader.load(studentTestResult.student);
+
+        return student;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch student`, 'STUDENT_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Loads the test associated with a student's result using a DataLoader.
+ * @param {object} studentTestResult - The parent student test result object.
+ * @param {string} studentTestResult.test - The ID of the test to load.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the test object.
+ */
+async function TestLoader(studentTestResult, _, context) {
+    try {
+        validator.ValidateTestLoaderInput(studentTestResult, context);
+
+        const test = await context.dataLoaders.StudentLoader.load(studentTestResult.test);
+
+        return test;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch test`, 'TEST_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Loads the user who created the studentTestResult using a DataLoader.
+ * @param {object} studentTestResult - The parent studentTestResult object.
+ * @param {string} studentTestResult.created_by - The ID of the user who created the studentTestResult.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the user object.
+ */
+async function CreatedByLoader(studentTestResult, _, context) {
+    try {
+        validator.ValidateUserLoaderInput(studentTestResult, context, 'created_by');
+
+        const created_by = await context.dataLoaders.UserLoader.load(studentTestResult.created_by);
+
+        return created_by;
+    } catch (error) {
+        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Loads the user who last updated the studentTestResult using a DataLoader.
+ * @param {object} studentTestResult - The parent studentTestResult object.
+ * @param {string} studentTestResult.updated_by - The ID of the user who last updated the studentTestResult.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the user object.
+ */
+async function UpdatedByLoader(studentTestResult, _, context) {
+    try {
+        validator.ValidateUserLoaderInput(studentTestResult, context, 'updated_by');
+
+        const updated_by = await context.dataLoaders.UserLoader.load(studentTestResult.updated_by);
+
+        return updated_by;
+    } catch (error) {
+        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Loads the user who deleted the studentTestResult using a DataLoader.
+ * @param {object} studentTestResult - The parent studentTestResult object.
+ * @param {string} studentTestResult.updated_by - The ID of the user who performed the deletion.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the user object.
+ */
+async function DeletedByLoader(studentTestResult, _, context) {
+    try {
+        validator.ValidateUserLoaderInput(studentTestResult, context, 'deleted_by');
+
+        const deleted_by = await context.dataLoaders.UserLoader.load(studentTestResult.updated_by);
+
+        return deleted_by;
+    } catch (error) {
+        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
 
 // *************** EXPORT MODULE ***************
 module.exports = {

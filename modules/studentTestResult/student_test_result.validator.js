@@ -81,10 +81,103 @@ function ValidateUpdateStudentTestResultInput(id, marks) {
     }
 }
 
+/**
+ * Loads the student associated with a test result using a DataLoader.
+ * @param {object} studentTestResult - The parent student test result object.
+ * @param {string} studentTestResult.student - The ID of the student to load.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the student object.
+ */
+function ValidateStudentLoaderInput(studentTestResult, context) {
+    if (!studentTestResult || typeof studentTestResult !== 'object' || studentTestResult === null) {
+        throw new ApolloError('Input error: studentTestResult must be a valid object.', 'BAD_USER_INPUT', {
+            field: 'studentTestResult'
+        });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(studentTestResult.student)) {
+        throw new ApolloError('Input error: studentTestResult.student must be a valid ID.', 'BAD_USER_INPUT', {
+            field: 'studentTestResult.student'
+        });
+    }
+
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.StudentLoader ||
+        typeof context.dataLoaders.StudentLoader.load !== 'function'
+    ) {
+        throw new ApolloError('Server configuration error: StudentLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
+    }
+}
+
+/**
+ * Loads the test associated with a student's result using a DataLoader.
+ * @param {object} studentTestResult - The parent student test result object.
+ * @param {string} studentTestResult.test - The ID of the test to load.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the test object.
+ */
+function ValidateTestLoaderInput(studentTestResult, context) {
+    if (!studentTestResult || typeof studentTestResult !== 'object' || studentTestResult === null) {
+        throw new ApolloError('Input error: studentTestResult must be a valid object.', 'BAD_USER_INPUT', {
+            field: 'studentTestResult'
+        });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(studentTestResult.test)) {
+        throw new ApolloError('Input error: studentTestResult.test must be a valid ID.', 'BAD_USER_INPUT', {
+            field: 'studentTestResult.test'
+        });
+    }
+
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.TestLoader ||
+        typeof context.dataLoaders.TestLoader.load !== 'function'
+    ) {
+        throw new ApolloError('Server configuration error: TestLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
+    }
+}
+
+/**
+ * Validates the inputs for resolvers that use the UserLoader.
+ * @param {object} parent - The parent object.
+ * @param {object} context - The GraphQL context, which must contain a configured UserLoader.
+ * @param {string} fieldName - The name of the property on the block object that holds the user ID (e.g., 'created_by').
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateUserLoaderInput(parent, context, fieldName) {
+    if (!parent || typeof parent !== 'object' || parent === null) {
+        throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
+    }
+
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.UserLoader ||
+        typeof context.dataLoaders.UserLoader.load !== 'function'
+    ) {
+        throw new ApolloError('Server configuration error: UserLoader not found on context.', 'INTERNAL_SERVER_ERROR');
+    }
+
+    const userId = parent[fieldName];
+
+    if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
+        throw new ApolloError(`Input error: If provided, parent.${fieldName} must be a valid ID.`, 'BAD_USER_INPUT');
+    }
+}
+
 // *************** EXPORT MODULE ***************
 module.exports = {
     ValidateInputTypeObject,
     ValidateGetAllStudentTestResultsInput,
     ValidateGetOneStudentTestResultInput,
     ValidateUpdateStudentTestResultInput,
+    ValidateStudentLoaderInput,
+    ValidateTestLoaderInput,
+    ValidateUserLoaderInput
 }
