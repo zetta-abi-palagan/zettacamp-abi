@@ -173,8 +173,6 @@ function ValidateDeleteSubjectInput(id) {
     if (!isValidObjectId) {
         throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
     }
-
-    return id;
 }
 
 /**

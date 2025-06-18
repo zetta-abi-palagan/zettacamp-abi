@@ -6,6 +6,8 @@ module.exports = gql`
     enum Role {
         ADMIN
         USER
+        CORRECTOR
+        ACADEMIC_DIRECTOR
     }
 
     enum Status {

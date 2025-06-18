@@ -22,7 +22,7 @@ module.exports = gql`
     enum CorrectionType {
         ADMTC
         CERTIFIER
-        ACADEMIC_CORRECTOR
+        CROSS_CORRECTION
         PREPARATION_CENTER
     }
 

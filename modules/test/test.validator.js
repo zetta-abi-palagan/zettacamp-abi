@@ -64,7 +64,7 @@ function ValidateGetOneTestInput(id) {
 function ValidateCreateTestInput(subject, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status) {
     const validTestType = ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN'];
     const validResultVisibility = ['NEVER', 'AFTER_CORRECTION', 'AFTER_JURY_DECISION_FOR_FINAL_TRANSCRIPT'];
-    const validCorrectionType = ['ADMTC', 'CERTIFIER', 'ACADEMIC_CORRECTOR', 'PREPARATION_CENTER'];
+    const validCorrectionType = ['ADMTC', 'CERTIFIER', 'CROSS_CORRECTION', 'PREPARATION_CENTER'];
     const validStatus = ['ACTIVE', 'INACTIVE'];
 
     if (!mongoose.Types.ObjectId.isValid(subject)) {
@@ -175,7 +175,7 @@ function ValidateCreateTestInput(subject, name, description, test_type, result_v
 function ValidateUpdateTestInput(id, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status) {
     const validTestType = ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN'];
     const validResultVisibility = ['NEVER', 'AFTER_CORRECTION', 'AFTER_JURY_DECISION_FOR_FINAL_TRANSCRIPT'];
-    const validCorrectionType = ['ADMTC', 'CERTIFIER', 'ACADEMIC_CORRECTOR', 'PREPARATION_CENTER'];
+    const validCorrectionType = ['ADMTC', 'CERTIFIER', 'CROSS_CORRECTION', 'PREPARATION_CENTER'];
     const validStatus = ['ACTIVE', 'INACTIVE'];
 
     const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
@@ -270,15 +270,13 @@ function ValidateUpdateTestInput(id, name, description, test_type, result_visibi
 /**
  * Validates the input ID for deleting a test.
  * @param {string} id - The ID of the test to validate.
- * @returns {string} - The validated test ID.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateDeleteTestInput(id) {
     const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
     if (!isValidObjectId) {
         throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
     }
-
-    return id;
 }
 
 /**

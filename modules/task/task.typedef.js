@@ -15,10 +15,10 @@ module.exports = gql`
         COMPLETED
     }
 
-    input MarkInput [
+    input MarkInput {
         notation_text: String!
         mark: Float!
-    ]
+    }
 
     input EnterMarksInput {
         test: ID!
@@ -26,7 +26,7 @@ module.exports = gql`
         marks: [MarkInput!]!
     }
 
-    input CreateTaskInput [
+    input CreateTaskInput {
         test: Test!
         user: User!
         title: String!
@@ -34,7 +34,7 @@ module.exports = gql`
         task_type: TaskType!
         task_status: TaskStatus!
         due_date: String
-    ]
+    }
 
     input UpdateTaskInput {
         user: User!
@@ -79,8 +79,8 @@ module.exports = gql`
         CreateTask(input: CreateTaskInput!): Task!
         UpdateTask(id: ID!, input: UpdateTaskInput!): Task!
         DeleteTask(id: ID!): Task!
-        AssignCorrector(task_id: ID!, corrector_id: ID!): Task!
-        EnterMarks(input: EnterMarksInput): EnterMarksPayload!
+        AssignCorrector(task_id: ID!, corrector_id: ID!, enter_marks_due_date: String): Task!
+        EnterMarks(input: EnterMarksInput, validate_marks_due_date: String): EnterMarksPayload!
         ValidateMarks(task_id: ID!): Task!
     }
 `

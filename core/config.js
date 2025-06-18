@@ -7,6 +7,8 @@ dotenv.config();
 const config = {
     PORT: process.env.PORT,
     MONGO_URI: process.env.MONGO_URI,
+    SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
+    SENDGRID_SENDER_EMAIL: process.env.SENDGRID_SENDER_EMAIL
 }
 
 // *************** EXPORT MODULE ***************

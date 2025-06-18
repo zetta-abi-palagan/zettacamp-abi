@@ -45,7 +45,7 @@ const testSchema = mongoose.Schema({
     // How the test is corrected: ADMTC, CERTIFIER, ACADEMIC CORRECTOR, PREPARATION CENTER
     correction_type: {
         type: String,
-        enum: ['ADMTC', 'CERTIFIER', 'ACADEMIC_CORRECTOR', 'PREPARATION_CENTER'],
+        enum: ['ADMTC', 'CERTIFIER', 'CROSS_CORRECTION', 'PREPARATION_CENTER'],
         required: true
     },
 
