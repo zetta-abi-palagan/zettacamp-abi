@@ -83,6 +83,29 @@ async function UpdateStudentTestResult(_, { id, UpdateStudentTestResult }) {
     }
 }
 
+/**
+ * GraphQL resolver to invalidate a student's test result.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.id - The unique identifier of the student test result to invalidate.
+ * @returns {Promise<object>} - A promise that resolves to the invalidated student test result object.
+ */
+async function InvalidateStudentTestResult(_, { id }) {
+    try {
+        validator.ValidateInvalidateStudentTestResultInput(id);
+
+        const invalidatedStudentTestResult = await helper.InvalidateStudentTestResultHelper(id)
+
+        return invalidatedStudentTestResult;
+    } catch (error) {
+        console.error('Unexpected error in InvalidateStudentTestResult:', error);
+
+        throw new ApolloError('Failed to invalidate student test result', 'INVALIDATE_STUDENT_TEST_RESULT_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 // *************** LOADER ***************
 /**
  * Loads the student associated with a test result using a DataLoader.

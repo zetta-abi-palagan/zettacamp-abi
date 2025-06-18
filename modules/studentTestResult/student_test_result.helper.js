@@ -112,9 +112,41 @@ async function UpdateStudentTestResultHelper(id, marks) {
     }
 }
 
+/**
+ * Invalidates a student's test result by setting its status to 'PENDING'.
+ * @param {string} id - The unique identifier of the student test result to invalidate.
+ * @returns {Promise<object>} - A promise that resolves to the student test result object as it was before being updated.
+ */
+async function InvalidateStudentTestResultHelper(id) {
+    try {
+        validator.ValidateInvalidateStudentTestResultInput(id);
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const updatedByUserId = '6846e5769e5502fce150eb67';
+
+        const studentTestResultData = {
+            student_test_result_status: 'PENDING',
+            updated_by: updatedByUserId
+        };
+
+        const invalidatedStudentResult = await StudentTestResultModel.findOneAndUpdate({ _id: id}, studentTestResultData);
+
+        if (invalidatedStudentResult) {
+            throw new ApolloError('Student test result invalidation failed', 'STUDENT_TEST_RESULT_INVALIDATE_FAILED');
+        }
+
+        return invalidatedStudentResult;
+    } catch (error) {
+        throw new ApolloError('Failed to invalidate student test result', 'STUDENT_TEST_RESULT_INVALIDATE_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 // *************** EXPORT MODULE ***************
 module.exports = {
     GetAllStudentTestResultsHelper,
     GetOneStudentTestResultHelper,
     UpdateStudentTestResultHelper,
+    InvalidateStudentTestResultHelper
 }

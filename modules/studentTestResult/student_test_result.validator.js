@@ -16,18 +16,6 @@ function ValidateInputTypeObject(input) {
 }
 
 /**
- * Validates if the provided value is a valid MongoDB ObjectId.
- * @param {string} id - The ID to be validated.
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateGetOneStudentTestResultInput(id) {
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
-    }
-}
-
-/**
  * Validates the optional student_test_result_status input for fetching all student test results.
  * @param {string} student_test_result_status - The status of the results to filter by (e.g., 'PENDING').
  * @returns {void} - This function does not return a value but throws an error if validation fails.
@@ -43,6 +31,18 @@ function ValidateGetAllStudentTestResultsInput(student_test_result_status) {
         throw new ApolloError(`Student test result status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
             field: 'student_test_result_status'
         });
+    }
+}
+
+/**
+ * Validates if the provided value is a valid MongoDB ObjectId.
+ * @param {string} id - The ID to be validated.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateGetOneStudentTestResultInput(id) {
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+    if (!isValidObjectId) {
+        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
     }
 }
 
@@ -78,6 +78,18 @@ function ValidateUpdateStudentTestResultInput(id, marks) {
                 field: `notations[${index}].mark`
             });
         }
+    }
+}
+
+/**
+ * Validates the input ID for invalidating a student test result.
+ * @param {string} id - The ID of the student test result to validate.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateInvalidateStudentTestResultInput(id) {
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+    if (!isValidObjectId) {
+        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
     }
 }
 
@@ -177,6 +189,7 @@ module.exports = {
     ValidateGetAllStudentTestResultsInput,
     ValidateGetOneStudentTestResultInput,
     ValidateUpdateStudentTestResultInput,
+    ValidateInvalidateStudentTestResultInput,
     ValidateStudentLoaderInput,
     ValidateTestLoaderInput,
     ValidateUserLoaderInput
