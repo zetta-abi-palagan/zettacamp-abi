@@ -74,6 +74,11 @@ async function UpdateStudentTestResultHelper(id, marks) {
             throw new ApolloError('Related test not found', 'TEST_NOT_FOUND');
         }
 
+        const notationMap = new Map();
+        for (const notation of test.notations) {
+            notationMap.set(notation.notation_text, notation.max_points);
+        }
+
         for (const markEntry of marks) {
             const { notation_text, mark } = markEntry;
 
@@ -129,7 +134,7 @@ async function InvalidateStudentTestResultHelper(id) {
             updated_by: updatedByUserId
         };
 
-        const invalidatedStudentResult = await StudentTestResultModel.findOneAndUpdate({ _id: id}, studentTestResultData);
+        const invalidatedStudentResult = await StudentTestResultModel.findOneAndUpdate({ _id: id }, studentTestResultData);
 
         if (invalidatedStudentResult) {
             throw new ApolloError('Student test result invalidation failed', 'STUDENT_TEST_RESULT_INVALIDATE_FAILED');

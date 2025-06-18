@@ -293,13 +293,13 @@ function ValidatePublishTestInput(id, assign_corrector_due_date, test_due_date) 
     }
 
     if (!(assign_corrector_due_date instanceof Date ? !isNaN(assign_corrector_due_date.getTime()) : !isNaN(new Date(assign_corrector_due_date).getTime()))) {
-        throw new ApolloError('A valid date of birth format is required.', 'BAD_USER_INPUT', {
+        throw new ApolloError('A valid date format is required.', 'BAD_USER_INPUT', {
             field: 'assign_corrector_due_date'
         });
     }
 
     if (!(test_due_date instanceof Date ? !isNaN(test_due_date.getTime()) : !isNaN(new Date(test_due_date).getTime()))) {
-        throw new ApolloError('A valid date of birth format is required.', 'BAD_USER_INPUT', {
+        throw new ApolloError('A valid date format is required.', 'BAD_USER_INPUT', {
             field: 'test_due_date'
         });
     }

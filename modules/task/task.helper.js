@@ -4,6 +4,7 @@ const sgMail = require('@sendgrid/mail');
 
 // *************** IMPORT MODULE *************** 
 const TaskModel = require('./task.model');
+const StudentTestResultModel = require('../studentTestResult/student_test_result.model')
 const UserModel = require('../user/user.model');
 const StudentModel = require('../student/student.model');
 const { SENDGRID_API_KEY, SENDGRID_SENDER_EMAIL } = require('../../core/config');
@@ -73,9 +74,7 @@ async function AssignCorrectorHelper(task_id, corrector_id, enter_marks_due_date
 
         const test = await TestModel.findOne({ _id: assignCorrectorTask.test });
         if (!test) {
-            throw new ApolloError('Test not found', 'NOT_FOUND', {
-                field: 'test'
-            });
+            throw new ApolloError('Test not found', 'NOT_FOUND');
         }
 
         // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
@@ -99,7 +98,7 @@ async function AssignCorrectorHelper(task_id, corrector_id, enter_marks_due_date
             description: 'Corrector should enter marks for student test',
             task_type: 'ENTER_MARKS',
             task_status: 'PENDING',
-            due_date: assign_corrector_due_date,
+            due_date: enter_marks_due_date,
             created_by: completedByUserId,
             updated_by: completedByUserId
         }
@@ -107,6 +106,15 @@ async function AssignCorrectorHelper(task_id, corrector_id, enter_marks_due_date
         const enterMarksTask = await TaskModel.create(enterMarksTaskData);
         if (!enterMarksTask) {
             throw new ApolloError('Enter marks task creation failed', 'TASK_CREATION_FAILED');
+        }
+
+        const updatedTest = await TestModel.updateOne(
+            { _id: test._id },
+            { $push: { tasks: enterMarksTask._id } }
+        );
+
+        if (updatedTest.modifiedCount === 0) {
+            throw new ApolloError('Failed to add enter marks task to test', 'TEST_UPDATE_FAILED');
         }
 
         // *************** Prepare email content
@@ -138,6 +146,125 @@ async function AssignCorrectorHelper(task_id, corrector_id, enter_marks_due_date
         return enterMarksTask;
     } catch (error) {
         throw new ApolloError('Failed to assign corrector', 'TASK_CREATION_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Enters marks for a student's test, creates a result document, completes the current task, and creates a new task for validation.
+ * @param {string} task_id - The ID of the 'ENTER_MARKS' task.
+ * @param {string} test - The ID of the related test.
+ * @param {string} student - The ID of the related student.
+ * @param {Array<object>} marks - The array of marks to be entered.
+ * @param {Date|string} validate_marks_due_date - The due date for the new 'VALIDATE_MARKS' task.
+ * @returns {Promise<object>} - A promise that resolves to an object containing the new student test result and the new validation task.
+ */
+async function EnterMarksHelper(task_id, test, student, marks, validate_marks_due_date) {
+    try {
+        validator.ValidateEnterMarksInput(task_id, test, student, marks, validate_marks_due_date);
+
+        const enterMarksTask = await TaskModel.findOne({ _id: task_id, task_type: 'ENTER_MARKS', task_status: 'PENDING' })
+        if (!enterMarksTask) {
+            throw new ApolloError('Enter marks task not found', 'NOT_FOUND');
+        }
+
+        const studentCheck = await StudentModel.findOne({ _id: student, student_status: 'ACTIVE' })
+        if (!studentCheck) {
+            throw new ApolloError('Student not found', 'NOT_FOUND');
+        }
+
+        const testCheck = await TestModel.findOne({ _id: test });
+        if (!testCheck) {
+            throw new ApolloError('Test not found', 'NOT_FOUND');
+        }
+
+        const notationMap = new Map();
+        for (const notation of testCheck.notations) {
+            notationMap.set(notation.notation_text, notation.max_points);
+        }
+
+        for (const markEntry of marks) {
+            const { notation_text, mark } = markEntry;
+
+            if (!notationMap.has(notation_text)) {
+                throw new ApolloError(`Invalid notation_text: ${notation_text}`, 'INVALID_NOTATION');
+            }
+
+            const maxPoints = notationMap.get(notation_text);
+            if (mark < 0 || mark > maxPoints) {
+                throw new ApolloError(
+                    `Mark for '${notation_text}' must be between 0 and ${maxPoints}`,
+                    'INVALID_MARK_VALUE'
+                );
+            }
+        }
+
+        // *************** Count average mark
+        let totalMarks = 0;
+
+        for (const item of marks) {
+            totalMarks += item.mark
+        }
+
+        const averageMark = totalMarks / marks.length;
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const completedByUserId = '6846e5769e5502fce150eb67';
+
+        const studentTestResultData = {
+            student: student._id,
+            test: test._id,
+            marks: marks,
+            average_mark: averageMark,
+            mark_entry_date: Date.now(),
+            student_test_result_status: 'PENDING',
+            created_by: completedByUserId,
+            updated_by: completedByUserId
+        }
+
+        const newStudentTestResult = await StudentTestResultModel.create(studentTestResultData);
+        if (!newStudentTestResult) {
+            throw new ApolloError('Student test result creation failed', 'STUDENT_TEST_RESULT_CREATION_FAILED');
+        }
+
+        const enterMarksTaskData = {
+            task_status: 'COMPLETED',
+            completed_by: completedByUserId,
+            completed_at: Date.now()
+        }
+
+        const completeEnterMarksTask = await TaskModel.updateOne({ _id: enterMarksTask._id, task_type: 'ENTER_MARKS', task_status: 'PENDING' }, enterMarksTaskData);
+        if (!completeEnterMarksTask) {
+            throw new ApolloError('Enter marks task completion failed', 'TASK_COMPLETION_FAILED');
+        }
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const academicDirectorId = '6846e5769e5502fce150eb67';
+
+        const validateMarksTaskData = {
+            test: test,
+            user: academicDirectorId,
+            title: 'Validate Marks',
+            description: 'Academic Director should validate mark entry for student test',
+            task_type: 'VALIDATE_MARKS',
+            task_status: 'PENDING',
+            due_date: validate_marks_due_date,
+            created_by: completedByUserId,
+            updated_by: completedByUserId
+        }
+
+        const validateMarksTask = await TaskModel.create(validateMarksTaskData);
+        if (!validateMarksTask) {
+            throw new ApolloError('Validate marks task creation failed', 'TASK_CREATION_FAILED');
+        }
+
+        return {
+            student_test_result: newStudentTestResult,
+            validate_marks_task: validateMarksTask
+        }
+    } catch (error) {
+        throw new ApolloError('Failed to enter marks', 'TASK_CREATION_FAILED', {
             error: error.message
         });
     }

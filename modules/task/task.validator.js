@@ -5,13 +5,24 @@ const mongoose = require('mongoose');
 const { ApolloError } = require('apollo-server');
 
 /**
+ * Validates that the provided input is a non-array object.
+ * @param {object} input - The input variable to be validated.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateInputTypeObject(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+        throw new Error('Input must be a valid object');
+    }
+}
+
+/**
  * Validates the inputs for assigning a corrector to a task.
  * @param {string} task_id - The ID of the 'ASSIGN_CORRECTOR' task.
  * @param {string} corrector_id - The ID of the user being assigned as the corrector.
  * @param {Date|string} enter_marks_due_date - The due date for the new 'ENTER_MARKS' task.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-async function ValidateAssignCorrectorInput(task_id, corrector_id, enter_marks_due_date) {
+function ValidateAssignCorrectorInput(task_id, corrector_id, enter_marks_due_date) {
     const isValidTaskId = mongoose.Types.ObjectId.isValid(task_id);
     if (!isValidTaskId) {
         throw new ApolloError(`Invalid task ID: ${task_id}`, "BAD_USER_INPUT");
@@ -23,13 +34,69 @@ async function ValidateAssignCorrectorInput(task_id, corrector_id, enter_marks_d
     }
 
     if (!(enter_marks_due_date instanceof Date ? !isNaN(enter_marks_due_date.getTime()) : !isNaN(new Date(enter_marks_due_date).getTime()))) {
-        throw new ApolloError('A valid date of birth format is required.', 'BAD_USER_INPUT', {
+        throw new ApolloError('A valid date format is required.', 'BAD_USER_INPUT', {
             field: 'enter_marks_due_date'
+        });
+    }
+}
+
+/**
+ * Validates all inputs required for the 'enter marks' workflow.
+ * @param {string} task_id - The ID of the 'ENTER_MARKS' task.
+ * @param {string} test - The ID of the related test.
+ * @param {string} student - The ID of the related student.
+ * @param {Array<object>} marks - A non-empty array of mark objects to be validated.
+ * @param {Date|string} validate_marks_due_date - The due date for the subsequent 'VALIDATE_MARKS' task.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateEnterMarksInput(task_id, test, student, marks, validate_marks_due_date) {
+    const isValidTaskId = mongoose.Types.ObjectId.isValid(task_id);
+    if (!isValidTaskId) {
+        throw new ApolloError(`Invalid task ID: ${test}`, "BAD_USER_INPUT");
+    }
+
+    const isValidTestId = mongoose.Types.ObjectId.isValid(test);
+    if (!isValidTestId) {
+        throw new ApolloError(`Invalid test ID: ${test}`, "BAD_USER_INPUT");
+    }
+
+    const isValidStudentId = mongoose.Types.ObjectId.isValid(student);
+    if (!isValidStudentId) {
+        throw new ApolloError(`Invalid student ID: ${student}`, "BAD_USER_INPUT");
+    }
+
+    if (!Array.isArray(marks) || !marks.length) {
+        throw new ApolloError('Notations must be a non-empty array.', 'BAD_USER_INPUT', {
+            field: 'marks'
+        });
+    }
+
+    for (const [index, notation] of marks.entries()) {
+        const { notation_text, mark } = notation;
+
+        if (!notation_text || typeof notation_text !== 'string' || notation_text.trim() === '') {
+            throw new ApolloError(`Notation at index ${index} must have non-empty text.`, 'BAD_USER_INPUT', {
+                field: `notations[${index}].notation_text`
+            });
+        }
+
+        if (typeof mark !== 'number' || isNaN(mark) || mark < 0) {
+            throw new ApolloError(`Notation at index ${index} must have a valid mark (number ≥ 0).`, 'BAD_USER_INPUT', {
+                field: `notations[${index}].mark`
+            });
+        }
+    }
+
+    if (!(validate_marks_due_date instanceof Date ? !isNaN(validate_marks_due_date.getTime()) : !isNaN(new Date(validate_marks_due_date).getTime()))) {
+        throw new ApolloError('A valid date format is required.', 'BAD_USER_INPUT', {
+            field: 'validate_marks_due_date'
         });
     }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
+    ValidateInputTypeObject,
     ValidateAssignCorrectorInput,
+    ValidateEnterMarksInput
 }

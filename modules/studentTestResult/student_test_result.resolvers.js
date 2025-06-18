@@ -63,11 +63,11 @@ async function GetOneStudentTestResult(_, { id }) {
  * @param {object} args.UpdateStudentTestResult - An input object containing the new marks.
  * @returns {Promise<object>} - A promise that resolves to the updated student test result object.
  */
-async function UpdateStudentTestResult(_, { id, UpdateStudentTestResult }) {
+async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }) {
     try {
-        validator.ValidateInputTypeObject(UpdateStudentTestResult);
+        validator.ValidateInputTypeObject(updateStudentTestResultInput);
 
-        const { marks } = UpdateStudentTestResult;
+        const { marks } = updateStudentTestResultInput;
 
         validator.ValidateUpdateStudentTestResultInput(id, marks);
 

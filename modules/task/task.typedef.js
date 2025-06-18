@@ -13,6 +13,7 @@ module.exports = gql`
         PENDING
         IN_PROGRESS
         COMPLETED
+        DELETED
     }
 
     input MarkInput {
@@ -80,7 +81,7 @@ module.exports = gql`
         UpdateTask(id: ID!, input: UpdateTaskInput!): Task!
         DeleteTask(id: ID!): Task!
         AssignCorrector(task_id: ID!, corrector_id: ID!, enter_marks_due_date: String): Task!
-        EnterMarks(input: EnterMarksInput, validate_marks_due_date: String): EnterMarksPayload!
+        EnterMarks(task_id: ID!, enterMarksInput: EnterMarksInput, validate_marks_due_date: String): EnterMarksPayload!
         ValidateMarks(task_id: ID!): Task!
     }
 `

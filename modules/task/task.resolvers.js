@@ -37,6 +37,35 @@ async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date 
     }
 }
 
+/**
+ * GraphQL resolver to enter marks for a student's test, which completes an 'ENTER_MARKS' task and creates a 'VALIDATE_MARKS' task.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.task_id - The ID of the 'ENTER_MARKS' task to be completed.
+ * @param {object} args.enterMarksInput - An input object containing the test, student, and marks data.
+ * @param {Date|string} args.validate_marks_due_date - The due date for the subsequent 'VALIDATE_MARKS' task.
+ * @returns {Promise<object>} - A promise that resolves to the newly created 'VALIDATE_MARKS' task object.
+ */
+async function EnterMarks(_, { task_id, enterMarksInput, validate_marks_due_date }) {
+    try {
+        validator.ValidateInputTypeObject(enterMarksInput);
+
+        const { test, student, marks } = enterMarksInput;
+
+        validator.ValidateEnterMarksInput(task_id, test, student, marks, validate_marks_due_date);
+
+        const validateMarksTask = await helper.EnterMarksHelper(task_id, test, student, marks, validate_marks_due_date)
+
+        return validateMarksTask
+    } catch (error) {
+        console.error('Unexpected error in EnterMarks:', error);
+
+        throw new ApolloError('Failed to enter marks', 'ENTER_MARKS_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 // *************** LOADER ***************
 
 

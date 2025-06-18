@@ -38,7 +38,7 @@ const taskSchema = mongoose.Schema({
     // Current status of the test: pending, in progress, and completed
     task_status: {
         type: String,
-        enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED'],
+        enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'DELETED'],
         required: true
     },
 
