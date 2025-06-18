@@ -210,9 +210,9 @@ async function PublishTestHelper(id, assign_corrector_due_date, test_due_date) {
             test_due_date: test_due_date,
         }
 
-        const publishedTest = TestModel.findOneAndUpdate({ _id: id, test_status: 'ACTIVE' }, testData, { new: true });
+        const publishedTest = await TestModel.findOneAndUpdate({ _id: id, test_status: 'ACTIVE' }, testData, { new: true });
 
-        if (publishedTest) {
+        if (!publishedTest) {
             throw new ApolloError('Test publish failed', 'TEST_PUBLISH_FAILED');
         }
 
@@ -231,11 +231,23 @@ async function PublishTestHelper(id, assign_corrector_due_date, test_due_date) {
             updated_by: publishedByUserId
         }
 
-        const assignCorrector = TaskModel.create(taskData)
+        const assignCorrectorTask = await TaskModel.create(taskData)
 
-        if (!assignCorrector) {
+        if (!assignCorrectorTask) {
             throw new ApolloError('Task assign corrector creation failed', 'TASK_CREATION_FAILED');
         }
+
+        await TestModel.updateOne(
+            { _id: publishedTest._id, test_status: 'ACTIVE' },
+            {
+                $addToSet: { tests: assignCorrectorTask._id },
+            }
+        )
+
+        return {
+            test: publishedTest,
+            assign_corrector_task: assignCorrectorTask
+        };
     } catch (error) {
         throw new ApolloError('Failed to publish test', 'TEST_CREATION_FAILED', {
             error: error.message
@@ -414,7 +426,7 @@ async function DeleteTestHelper(id) {
         );
 
         return deletedTest;
-    }catch (error) {
+    } catch (error) {
         throw new ApolloError('Failed to delete test', 'TEST_DELETION_FAILED', {
             error: error.message
         });
