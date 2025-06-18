@@ -34,6 +34,27 @@ async function GetAllStudentTestResultsHelper(student_test_result_status) {
 }
 
 /**
+ * Fetches a single student test result by its unique ID after validating the ID.
+ * @param {string} id - The unique identifier of the student test result to retrieve.
+ * @returns {Promise<object>} - A promise that resolves to the found student test result object.
+ */
+async function GetOneStudentTestResultHelper(id) {
+    try {
+        validator.ValidateGetOneStudentTestResultInput(id);
+
+        const studentTestResult = StudentTestResultModel.findOne({ _id: id });
+
+        if (!studentTestResult) {
+            throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
+        }
+
+        return studentTestResult;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch student test result: ${error.message}`, "INTERNAL_SERVER_ERROR");
+    }
+}
+
+/**
  * Updates the marks for a specific student test result after performing validation.
  * @param {string} id - The unique identifier of the student test result to update.
  * @param {Array<object>} marks - An array of mark objects, each containing notation_text and the corresponding mark.
@@ -94,5 +115,6 @@ async function UpdateStudentTestResultHelper(id, marks) {
 // *************** EXPORT MODULE ***************
 module.exports = {
     GetAllStudentTestResultsHelper,
+    GetOneStudentTestResultHelper,
     UpdateStudentTestResultHelper,
 }
