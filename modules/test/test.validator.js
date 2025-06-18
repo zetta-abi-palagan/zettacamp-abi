@@ -183,6 +183,117 @@ function ValidatePublishTestInput(id, assign_corrector_due_date, test_due_date) 
     }
 }
 
+/**
+ * Validates the inputs for the SubjectLoader resolver on the Test type.
+ * @param {object} test - The parent test object, which must contain a 'subject' property with a valid ObjectID.
+ * @param {object} context - The GraphQL context, which must contain a configured SubjectLoader.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateSubjectLoaderInput(test, context) {
+    if (!test || typeof test !== 'object' || test === null) {
+        throw new ApolloError('Input error: test must be a valid object.', 'BAD_USER_INPUT', {
+            field: 'test'
+        });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(test.subject)) {
+        throw new ApolloError('Input error: test.subject must be a valid ID.', 'BAD_USER_INPUT', {
+            field: 'test.subject'
+        });
+    }
+
+    if (!context || typeof context.dataLoaders?.SubjectLoader?.load !== 'function') {
+        throw new ApolloError('Server configuration error: SubjectLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
+    }
+}
+
+/**
+ * Validates the inputs for the StudentTestResultLoader resolver.
+ * @param {object} test - The parent test object, which must contain a 'student_test_results' array of valid ObjectIDs.
+ * @param {object} context - The GraphQL context, which must contain a configured StudentTestResultLoader.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateStudentTestResultLoaderInput(test, context) {
+    if (!test || typeof test !== 'object' || test === null) {
+        throw new ApolloError('Input error: test must be a valid object.', 'BAD_USER_INPUT', {
+            field: 'test'
+        });
+    }
+
+    if (!Array.isArray(test.student_test_results)) {
+        throw new ApolloError('Input error: test.student_test_results must be an array.', 'BAD_USER_INPUT', {
+            field: 'test.student_test_results'
+        });
+    }
+
+    for (const resultId of test.student_test_results) {
+        if (!mongoose.Types.ObjectId.isValid(resultId)) {
+            throw new ApolloError(`Invalid ID found in student_test_results array: ${resultId}`, 'BAD_USER_INPUT', {
+                field: 'test.student_test_results'
+            });
+        }
+    }
+
+    if (!context || typeof context.dataLoaders?.StudentTestResultLoader?.loadMany !== 'function') {
+        throw new ApolloError('Server configuration error: StudentTestResultLoader with loadMany function not found on context.', 'INTERNAL_SERVER_ERROR');
+    }
+}
+
+/**
+ * Validates the inputs for the TaskLoader resolver.
+ * @param {object} test - The parent test object, which must contain a 'tasks' array of valid ObjectIDs.
+ * @param {object} context - The GraphQL context, which must contain a configured TaskLoader.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateTaskLoaderInput(test, context) {
+    if (!test || typeof test !== 'object' || test === null) {
+        throw new ApolloError('Input error: test must be a valid object.', 'BAD_USER_INPUT', {
+            field: 'test'
+        });
+    }
+
+    if (!Array.isArray(test.tasks)) {
+        throw new ApolloError('Input error: test.tasks must be an array.', 'BAD_USER_INPUT', {
+            field: 'test.tasks'
+        });
+    }
+
+    for (const taskId of test.tasks) {
+        if (!mongoose.Types.ObjectId.isValid(taskId)) {
+            throw new ApolloError(`Invalid ID found in tasks array: ${taskId}`, 'BAD_USER_INPUT', {
+                field: 'test.tasks'
+            });
+        }
+    }
+
+    if (!context || typeof context.dataLoaders?.TaskLoader?.loadMany !== 'function') {
+        throw new ApolloError('Server configuration error: TaskLoader with loadMany function not found on context.', 'INTERNAL_SERVER_ERROR');
+    }
+}
+
+/**
+ * Validates the inputs for resolvers that use the UserLoader.
+ * @param {object} parent - The parent object.
+ * @param {object} context - The GraphQL context, which must contain a configured UserLoader.
+ * @param {string} fieldName - The name of the property on the block object that holds the user ID (e.g., 'created_by').
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateUserLoaderInput(parent, context, fieldName) {
+    if (!parent || typeof parent !== 'object' || parent === null) {
+        throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
+    }
+
+    if (!context || typeof context.dataLoaders?.UserLoader?.load !== 'function') {
+        throw new ApolloError('Server configuration error: UserLoader not found on context.', 'INTERNAL_SERVER_ERROR');
+    }
+
+    const userId = parent[fieldName];
+
+    if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
+        throw new ApolloError(`Input error: If provided, parent.${fieldName} must be a valid ID.`, 'BAD_USER_INPUT');
+    }
+}
+
 // *************** EXPORT MODULE ***************
 module.exports = {
     ValidateInputTypeObject,
@@ -191,5 +302,9 @@ module.exports = {
     ValidateCreateTestInput,
     ValidatePublishTestInput,
     ValidateUpdateTestInput,
-    ValidateDeleteTestInput
+    ValidateDeleteTestInput,
+    ValidateSubjectLoaderInput,
+    ValidateStudentTestResultLoaderInput,
+    ValidateTaskLoaderInput,
+    ValidateUserLoaderInput
 };
