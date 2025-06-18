@@ -4,6 +4,7 @@ const { ApolloError } = require('apollo-server');
 // *************** IMPORT MODULE *************** 
 const TestModel = require('./test.model');
 const SubjectModel = require('../subject/subject.model');
+const BlockModel = require('../block/block.model');
 
 // *************** IMPORT VALIDATOR ***************
 const validator = require('./test.validator');
@@ -84,7 +85,7 @@ async function CreateTestHelper(subject, name, description, test_type, result_vi
         const blockCheck = await BlockModel.findOne({
             _id: subjectCheck.block,
             block_status: 'ACTIVE'
-        }).lean();
+        });
 
         if (!blockCheck) {
             throw new ApolloError('Block not found or is not active', 'NOT_FOUND', {
@@ -209,7 +210,7 @@ async function PublishTestHelper(id, assign_corrector_due_date, test_due_date) {
             test_due_date: test_due_date,
         }
 
-        const publishedTest = TestModel.findOneAndUpdate({ _id: id }, testData, { new: true });
+        const publishedTest = TestModel.findOneAndUpdate({ _id: id, test_status: 'ACTIVE' }, testData, { new: true });
 
         if (publishedTest) {
             throw new ApolloError('Test publish failed', 'TEST_PUBLISH_FAILED');
@@ -237,6 +238,143 @@ async function PublishTestHelper(id, assign_corrector_due_date, test_due_date) {
         }
     } catch (error) {
         throw new ApolloError('Failed to publish test', 'TEST_CREATION_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Validates inputs and updates an existing test.
+ * @param {string} id - The ID of the test to update.
+ * @param {string} name - The name of the test.
+ * @param {string} description - The description of the test.
+ * @param {string} test_type - The type of the test (e.g., 'QUIZ', 'EXAM').
+ * @param {string} result_visibility - The visibility setting for the test results.
+ * @param {number} weight - The weight or coefficient of the test.
+ * @param {string} correction_type - The correction method for the test.
+ * @param {Array<object>} notations - The notation system used for the test.
+ * @param {boolean} is_retake - Flag indicating if this is a retake test.
+ * @param {string} connected_test - The ID of the original test if this is a retake.
+ * @param {string} test_status - The status of the test (e.g., 'ACTIVE').
+ * @returns {Promise<object>} - A promise that resolves to the updated test object.
+ */
+async function UpdateTestHelper(id, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status) {
+    try {
+        validator.ValidateUpdateTestInput(id, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status);
+
+        const test = await TestModel.findOne({
+            _id: id,
+            subject_status: 'ACTIVE'
+        });
+        if (!test) {
+            throw new ApolloError('Test not found', 'NOT_FOUND', {
+                field: 'id'
+            });
+        }
+
+        const subjectCheck = await SubjectModel.findOne({
+            _id: test.subject,
+            subject_status: 'ACTIVE'
+        });
+
+        if (!subjectCheck) {
+            throw new ApolloError('Subject not found or is not active', 'NOT_FOUND', {
+                field: 'subject'
+            });
+        }
+
+        const blockCheck = await BlockModel.findOne({
+            _id: subjectCheck.block,
+            block_status: 'ACTIVE'
+        });
+
+        if (!blockCheck) {
+            throw new ApolloError('Block not found or is not active', 'NOT_FOUND', {
+                field: 'block'
+            });
+        }
+
+        if (typeof test_type !== 'string') {
+            throw new ApolloError('Test type must be a string.', 'BAD_USER_INPUT', {
+                field: 'test_type'
+            });
+        }
+
+        if (typeof result_visibility !== 'string') {
+            throw new ApolloError('Result visibility must be a string.', 'BAD_USER_INPUT', {
+                field: 'result_visibility'
+            });
+        }
+
+        if (typeof correction_type !== 'string') {
+            throw new ApolloError('Correction type must be a string.', 'BAD_USER_INPUT', {
+                field: 'correction_type'
+            });
+        }
+
+        if (typeof test_status !== 'string') {
+            throw new ApolloError('Test status must be a string.', 'BAD_USER_INPUT', {
+                field: 'test_status'
+            });
+        }
+
+        const evaluationType = blockCheck.evaluation_type;
+        const upperTestType = test_type.toUpperCase();
+
+        const allowedTestTypes = evaluationType === 'COMPETENCY'
+            ? ['ORAL', 'WRITTEN', 'MEMOIRE_WRITTEN', 'FREE_CONTINUOUS_CONTROL', 'MENTOR_EVALUATION']
+            : evaluationType === 'SCORE'
+                ? ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN']
+                : [];
+
+        if (!allowedTestTypes.includes(upperTestType)) {
+            throw new ApolloError(`Test type '${upperTestType}' is not allowed for block with evaluation_type '${evaluationType}'.`, 'BAD_USER_INPUT', {
+                field: 'test_type'
+            });
+        }
+
+        if (is_retake && connected_test.length) {
+            const connectedTestCheck = await TestModel.findOne({
+                _id: connected_test,
+                test_status: 'ACTIVE'
+            });
+            if (!connectedTestCheck) {
+                throw new ApolloError('Connected test not found or is not active', 'NOT_FOUND', {
+                    field: 'connected_test'
+                });
+            }
+        }
+
+        const upperResultVisibility = result_visibility.toUpperCase();
+        const upperCorrectionType = correction_type.toUpperCase();
+        const upperTestStatus = test_status.toUpperCase();
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const updatedByUserId = '6846e5769e5502fce150eb67';
+
+        const testData = {
+            name: name,
+            description: description,
+            test_type: upperTestType,
+            result_visibility: upperResultVisibility,
+            weight: weight,
+            correction_type: upperCorrectionType,
+            notations: notations,
+            is_retake: is_retake,
+            connected_test: connected_test,
+            test_status: upperTestStatus,
+            updated_by: updatedByUserId
+        }
+
+        const updatedTest = await TestModel.findOneAndUpdate({ _id: id, test_status: 'ACTIVE' }, testData, { new: true });
+
+        if (!updatedTest) {
+            throw new ApolloError('Test update failed', 'TEST_UPDATE_FAILED');
+        }
+
+        return updatedTest;
+    } catch (error) {
+        throw new ApolloError('Failed to update test', 'TEST_UPDATE_FAILED', {
             error: error.message
         });
     }

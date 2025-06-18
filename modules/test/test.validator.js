@@ -158,6 +158,116 @@ function ValidateCreateTestInput(subject, name, description, test_type, result_v
 }
 
 /**
+ * Validates the input fields for updating an existing test.
+ * @param {string} id - The unique identifier of the test to update.
+ * @param {string} name - The name of the test.
+ * @param {string} description - The description of the test.
+ * @param {string} test_type - The type of the test (e.g., 'QUIZ', 'EXAM').
+ * @param {string} result_visibility - The visibility setting for the test results.
+ * @param {number} weight - The weight of the test, must be a number between 0 and 1.
+ * @param {string} correction_type - The correction method for the test.
+ * @param {Array<object>} notations - The notation system used for the test.
+ * @param {boolean} is_retake - Flag indicating if this is a retake test.
+ * @param {string} connected_test - The ID of the original test, required if is_retake is true.
+ * @param {string} test_status - The status of the test (e.g., 'ACTIVE').
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateUpdateTestInput(id, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status) {
+    const validTestType = ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN'];
+    const validResultVisibility = ['NEVER', 'AFTER_CORRECTION', 'AFTER_JURY_DECISION_FOR_FINAL_TRANSCRIPT'];
+    const validCorrectionType = ['ADMTC', 'CERTIFIER', 'ACADEMIC_CORRECTOR', 'PREPARATION_CENTER'];
+    const validStatus = ['ACTIVE', 'INACTIVE'];
+
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+    if (!isValidObjectId) {
+        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
+    }
+
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+        throw new ApolloError('Name is required.', 'BAD_USER_INPUT', {
+            field: 'name'
+        });
+    }
+
+    if (!description || typeof description !== 'string' || description.trim() === '') {
+        throw new ApolloError('Description is required.', 'BAD_USER_INPUT', {
+            field: 'description'
+        });
+    }
+
+    if (!test_type || typeof test_type !== 'string' || !validTestType.includes(test_type.toUpperCase())) {
+        throw new ApolloError(`Test type must be one of: ${validTestType.join(', ')}.`, 'BAD_USER_INPUT', {
+            field: 'test_type'
+        });
+    }
+
+    if (!result_visibility || typeof result_visibility !== 'string' || !validResultVisibility.includes(result_visibility.toUpperCase())) {
+        throw new ApolloError(`Result visibility must be one of: ${validResultVisibility.join(', ')}.`, 'BAD_USER_INPUT', {
+            field: 'result_visibility'
+        });
+    }
+
+    if (typeof weight !== 'number' || isNaN(weight) || weight < 0 || weight > 1) {
+        throw new ApolloError('Weight is required and must be a number between 0 and 1.', 'BAD_USER_INPUT', {
+            field: 'weight'
+        });
+    }
+
+    if (!correction_type || typeof correction_type !== 'string' || !validCorrectionType.includes(correction_type.toUpperCase())) {
+        throw new ApolloError(`Correction type must be one of: ${validCorrectionType.join(', ')}.`, 'BAD_USER_INPUT', {
+            field: 'correction_type'
+        });
+    }
+
+    if (!Array.isArray(notations) || !notations.length) {
+        throw new ApolloError('Notations must be a non-empty array.', 'BAD_USER_INPUT', {
+            field: 'notations'
+        });
+    }
+
+    for (const [index, notation] of notations.entries()) {
+        const { notation_text, max_points } = notation;
+
+        if (!notation_text || typeof notation_text !== 'string' || notation_text.trim() === '') {
+            throw new ApolloError(`Notation at index ${index} must have non-empty text.`, 'BAD_USER_INPUT', {
+                field: `notations[${index}].notation_text`
+            });
+        }
+
+        if (typeof max_points !== 'number' || isNaN(max_points) || max_points < 0) {
+            throw new ApolloError(`Notation at index ${index} must have a valid max_points (number ≥ 0).`, 'BAD_USER_INPUT', {
+                field: `notations[${index}].max_points`
+            });
+        }
+    }
+
+    if (typeof is_retake !== 'boolean') {
+        throw new ApolloError('is_retake must be a boolean.', 'BAD_USER_INPUT', {
+            field: 'is_retake'
+        });
+    }
+
+    if (is_retake) {
+        if (!connected_test) {
+            throw new ApolloError('connected_test is required when is_retake is true.', 'BAD_USER_INPUT', {
+                field: 'connected_test'
+            });
+        }
+        if (!mongoose.Types.ObjectId.isValid(connected_test)) {
+            throw new ApolloError(`Invalid connected test ID: ${connected_test}`, "BAD_USER_INPUT", {
+                field: 'connected_test'
+            });
+        }
+    }
+
+    if (!test_status || typeof test_status !== 'string' || !validStatus.includes(test_status.toUpperCase())) {
+        throw new ApolloError(`Test status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
+            field: 'test_status'
+        });
+    }
+}
+
+/**
  * Validates the inputs for publishing a test.
  * @param {string} id - The ID of the test to be published.
  * @param {Date|string} assign_corrector_due_date - The due date for assigning a corrector.

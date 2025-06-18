@@ -119,6 +119,45 @@ async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }) 
     }
 }
 
+/**
+ * GraphQL resolver to update an existing test.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.id - The unique identifier of the test to update.
+ * @param {object} args.updateTestInput - An object containing the fields to be updated.
+ * @returns {Promise<object>} - A promise that resolves to the updated test object.
+ */
+async function UpdateTest(_, { id, updateTestInput }) {
+    try {
+        validator.ValidateInputTypeObject(updateTestInput);
+
+        const {
+            name,
+            description,
+            test_type,
+            result_visibility,
+            weight,
+            correction_type,
+            notations,
+            is_retake,
+            connected_test,
+            test_status,
+        } = updateTestInput
+
+        validator.ValidateUpdateTestInput(id, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status)
+
+        const updatedTest = helper.UpdateTestHelper(id, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status)
+
+        return updatedTest;
+    } catch (error) {
+        console.error('Unexpected error in UpdateTest:', error);
+
+        throw new ApolloError('Failed to update test', 'UPDATE_TEST_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 // *************** LOADER ***************
 /**
  * Loads the parent subject for a test using a DataLoader.
