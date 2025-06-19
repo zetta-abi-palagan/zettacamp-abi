@@ -76,7 +76,8 @@ module.exports = gql`
     }
 
     type Query {
-        GetAllTasks(task_status: TaskStatus): [Task]!
+        GetAllTasks(task_status: TaskStatus, test_id: ID!, user_id: ID!): [Task]!
+        GetOneTask(id: ID!): Task
         GetTasksForUser(user_id: ID!, task_status: TaskStatus): [Task]
         GetTasksForTest(test_id: ID!, task_status: TaskStatus): [Task]
     }

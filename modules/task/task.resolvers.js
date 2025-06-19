@@ -9,23 +9,48 @@ const validator = require('./task.validator');
 
 // *************** QUERY ***************
 /**
- * GraphQL resolver to fetch all tasks, with an optional filter for status.
+ * GraphQL resolver to fetch all tasks, with optional filters.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the query.
  * @param {string} [args.task_status] - Optional. The status to filter tasks by.
+ * @param {string} [args.test_id] - Optional. The ID of the test to filter tasks by.
+ * @param {string} [args.user_id] - Optional. The ID of the user to filter tasks by.
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of task objects.
  */
-async function GetAllTasks(_, { task_status }) {
+async function GetAllTasks(_, { task_status, test_id, user_id }) {
     try {
-        validator.ValidateGetAllTasksInput(task_status);
+        validator.ValidateGetAllTasksInput(task_status, test_id, user_id);
 
-        const tasks = await helper.GetAllTasksHelper(task_status);
+        const tasks = await helper.GetAllTasksHelper(task_status, test_id, user_id);
 
         return tasks;
     } catch (error) {
         console.error('Unexpected error in GetAllTasks:', error);
 
         throw new ApolloError('Failed to retrieve tasks', 'GET_TASKS_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * GraphQL resolver to fetch a single task by its unique ID.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the query.
+ * @param {string} args.id - The unique identifier of the task to retrieve.
+ * @returns {Promise<object>} - A promise that resolves to the found task object.
+ */
+async function GetOneTask(_, { id }) {
+    try {
+        validator.ValidateGetOneTaskInput(id);
+
+        const task = await helper.GetOneTaskHelper(id);
+
+        return task;
+    } catch (error) {
+        console.error('Unexpected error in GetOneTask:', error);
+
+        throw new ApolloError('Failed to retrieve task', 'GET_TASK_FAILED', {
             error: error.message
         });
     }

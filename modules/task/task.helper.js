@@ -13,13 +13,15 @@ const { SENDGRID_API_KEY, SENDGRID_SENDER_EMAIL } = require('../../core/config')
 const validator = require('./task.validator');
 
 /**
- * Fetches all tasks from the database, after validating the optional status filter.
+ * Fetches all tasks from the database, applying an optional status filter.
  * @param {string} [task_status] - Optional. The status of the tasks to fetch (e.g., 'PENDING').
+ * @param {string} [test_id] - Optional. The ID of the test to filter tasks by.
+ * @param {string} [user_id] - Optional. The ID of the user to filter tasks by.
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of task objects.
  */
-async function GetAllTasksHelper(task_status) {
+async function GetAllTasksHelper(task_status, test_id, user_id) {
     try {
-        validator.ValidateGetAllTasksInput(task_status);
+        validator.ValidateGetAllTasksInput(task_status, test_id, user_id);
 
         const filter = {};
 
@@ -32,6 +34,27 @@ async function GetAllTasksHelper(task_status) {
         return tasks;
     } catch (error) {
         throw new ApolloError(`Failed to fetch tasks: ${error.message}`, "INTERNAL_SERVER_ERROR");
+    }
+}
+
+/**
+ * Fetches a single task by its unique ID after validating the ID.
+ * @param {string} id - The unique identifier of the task to retrieve.
+ * @returns {Promise<object>} - A promise that resolves to the found task object.
+ */
+async function GetOneTaskHelper(id) {
+    try {
+        validator.ValidateGetOneTaskInput(id);
+
+        const task = TaskModel.findOne({ _id: id });
+
+        if (!task) {
+            throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
+        }
+
+        return task;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch task: ${error.message}`, "INTERNAL_SERVER_ERROR");
     }
 }
 
@@ -363,6 +386,7 @@ async function ValidateMarksHelper(task_id, student_test_result_id) {
 // *************** EXPORT MODULE ***************
 module.exports = {
     GetAllTasksHelper,
+    GetOneTaskHelper,
     // GetTasksForUserHelper,
     // GetTasksForTestHelper,
     // CreateTaskHelper,

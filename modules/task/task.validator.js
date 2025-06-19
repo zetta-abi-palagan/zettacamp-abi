@@ -16,11 +16,13 @@ function ValidateInputTypeObject(input) {
 }
 
 /**
- * Validates the optional task_status input for fetching all tasks.
- * @param {string} task_status - The status of the tasks to filter by (e.g., 'PENDING').
+ * Validates the optional inputs for fetching all tasks.
+ * @param {string} [task_status] - Optional. The status of the tasks to filter by.
+ * @param {string} [test_id] - Optional. The ID of the test to filter tasks by.
+ * @param {string} [user_id] - Optional. The ID of the user to filter tasks by.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateGetAllTasksInput(task_status) {
+function ValidateGetAllTasksInput(task_status, test_id, user_id) {
     const validStatus = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'DELETED'];
 
     if (!task_status) {
@@ -31,6 +33,26 @@ function ValidateGetAllTasksInput(task_status) {
         throw new ApolloError(`Task status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
             field: 'task_status'
         });
+    }
+
+    if (test_id && !mongoose.Types.ObjectId.isValid(test_id)) {
+        throw new ApolloError(`Invalid test ID: ${test_id}`, "BAD_USER_INPUT");
+    }
+
+    if (user_id && !mongoose.Types.ObjectId.isValid(user_id)) {
+        throw new ApolloError(`Invalid user ID: ${user_id}`, "BAD_USER_INPUT");
+    }
+}
+
+/**
+ * Validates if the provided value is a valid MongoDB ObjectId.
+ * @param {string} id - The ID to be validated.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateGetOneTaskInput(id) {
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+    if (!isValidObjectId) {
+        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
     }
 }
 
@@ -135,6 +157,7 @@ function ValidateValidateMarksInput(task_id, student_test_result_id) {
 module.exports = {
     ValidateInputTypeObject,
     ValidateGetAllTasksInput,
+    ValidateGetOneTaskInput,
     ValidateAssignCorrectorInput,
     ValidateEnterMarksInput,
     ValidateValidateMarksInput
