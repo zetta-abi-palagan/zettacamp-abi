@@ -16,6 +16,25 @@ function ValidateInputTypeObject(input) {
 }
 
 /**
+ * Validates the optional task_status input for fetching all tasks.
+ * @param {string} task_status - The status of the tasks to filter by (e.g., 'PENDING').
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateGetAllTasksInput(task_status) {
+    const validStatus = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'DELETED'];
+
+    if (!task_status) {
+        return;
+    }
+
+    if (typeof task_status !== 'string' || !validStatus.includes(task_status.toUpperCase())) {
+        throw new ApolloError(`Task status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
+            field: 'task_status'
+        });
+    }
+}
+
+/**
  * Validates the inputs for assigning a corrector to a task.
  * @param {string} task_id - The ID of the 'ASSIGN_CORRECTOR' task.
  * @param {string} corrector_id - The ID of the user being assigned as the corrector.
@@ -115,7 +134,7 @@ function ValidateValidateMarksInput(task_id, student_test_result_id) {
 // *************** EXPORT MODULE ***************
 module.exports = {
     ValidateInputTypeObject,
-    ValidateObjectId,
+    ValidateGetAllTasksInput,
     ValidateAssignCorrectorInput,
     ValidateEnterMarksInput,
     ValidateValidateMarksInput

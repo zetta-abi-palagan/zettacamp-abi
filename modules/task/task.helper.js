@@ -13,6 +13,29 @@ const { SENDGRID_API_KEY, SENDGRID_SENDER_EMAIL } = require('../../core/config')
 const validator = require('./task.validator');
 
 /**
+ * Fetches all tasks from the database, after validating the optional status filter.
+ * @param {string} [task_status] - Optional. The status of the tasks to fetch (e.g., 'PENDING').
+ * @returns {Promise<Array<object>>} - A promise that resolves to an array of task objects.
+ */
+async function GetAllTasksHelper(task_status) {
+    try {
+        validator.ValidateGetAllTasksInput(task_status);
+
+        const filter = {};
+
+        if (task_status) {
+            filter.task_status = task_status;
+        }
+
+        const tasks = await TaskModel.find(filter);
+
+        return tasks;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch tasks: ${error.message}`, "INTERNAL_SERVER_ERROR");
+    }
+}
+
+/**
  * Sends an email using the SendGrid service.
  * @param {string} to - The email address of the recipient.
  * @param {string} subject - The subject line of the email.
@@ -340,11 +363,11 @@ async function ValidateMarksHelper(task_id, student_test_result_id) {
 // *************** EXPORT MODULE ***************
 module.exports = {
     GetAllTasksHelper,
-    GetTasksForUserHelper,
-    GetTasksForTestHelper,
-    CreateTaskHelper,
-    UpdateTaskHelper,
-    DeleteTaskHelper,
+    // GetTasksForUserHelper,
+    // GetTasksForTestHelper,
+    // CreateTaskHelper,
+    // UpdateTaskHelper,
+    // DeleteTaskHelper,
     AssignCorrectorHelper,
     EnterMarksHelper,
     ValidateMarksHelper

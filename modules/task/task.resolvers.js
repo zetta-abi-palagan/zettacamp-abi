@@ -8,7 +8,28 @@ const helper = require('./task.helper');
 const validator = require('./task.validator');
 
 // *************** QUERY ***************
+/**
+ * GraphQL resolver to fetch all tasks, with an optional filter for status.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the query.
+ * @param {string} [args.task_status] - Optional. The status to filter tasks by.
+ * @returns {Promise<Array<object>>} - A promise that resolves to an array of task objects.
+ */
+async function GetAllTasks(_, { task_status }) {
+    try {
+        validator.ValidateGetAllTasksInput(task_status);
 
+        const tasks = await helper.GetAllTasksHelper(task_status);
+
+        return tasks;
+    } catch (error) {
+        console.error('Unexpected error in GetAllTasks:', error);
+
+        throw new ApolloError('Failed to retrieve tasks', 'GET_TASKS_FAILED', {
+            error: error.message
+        });
+    }
+}
 
 
 // *************** MUTATION ***************
@@ -98,24 +119,24 @@ async function ValidateMarks(_, { task_id, student_test_result_id }) {
 module.exports = {
     Query: {
         GetAllTasks,
-        GetTasksForUser,
-        GetTasksForTest
+        // GetTasksForUser,
+        // GetTasksForTest
     },
 
     Mutation: {
-        CreateTask,
-        UpdateTask,
-        DeleteTask,
+        // CreateTask,
+        // UpdateTask,
+        // DeleteTask,
         AssignCorrector,
         EnterMarks,
         ValidateMarks
     },
 
     Task: {
-        test: TestLoader,
-        user: UserLoader,
-        created_by: CreatedByLoader,
-        updated_by: UpdatedByLoader,
-        deleted_by: DeletedByLoader
+        // test: TestLoader,
+        // user: UserLoader,
+        // created_by: CreatedByLoader,
+        // updated_by: UpdatedByLoader,
+        // deleted_by: DeletedByLoader
     }
 }

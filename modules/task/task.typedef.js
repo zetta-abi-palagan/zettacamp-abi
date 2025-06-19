@@ -28,8 +28,8 @@ module.exports = gql`
     }
 
     input CreateTaskInput {
-        test: Test!
-        user: User!
+        test: ID!
+        user: ID!
         title: String!
         description: String!
         task_type: TaskType!
@@ -38,7 +38,7 @@ module.exports = gql`
     }
 
     input UpdateTaskInput {
-        user: User!
+        user: ID!
         title: String!
         description: String!
         task_type: TaskType!
