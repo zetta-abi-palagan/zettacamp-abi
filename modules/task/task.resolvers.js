@@ -137,15 +137,121 @@ async function ValidateMarks(_, { task_id, student_test_result_id }) {
 }
 
 // *************** LOADER ***************
+/**
+ * Loads the test associated with a task using a DataLoader.
+ * @param {object} task - The parent task object.
+ * @param {string} task.test - The ID of the test to load.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the test object.
+ */
+async function TestLoader(task, _, context) {
+    try {
+        validator.ValidateTestLoaderInput(task, context);
 
+        const test = await context.dataLoaders.TaskLoader.load(task.test);
 
+        return test;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch test`, 'TEST_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Loads the user associated with a task using a DataLoader.
+ * @param {object} task - The parent task object.
+ * @param {string} task.user - The ID of the user to load.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the user object.
+ */
+async function UserLoader(task, _, context) {
+    try {
+        validator.ValidateUserLoaderInput(task, context, 'user');
+
+        const user = await context.dataLoaders.TaskLoader.load(task.user);
+
+        return user;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch user`, 'USER_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Loads the user who created the task using a DataLoader.
+ * @param {object} task - The parent task object.
+ * @param {string} task.created_by - The ID of the user who created the task.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the user object.
+ */
+async function CreatedByLoader(task, _, context) {
+    try {
+        validator.ValidateUserLoaderInput(task, context, 'created_by');
+
+        const created_by = await context.dataLoaders.UserLoader.load(task.created_by);
+
+        return created_by;
+    } catch (error) {
+        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Loads the user who last updated the task using a DataLoader.
+ * @param {object} task - The parent task object.
+ * @param {string} task.updated_by - The ID of the user who last updated the task.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the user object.
+ */
+async function UpdatedByLoader(task, _, context) {
+    try {
+        validator.ValidateUserLoaderInput(task, context, 'updated_by');
+
+        const updated_by = await context.dataLoaders.UserLoader.load(task.updated_by);
+
+        return updated_by;
+    } catch (error) {
+        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Loads the user who deleted the task using a DataLoader.
+ * @param {object} task - The parent task object.
+ * @param {string} task.updated_by - The ID of the user who performed the deletion.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the user object.
+ */
+async function DeletedByLoader(task, _, context) {
+    try {
+        validator.ValidateUserLoaderInput(task, context, 'deleted_by');
+
+        const deleted_by = await context.dataLoaders.UserLoader.load(task.updated_by);
+
+        return deleted_by;
+    } catch (error) {
+        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
 
 // *************** EXPORT MODULE ***************
 module.exports = {
     Query: {
         GetAllTasks,
-        // GetTasksForUser,
-        // GetTasksForTest
+        GetOneTask,
     },
 
     Mutation: {
@@ -158,10 +264,10 @@ module.exports = {
     },
 
     Task: {
-        // test: TestLoader,
-        // user: UserLoader,
-        // created_by: CreatedByLoader,
-        // updated_by: UpdatedByLoader,
-        // deleted_by: DeletedByLoader
+        test: TestLoader,
+        user: UserLoader,
+        created_by: CreatedByLoader,
+        updated_by: UpdatedByLoader,
+        deleted_by: DeletedByLoader
     }
 }

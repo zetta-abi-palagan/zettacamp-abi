@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
+const { ValidateTestLoaderInput } = require('../studentTestResult/student_test_result.validator');
 
 /**
  * Validates that the provided input is a non-array object.
@@ -153,6 +154,63 @@ function ValidateValidateMarksInput(task_id, student_test_result_id) {
     }
 }
 
+/**
+ * Validates the inputs for the TestLoader resolver on the Task type.
+ * @param {object} task - The parent task object, which must contain a 'test' property with a valid ObjectID.
+ * @param {object} context - The GraphQL context, which must contain a configured TestLoader.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateTestLoaderInput(task, context) {
+    if (!task || typeof task !== 'object' || task === null) {
+        throw new ApolloError('Input error: task must be a valid object.', 'BAD_USER_INPUT', {
+            field: 'task'
+        });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(task.test)) {
+        throw new ApolloError('Input error: task.test must be a valid ID.', 'BAD_USER_INPUT', {
+            field: 'task.test'
+        });
+    }
+
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.TestLoader ||
+        typeof context.dataLoaders.TestLoader.load !== 'function'
+    ) {
+        throw new ApolloError('Server configuration error: TestLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
+    }
+}
+
+/**
+ * Validates the inputs for resolvers that use the UserLoader.
+ * @param {object} parent - The parent object.
+ * @param {object} context - The GraphQL context, which must contain a configured UserLoader.
+ * @param {string} fieldName - The name of the property on the block object that holds the user ID (e.g., 'created_by').
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateUserLoaderInput(parent, context, fieldName) {
+    if (!parent || typeof parent !== 'object' || parent === null) {
+        throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
+    }
+
+    if (
+        !context ||
+        !context.dataLoaders ||
+        !context.dataLoaders.UserLoader ||
+        typeof context.dataLoaders.UserLoader.load !== 'function'
+    ) {
+        throw new ApolloError('Server configuration error: UserLoader not found on context.', 'INTERNAL_SERVER_ERROR');
+    }
+
+    const userId = parent[fieldName];
+
+    if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
+        throw new ApolloError(`Input error: If provided, parent.${fieldName} must be a valid ID.`, 'BAD_USER_INPUT');
+    }
+}
+
 // *************** EXPORT MODULE ***************
 module.exports = {
     ValidateInputTypeObject,
@@ -160,5 +218,7 @@ module.exports = {
     ValidateGetOneTaskInput,
     ValidateAssignCorrectorInput,
     ValidateEnterMarksInput,
-    ValidateValidateMarksInput
+    ValidateValidateMarksInput,
+    ValidateTestLoaderInput,
+    ValidateUserLoaderInput
 }

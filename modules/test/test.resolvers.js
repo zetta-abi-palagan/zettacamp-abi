@@ -242,7 +242,7 @@ async function TaskLoader(test, _, context) {
 
         return tasks;
     } catch (error) {
-        throw new ApolloError(`Failed to fetch tasks`, 'STUDENT_TEST_RESULTS_FETCH_FAILED', {
+        throw new ApolloError(`Failed to fetch tasks`, 'TASKS_FETCH_FAILED', {
             error: error.message
         });
     }
