@@ -16,11 +16,13 @@ function ValidateInputTypeObject(input) {
 }
 
 /**
- * Validates the optional student_test_result_status input for fetching all student test results.
- * @param {string} student_test_result_status - The status of the results to filter by (e.g., 'PENDING').
+ * Validates the optional inputs for fetching all student test results.
+ * @param {string} [student_test_result_status] - Optional. The status of the results to filter by.
+ * @param {string} [test_id] - Optional. The ID of the test to filter by.
+ * @param {string} [student_id] - Optional. The ID of the student to filter by.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateGetAllStudentTestResultsInput(student_test_result_status) {
+function ValidateGetAllStudentTestResultsInput(student_test_result_status, test_id, student_id) {
     const validStatus = ['PENDING', 'VALIDATED', 'DELETED'];
 
     if (!student_test_result_status) {
@@ -31,6 +33,14 @@ function ValidateGetAllStudentTestResultsInput(student_test_result_status) {
         throw new ApolloError(`Student test result status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
             field: 'student_test_result_status'
         });
+    }
+
+    if (test_id && !mongoose.Types.ObjectId.isValid(test_id)) {
+        throw new ApolloError(`Invalid test ID: ${test_id}`, "BAD_USER_INPUT");
+    }
+
+    if (student_id && !mongoose.Types.ObjectId.isValid(student_id)) {
+        throw new ApolloError(`Invalid student ID: ${student_id}`, "BAD_USER_INPUT");
     }
 }
 

@@ -11,18 +11,28 @@ const BlockModel = require('../block/block.model');
 const validator = require('./student_test_result.validator');
 
 /**
- * Fetches all student test results from the database, after validating the optional status filter.
- * @param {string} [student_test_result_status] - Optional. The status of the results to fetch (e.g., 'PENDING').
+ * Fetches all student test results from the database, applying optional filters.
+ * @param {string} [student_test_result_status] - Optional. The status of the results to fetch.
+ * @param {string} [test_id] - Optional. The ID of the test to filter by.
+ * @param {string} [student_id] - Optional. The ID of the student to filter by.
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of student test result objects.
  */
-async function GetAllStudentTestResultsHelper(student_test_result_status) {
+async function GetAllStudentTestResultsHelper(student_test_result_status, test_id, student_id) {
     try {
-        validator.ValidateGetAllStudentTestResultsInput(student_test_result_status);
+        validator.ValidateGetAllStudentTestResultsInput(student_test_result_status, test_id, student_id);
 
         const filter = {};
 
         if (student_test_result_status) {
             filter.student_test_result_status = student_test_result_status;
+        }
+
+        if (test_id) {
+            filter.test = test_id;
+        }
+
+        if (student_id) {
+            filter.student = student_id;
         }
 
         const studentTestResults = await StudentTestResultModel.find(filter);

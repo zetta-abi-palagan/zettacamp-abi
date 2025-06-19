@@ -39,7 +39,7 @@ module.exports = gql`
     }
 
     type Query {
-        GetAllStudentTestResults(student_test_result_status: StudentTestResultStatus): [StudentTestResult!]!
+        GetAllStudentTestResults(student_test_result_status: StudentTestResultStatus, test_id: ID, student_id: ID): [StudentTestResult!]!
         GetOneStudentTestResult(id: ID!): StudentTestResult
     }
 

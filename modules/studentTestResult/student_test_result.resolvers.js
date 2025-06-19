@@ -9,15 +9,18 @@ const validator = require('./student_test_result.validator');
 
 // *************** QUERY ***************
 /**
- * GraphQL resolver to fetch all student test results, with an optional filter for status.
+ * GraphQL resolver to fetch all student test results, with optional filters.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the query.
  * @param {string} [args.student_test_result_status] - Optional. The status to filter results by.
+ * @param {string} [args.test_id] - Optional. The ID of the test to filter results by.
+ * @param {string} [args.student_id] - Optional. The ID of the student to filter results by.
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of student test result objects.
  */
-async function GetAllStudentTestResults(_, { student_test_result_status }) {
+
+async function GetAllStudentTestResults(_, { student_test_result_status, test_id, student_id }) {
     try {
-        validator.ValidateGetAllStudentTestResultsInput(student_test_result_status);
+        validator.ValidateGetAllStudentTestResultsInput(student_test_result_status, test_id, student_id);
 
         const studentTestResults = await helper.GetAllStudentTestResultsHelper(student_test_result_status);
 
