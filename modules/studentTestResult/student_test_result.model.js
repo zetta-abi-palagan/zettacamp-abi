@@ -43,6 +43,11 @@ const studentTestResultSchema = mongoose.Schema({
         required: true
     },
 
+    // Timestamp for when the mark is validated
+    marks_validated_date: {
+        type: Date
+    },
+
     // Current status of the student test result: PENDING, VALIDATED, and DELETED
     student_test_result_status: {
         type: String,

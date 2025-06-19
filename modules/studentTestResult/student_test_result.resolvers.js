@@ -144,7 +144,7 @@ async function TestLoader(studentTestResult, _, context) {
     try {
         validator.ValidateTestLoaderInput(studentTestResult, context);
 
-        const test = await context.dataLoaders.StudentLoader.load(studentTestResult.test);
+        const test = await context.dataLoaders.TestLoader.load(studentTestResult.test);
 
         return test;
     } catch (error) {

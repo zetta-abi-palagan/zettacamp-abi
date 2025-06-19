@@ -42,7 +42,7 @@ async function GetAllTasks(_, { task_status, test_id, user_id }) {
  */
 async function GetOneTask(_, { id }) {
     try {
-        validator.ValidateGetOneTaskInput(id);
+        validator.ValidateObjectId(id);
 
         const task = await helper.GetOneTaskHelper(id);
 
@@ -121,6 +121,22 @@ async function UpdateTask(_, { id, updateTaskInput }) {
         console.error('Unexpected error in UpdateTask:', error);
 
         throw new ApolloError('Failed to update task', 'UPDATE_TASK_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+async function DeleteTask(_, { id }) {
+    try {
+        validator.ValidateObjectId(id);
+
+        const deletedTask = await helper.DeleteTaskHelper(id);
+
+        return deletedTask;
+    } catch (error) {
+        console.error('Unexpected error in DeleteTask:', error);
+
+        throw new ApolloError('Failed to delete task', 'DELETE_TASK_FAILED', {
             error: error.message
         });
     }
@@ -217,7 +233,7 @@ async function TestLoader(task, _, context) {
     try {
         validator.ValidateTestLoaderInput(task, context);
 
-        const test = await context.dataLoaders.TaskLoader.load(task.test);
+        const test = await context.dataLoaders.TestLoader.load(task.test);
 
         return test;
     } catch (error) {
@@ -239,7 +255,7 @@ async function UserLoader(task, _, context) {
     try {
         validator.ValidateUserLoaderInput(task, context, 'user');
 
-        const user = await context.dataLoaders.TaskLoader.load(task.user);
+        const user = await context.dataLoaders.UserLoader.load(task.user);
 
         return user;
     } catch (error) {

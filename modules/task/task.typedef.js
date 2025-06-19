@@ -75,7 +75,7 @@ module.exports = gql`
     }
 
     type Query {
-        GetAllTasks(task_status: TaskStatus, test_id: ID!, user_id: ID!): [Task]!
+        GetAllTasks(task_status: TaskStatus, test_id: ID, user_id: ID): [Task]!
         GetOneTask(id: ID!): Task
         GetTasksForUser(user_id: ID!, task_status: TaskStatus): [Task]
         GetTasksForTest(test_id: ID!, task_status: TaskStatus): [Task]
@@ -86,7 +86,7 @@ module.exports = gql`
         UpdateTask(id: ID!, updateTaskInput: UpdateTaskInput!): Task!
         DeleteTask(id: ID!): Task!
         AssignCorrector(task_id: ID!, corrector_id: ID!, enter_marks_due_date: String): Task!
-        EnterMarks(task_id: ID!, enterMarksInput: EnterMarksInput, validate_marks_due_date: String): EnterMarksPayload!
+        EnterMarks(task_id: ID!, enterMarksInput: EnterMarksInput!, validate_marks_due_date: String): EnterMarksPayload!
         ValidateMarks(task_id: ID!, student_test_result_id: ID!): ValidateMarksPayload!
     }
 `

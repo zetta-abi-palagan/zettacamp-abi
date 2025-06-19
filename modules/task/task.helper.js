@@ -8,6 +8,7 @@ const StudentTestResultModel = require('../studentTestResult/student_test_result
 const TestModel = require('../test/test.model');
 const UserModel = require('../user/user.model');
 const StudentModel = require('../student/student.model');
+const SubjectModel = require('../subject/subject.model');
 const { SENDGRID_API_KEY, SENDGRID_SENDER_EMAIL } = require('../../core/config');
 
 // *************** IMPORT VALIDATOR ***************
@@ -45,7 +46,7 @@ async function GetAllTasksHelper(task_status, test_id, user_id) {
  */
 async function GetOneTaskHelper(id) {
     try {
-        validator.ValidateGetOneTaskInput(id);
+        validator.ValidateObjectId(id);
 
         const task = await TaskModel.findOne({ _id: id });
 
@@ -191,6 +192,41 @@ async function UpdateTaskHelper(id, user, title, description, task_type, task_st
     }
 }
 
+async function DeleteTaskHelper(id) {
+    try {
+        validator.ValidateObjectId(id);
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const deletedByUserId = '6846e5769e5502fce150eb67';
+
+        const taskData = {
+            task_status: 'DELETED',
+            updated_at: deletedByUserId,
+            deleted_by: deletedByUserId,
+            deleted_at: Date.now()
+        }
+
+        const deletedTask = await TaskModel.findOneAndUpdate({ _id: id }, taskData);
+        if (!deletedTask) {
+            throw new ApolloError('Task deletion failed', 'TASK_DELETION_FAILED');
+        }
+
+        await SubjectModel.updateOne(
+            { _id: deletedTask.test, subject_status: 'ACTIVE' },
+            {
+                $pull: { tasks: deletedTask._id },
+                $set: { updated_by: deletedByUserId }
+            }
+        );
+
+        return deletedTask;
+    } catch (error) {
+        throw new ApolloError('Failed to delete task', 'TASK_DELETION_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 /**
  * Sends an email using the SendGrid service.
  * @param {string} to - The email address of the recipient.
@@ -256,6 +292,11 @@ async function AssignCorrectorHelper(task_id, corrector_id, enter_marks_due_date
             throw new ApolloError('Test not found', 'NOT_FOUND');
         }
 
+        const subject = await SubjectModel.findOne({ _id: test.subject });
+        if (!subject) {
+            throw new ApolloError('Subject not found', 'NOT_FOUND');
+        }
+
         // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
         const completedByUserId = '6846e5769e5502fce150eb67';
 
@@ -300,12 +341,12 @@ async function AssignCorrectorHelper(task_id, corrector_id, enter_marks_due_date
         // *************** Prepare email content
         const studentNames = students.map((s) => `${s.first_name} ${s.last_name}`);
 
-        const subject = 'You have been assigned as a Test Corrector!';
+        const subjectMsg = 'You have been assigned as a Test Corrector!';
 
         const html = `
             <h2>You have been assigned as a Test Corrector!</h2>
             <p><strong>Test Name:</strong> ${test.name}</p>
-            <p><strong>Subject:</strong> ${test.subject}</p>
+            <p><strong>Subject:</strong> ${subject.name}</p>
             <p><strong>Description:</strong> ${test.description}</p>
             <p><strong>Students to Correct:</strong></p>
             <ul>
@@ -315,7 +356,7 @@ async function AssignCorrectorHelper(task_id, corrector_id, enter_marks_due_date
         // *************** For testing purposes
         const emailRecipient = 'palaganabimanyu@gmail.com'
 
-        const emailResult = await SendEmailWithSendGrid(emailRecipient, subject, html);
+        const emailResult = await SendEmailWithSendGrid(emailRecipient, subjectMsg, html);
 
         if (!emailResult.success) {
             throw new ApolloError('Email sending failed', 'SENDGRID_FAILED', {
@@ -393,8 +434,8 @@ async function EnterMarksHelper(task_id, test, student, marks, validate_marks_du
         const completedByUserId = '6846e5769e5502fce150eb67';
 
         const studentTestResultData = {
-            student: student._id,
-            test: test._id,
+            student: student,
+            test: test,
             marks: marks,
             average_mark: averageMark,
             mark_entry_date: Date.now(),
@@ -495,6 +536,7 @@ async function ValidateMarksHelper(task_id, student_test_result_id) {
 
         const validateMarksTaskData = {
             task_status: 'COMPLETED',
+            marks_validated_date: Date.now(),
             completed_by: completedByUserId,
             completed_at: Date.now(),
             updated_by: completedByUserId

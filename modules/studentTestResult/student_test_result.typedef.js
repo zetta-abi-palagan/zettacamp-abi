@@ -26,9 +26,10 @@ module.exports = gql`
         id: ID!
         student: Student!
         test: Test!
-        marks: Mark!
+        marks: [Mark!]
         average_mark: Float!
         mark_entry_date: String!
+        mark_validated_date: String
         student_test_result_status: StudentTestResultStatus!
         created_by: User!
         created_at: String!

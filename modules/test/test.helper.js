@@ -5,6 +5,7 @@ const { ApolloError } = require('apollo-server');
 const TestModel = require('./test.model');
 const SubjectModel = require('../subject/subject.model');
 const BlockModel = require('../block/block.model');
+const TaskModel = require('../task/task.model');
 
 // *************** IMPORT VALIDATOR ***************
 const validator = require('./test.validator');
@@ -418,7 +419,7 @@ async function DeleteTestHelper(id) {
         }
 
         await SubjectModel.updateOne(
-            { _id: deletedTest.Subject, subject_status: 'ACTIVE' },
+            { _id: deletedTest.subject, subject_status: 'ACTIVE' },
             {
                 $pull: { tests: deletedTest._id },
                 $set: { updated_by: deletedByUserId }

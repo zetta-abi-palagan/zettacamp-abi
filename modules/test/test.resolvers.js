@@ -82,7 +82,7 @@ async function CreateTest(_, { createTestInput }) {
 
         validator.ValidateCreateTestInput(subject, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status);
 
-        const newTest = await helper.CreateTestHelper(validatedInput);
+        const newTest = await helper.CreateTestHelper(subject, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status);
 
         return newTest;
     } catch (error) {

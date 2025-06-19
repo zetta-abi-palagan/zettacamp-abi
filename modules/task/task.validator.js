@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
-const { ValidateTestLoaderInput } = require('../studentTestResult/student_test_result.validator');
 
 /**
  * Validates that the provided input is a non-array object.
@@ -13,6 +12,18 @@ const { ValidateTestLoaderInput } = require('../studentTestResult/student_test_r
 function ValidateInputTypeObject(input) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) {
         throw new Error('Input must be a valid object');
+    }
+}
+
+/**
+ * Validates if the provided value is a valid MongoDB ObjectId.
+ * @param {string} id - The ID to be validated.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateObjectId(id) {
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+    if (!isValidObjectId) {
+        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
     }
 }
 
@@ -42,18 +53,6 @@ function ValidateGetAllTasksInput(task_status, test_id, user_id) {
 
     if (user_id && !mongoose.Types.ObjectId.isValid(user_id)) {
         throw new ApolloError(`Invalid user ID: ${user_id}`, "BAD_USER_INPUT");
-    }
-}
-
-/**
- * Validates if the provided value is a valid MongoDB ObjectId.
- * @param {string} id - The ID to be validated.
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateGetOneTaskInput(id) {
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
     }
 }
 
@@ -329,8 +328,8 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
 // *************** EXPORT MODULE ***************
 module.exports = {
     ValidateInputTypeObject,
+    ValidateObjectId,
     ValidateGetAllTasksInput,
-    ValidateGetOneTaskInput,
     ValidateCreateTaskInput,
     ValidateUpdateTaskInput,
     ValidateAssignCorrectorInput,

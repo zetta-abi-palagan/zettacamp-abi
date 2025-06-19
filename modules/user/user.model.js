@@ -27,10 +27,10 @@ const userSchema = mongoose.Schema({
         required: true
     },
 
-    // User's role in the system, either ADMIN or USER
+    // User's role in the system, either ADMIN, USER, ACADEMIC_DIRECTOR, or CORRECTOR
     role: {
         type: String,
-        enum: ['ADMIN', 'USER'],
+        enum: ['ADMIN', 'USER', 'ACADEMIC_DIRECTOR', 'CORRECTOR'],
         required: true
     },
 

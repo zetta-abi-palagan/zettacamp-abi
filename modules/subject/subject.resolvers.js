@@ -76,7 +76,7 @@ async function CreateSubject(_, { createSubjectInput }) {
 
         validator.ValidateCreateSubjectInput(block, name, description, coefficient, subject_status);
 
-        const newSubject = await helper.CreateSubjectHelper(validatedInput);
+        const newSubject = await helper.CreateSubjectHelper(block, name, description, coefficient, subject_status);
 
         return newSubject;
     } catch (error) {
