@@ -126,6 +126,13 @@ async function UpdateTask(_, { id, updateTaskInput }) {
     }
 }
 
+/**
+ * GraphQL resolver to delete a task by its ID.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.id - The unique identifier of the task to delete.
+ * @returns {Promise<object>} - A promise that resolves to the deleted task object.
+ */
 async function DeleteTask(_, { id }) {
     try {
         validator.ValidateObjectId(id);

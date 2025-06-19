@@ -192,6 +192,11 @@ async function UpdateTaskHelper(id, user, title, description, task_type, task_st
     }
 }
 
+/**
+ * Soft deletes a task and removes its reference from the parent document.
+ * @param {string} id - The unique identifier of the task to be deleted.
+ * @returns {Promise<object>} - A promise that resolves to the task object as it was before being updated.
+ */
 async function DeleteTaskHelper(id) {
     try {
         validator.ValidateObjectId(id);
