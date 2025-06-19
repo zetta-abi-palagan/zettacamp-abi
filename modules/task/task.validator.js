@@ -94,9 +94,29 @@ function ValidateEnterMarksInput(task_id, test, student, marks, validate_marks_d
     }
 }
 
+/**
+ * Validates the IDs for the 'validate marks' workflow.
+ * @param {string} task_id - The ID of the 'VALIDATE_MARKS' task.
+ * @param {string} student_test_result_id - The ID of the student test result.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateValidateMarksInput(task_id, student_test_result_id) {
+    const isValidTaskId = mongoose.Types.ObjectId.isValid(task_id);
+    if (!isValidTaskId) {
+        throw new ApolloError(`Invalid task ID: ${task_id}`, "BAD_USER_INPUT");
+    }
+
+    const isValidStudentTestResultId = mongoose.Types.ObjectId.isValid(student_test_result_id);
+    if (!isValidStudentTestResultId) {
+        throw new ApolloError(`Invalid student test result ID: ${student_test_result_id}`, "BAD_USER_INPUT");
+    }
+}
+
 // *************** EXPORT MODULE ***************
 module.exports = {
     ValidateInputTypeObject,
+    ValidateObjectId,
     ValidateAssignCorrectorInput,
-    ValidateEnterMarksInput
+    ValidateEnterMarksInput,
+    ValidateValidateMarksInput
 }

@@ -70,6 +70,11 @@ module.exports = gql`
         validate_marks_task: Task!
     }
 
+    type ValidateMarksPayload {
+        student_test_result: StudentTestResult!
+        validate_marks_task: Task!
+    }
+
     type Query {
         GetAllTasks(task_status: TaskStatus): [Task]!
         GetTasksForUser(user_id: ID!, task_status: TaskStatus): [Task]
@@ -82,6 +87,6 @@ module.exports = gql`
         DeleteTask(id: ID!): Task!
         AssignCorrector(task_id: ID!, corrector_id: ID!, enter_marks_due_date: String): Task!
         EnterMarks(task_id: ID!, enterMarksInput: EnterMarksInput, validate_marks_due_date: String): EnterMarksPayload!
-        ValidateMarks(task_id: ID!): Task!
+        ValidateMarks(task_id: ID!, student_test_result_id: ID!): ValidateMarksPayload!
     }
 `

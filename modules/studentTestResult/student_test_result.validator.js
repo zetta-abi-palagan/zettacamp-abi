@@ -21,7 +21,7 @@ function ValidateInputTypeObject(input) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateGetAllStudentTestResultsInput(student_test_result_status) {
-    const validStatus = ['PENDING', 'VALIDATED'];
+    const validStatus = ['PENDING', 'VALIDATED', 'DELETED'];
 
     if (!student_test_result_status) {
         return;

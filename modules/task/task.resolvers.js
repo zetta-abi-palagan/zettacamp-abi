@@ -66,6 +66,30 @@ async function EnterMarks(_, { task_id, enterMarksInput, validate_marks_due_date
     }
 }
 
+/**
+ * GraphQL resolver to validate a student's test marks.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.task_id - The ID of the 'VALIDATE_MARKS' task.
+ * @param {string} args.student_test_result_id - The ID of the student test result to validate.
+ * @returns {Promise<void>} - A promise that resolves when the operation is complete.
+ */
+async function ValidateMarks(_, { task_id, student_test_result_id }) {
+    try {
+        validator.ValidateValidateMarksInput(task_id, student_test_result_id);
+
+        const validatedMarks = helper.ValidateMarksHelper(task_id, student_test_result_id);
+
+        return validatedMarks;
+    } catch (error) {
+        console.error('Unexpected error in ValidateMarks:', error);
+
+        throw new ApolloError('Failed to validate marks', 'VALIDATE_MARKS_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 // *************** LOADER ***************
 
 

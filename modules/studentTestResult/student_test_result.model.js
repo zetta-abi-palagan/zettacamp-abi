@@ -43,10 +43,10 @@ const studentTestResultSchema = mongoose.Schema({
         required: true
     },
 
-    // Current status of the student test result: PENDING and VALIDATED
+    // Current status of the student test result: PENDING, VALIDATED, and DELETED
     student_test_result_status: {
         type: String,
-        enum: ['PENDING', 'VALIDATED'],
+        enum: ['PENDING', 'VALIDATED', 'DELETED'],
         required: true
     },
 

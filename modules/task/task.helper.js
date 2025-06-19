@@ -83,7 +83,8 @@ async function AssignCorrectorHelper(task_id, corrector_id, enter_marks_due_date
         const assignCorrectorTaskData = {
             task_status: 'COMPLETED',
             completed_by: completedByUserId,
-            completed_at: Date.now()
+            completed_at: Date.now(),
+            updated_by: completedByUserId
         }
 
         const completeAssignCorrectorTask = await TaskModel.updateOne({ _id: task_id, task_type: 'ASSIGN_CORRECTOR', task_status: 'PENDING' }, assignCorrectorTaskData);
@@ -231,7 +232,8 @@ async function EnterMarksHelper(task_id, test, student, marks, validate_marks_du
         const enterMarksTaskData = {
             task_status: 'COMPLETED',
             completed_by: completedByUserId,
-            completed_at: Date.now()
+            completed_at: Date.now(),
+            updated_by: completedByUserId
         }
 
         const completeEnterMarksTask = await TaskModel.updateOne({ _id: enterMarksTask._id, task_type: 'ENTER_MARKS', task_status: 'PENDING' }, enterMarksTaskData);
@@ -259,12 +261,77 @@ async function EnterMarksHelper(task_id, test, student, marks, validate_marks_du
             throw new ApolloError('Validate marks task creation failed', 'TASK_CREATION_FAILED');
         }
 
+        const updatedTest = await TestModel.updateOne(
+            { _id: testCheck._id },
+            { $push: { tasks: validateMarksTask._id } }
+        );
+
+        if (updatedTest.modifiedCount === 0) {
+            throw new ApolloError('Failed to add enter marks task to test', 'TEST_UPDATE_FAILED');
+        }
+
         return {
             student_test_result: newStudentTestResult,
             validate_marks_task: validateMarksTask
         }
     } catch (error) {
         throw new ApolloError('Failed to enter marks', 'TASK_CREATION_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Validates a student's test result, updating its status and completing the associated task.
+ * @param {string} task_id - The ID of the 'VALIDATE_MARKS' task.
+ * @param {string} student_test_result_id - The ID of the student test result to validate.
+ * @returns {Promise<void>} - This function does not return a value but performs database operations.
+ */
+async function ValidateMarksHelper(task_id, student_test_result_id) {
+    try {
+        validator.ValidateValidateMarksInput(task_id, student_test_result_id);
+
+        const validateMarksTask = await TaskModel.findOne({ _id: task_id, task_type: 'VALIDATE_MARKS', task_status: 'PENDING' });
+        if (!validateMarksTask) {
+            throw new ApolloError('Validate marks task not found', 'NOT_FOUND');
+        }
+
+        const studentTestResultCheck = await StudentTestResultModel.findOne({ _id: student_test_result_id, student_test_result_status: 'PENDING' });
+        if (!studentTestResultCheck) {
+            throw new ApolloError('Student test result not found', 'NOT_FOUND');
+        }
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const completedByUserId = '6846e5769e5502fce150eb67';
+
+        const studentTestResultData = {
+            student_test_result_status: 'VALIDATED',
+            updated_by: completedByUserId
+        }
+
+        const validatedStudentTestResult = await StudentTestResultModel.findOneAndUpdate({ _id: student_test_result_id, student_test_result_status: 'PENDING' }, studentTestResultData);
+        if (!validatedStudentTestResult) {
+            throw new ApolloError('Student test result validation failed', 'STUDENT_TEST_RESULT_VALIDATION_FAILED');
+        }
+
+        const validateMarksTaskData = {
+            task_status: 'COMPLETED',
+            completed_by: completedByUserId,
+            completed_at: Date.now(),
+            updated_by: completedByUserId
+        }
+
+        const completeValidateMarksTask = await TaskModel.findOneAndUpdate({ _id: task_id, task_type: 'VALIDATE_MARKS', task_status: 'PENDING' }, validateMarksTaskData);
+        if (!completeValidateMarksTask) {
+            throw new ApolloError('Validate marks task completion failed', 'TASK_COMPLETION_FAILED');
+        }
+
+        return {
+            student_test_result: validatedStudentTestResult,
+            validate_marks_task: completeValidateMarksTask
+        }
+    } catch (error) {
+        throw new ApolloError('Failed to validate marks', 'TASK_COMPLETION_FAILED', {
             error: error.message
         });
     }

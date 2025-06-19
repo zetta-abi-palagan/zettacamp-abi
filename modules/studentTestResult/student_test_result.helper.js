@@ -17,7 +17,7 @@ const validator = require('./student_test_result.validator');
  */
 async function GetAllStudentTestResultsHelper(student_test_result_status) {
     try {
-        validator.ValidateGetAllTestsInput(student_test_result_status);
+        validator.ValidateGetAllStudentTestResultsInput(student_test_result_status);
 
         const filter = {};
 
@@ -95,11 +95,21 @@ async function UpdateStudentTestResultHelper(id, marks) {
             }
         }
 
+        // *************** Count average mark
+        let totalMarks = 0;
+
+        for (const item of marks) {
+            totalMarks += item.mark
+        }
+
+        const averageMark = totalMarks / marks.length;
+
         // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
         const updatedByUserId = '6846e5769e5502fce150eb67';
 
         const studentTestResultData = {
             marks: marks,
+            average_mark: averageMark,
             updated_by: updatedByUserId
         };
 
