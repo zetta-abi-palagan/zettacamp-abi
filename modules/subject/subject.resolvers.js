@@ -272,7 +272,7 @@ async function DeletedByLoader(subject, _, context) {
     try {
         validator.ValidateUserLoaderInput(subject, context, 'deleted_by');
 
-        const deleted_by = await context.dataLoaders.UserLoader.load(subject.updated_by);
+        const deleted_by = await context.dataLoaders.UserLoader.load(subject.deleted_by);
 
         return deleted_by;
     } catch (error) {

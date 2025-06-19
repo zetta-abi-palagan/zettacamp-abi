@@ -210,7 +210,7 @@ async function DeletedByLoader(studentTestResult, _, context) {
     try {
         validator.ValidateUserLoaderInput(studentTestResult, context, 'deleted_by');
 
-        const deleted_by = await context.dataLoaders.UserLoader.load(studentTestResult.updated_by);
+        const deleted_by = await context.dataLoaders.UserLoader.load(studentTestResult.deleted_by);
 
         return deleted_by;
     } catch (error) {

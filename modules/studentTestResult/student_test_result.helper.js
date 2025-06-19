@@ -52,7 +52,7 @@ async function GetOneStudentTestResultHelper(id) {
     try {
         validator.ValidateGetOneStudentTestResultInput(id);
 
-        const studentTestResult = StudentTestResultModel.findOne({ _id: id });
+        const studentTestResult = await StudentTestResultModel.findOne({ _id: id });
 
         if (!studentTestResult) {
             throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
@@ -123,7 +123,7 @@ async function UpdateStudentTestResultHelper(id, marks) {
             updated_by: updatedByUserId
         };
 
-        const updatedStudentTestResult = StudentTestResultModel.findOneAndUpdate({ _id: id }, studentTestResultData, { new: true });
+        const updatedStudentTestResult = await StudentTestResultModel.findOneAndUpdate({ _id: id }, studentTestResultData, { new: true });
 
         if (updatedStudentTestResult) {
             throw new ApolloError('Student test result update failed', 'STUDENT_TEST_RESULT_UPDATE_FAILED');

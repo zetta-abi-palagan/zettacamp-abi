@@ -42,7 +42,7 @@ async function GetOneTestHelper(id) {
     try {
         validator.ValidateGetOneTestInput(id);
 
-        const test = TestModel.findOne({ _id: id });
+        const test = await TestModel.findOne({ _id: id });
 
         if (!test) {
             throw new ApolloError('Test not found', 'TEST_NOT_FOUND');

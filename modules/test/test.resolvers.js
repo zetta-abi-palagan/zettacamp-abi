@@ -146,7 +146,7 @@ async function UpdateTest(_, { id, updateTestInput }) {
 
         validator.ValidateUpdateTestInput(id, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status)
 
-        const updatedTest = helper.UpdateTestHelper(id, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status)
+        const updatedTest = await helper.UpdateTestHelper(id, name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status)
 
         return updatedTest;
     } catch (error) {
@@ -326,7 +326,7 @@ async function DeletedByLoader(test, _, context) {
     try {
         validator.ValidateUserLoaderInput(test, context, 'deleted_by');
 
-        const deleted_by = await context.dataLoaders.UserLoader.load(test.updated_by);
+        const deleted_by = await context.dataLoaders.UserLoader.load(test.deleted_by);
 
         return deleted_by;
     } catch (error) {

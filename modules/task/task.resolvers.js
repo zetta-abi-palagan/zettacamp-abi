@@ -215,7 +215,7 @@ async function ValidateMarks(_, { task_id, student_test_result_id }) {
     try {
         validator.ValidateValidateMarksInput(task_id, student_test_result_id);
 
-        const validatedMarks = helper.ValidateMarksHelper(task_id, student_test_result_id);
+        const validatedMarks = await helper.ValidateMarksHelper(task_id, student_test_result_id);
 
         return validatedMarks;
     } catch (error) {
@@ -328,7 +328,7 @@ async function DeletedByLoader(task, _, context) {
     try {
         validator.ValidateUserLoaderInput(task, context, 'deleted_by');
 
-        const deleted_by = await context.dataLoaders.UserLoader.load(task.updated_by);
+        const deleted_by = await context.dataLoaders.UserLoader.load(task.deleted_by);
 
         return deleted_by;
     } catch (error) {
