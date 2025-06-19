@@ -57,9 +57,18 @@ function ValidateGetOneTaskInput(id) {
     }
 }
 
-function ValidateCreateTaskInput(test, user, title, description, task_type, task_status, due_date) {
+/**
+ * Validates the inputs for creating a new task.
+ * @param {string} test - The ID of the test this task is related to.
+ * @param {string} user - The ID of the user assigned to this task.
+ * @param {string} title - The title of the task.
+ * @param {string} description - The description of the task.
+ * @param {string} task_type - The type of the task (e.g., 'ASSIGN_CORRECTOR').
+ * @param {Date|string} due_date - The due date for the task.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateCreateTaskInput(test, user, title, description, task_type, due_date) {
     const validTaskType = ['ASSIGN_CORRECTOR', 'ENTER_MARKS', 'VALIDATE_MARKS'];
-    const validTaskStatus = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'DELETED'];
 
     if (!mongoose.Types.ObjectId.isValid(test)) {
         throw new ApolloError(`Invalid test ID: ${id}`, "BAD_USER_INPUT");
@@ -101,6 +110,63 @@ function ValidateCreateTaskInput(test, user, title, description, task_type, task
 }
 
 /**
+ * Validates the inputs for updating an existing task.
+ * @param {string} id - The unique identifier of the task to update.
+ * @param {string} user - The ID of the user assigned to the task.
+ * @param {string} title - The new title for the task.
+ * @param {string} description - The new description for the task.
+ * @param {string} task_type - The new type for the task.
+ * @param {string} task_status - The new status for the task.
+ * @param {Date|string} due_date - Optional. The new due date for the task.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateUpdateTaskInput(id, user, title, description, task_type, task_status, due_date) {
+    const validTaskType = ['ASSIGN_CORRECTOR', 'ENTER_MARKS', 'VALIDATE_MARKS'];
+    const validTaskStatus = ['PENDING', 'IN_PROGRESS'];
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(user)) {
+        throw new ApolloError(`Invalid user ID: ${user}`, "BAD_USER_INPUT");
+    }
+
+    if (!title || typeof title !== 'string' || title.trim() === '') {
+        throw new ApolloError('Title is required.', 'BAD_USER_INPUT', {
+            field: 'title'
+        });
+    }
+
+    if (!description || typeof description !== 'string' || description.trim() === '') {
+        throw new ApolloError('Description is required.', 'BAD_USER_INPUT', {
+            field: 'description'
+        });
+    }
+
+    if (!task_type || typeof task_type !== 'string' || !validTaskType.includes(task_type.toUpperCase())) {
+        throw new ApolloError(`Task type must be one of: ${validTaskType.join(', ')}.`, 'BAD_USER_INPUT', {
+            field: 'task_type'
+        });
+    }
+
+    if (!task_status || typeof task_status !== 'string' || !validTaskStatus.includes(task_status.toUpperCase())) {
+        throw new ApolloError(`Task status must be one of: ${validTaskStatus.join(', ')}.`, 'BAD_USER_INPUT', {
+            field: 'task_status'
+        });
+    }
+
+    if (due_date) {
+        const date = due_date instanceof Date ? due_date : new Date(due_date);
+        if (isNaN(date.getTime())) {
+            throw new ApolloError('A valid date format is required.', 'BAD_USER_INPUT', {
+                field: 'due_date'
+            });
+        }
+    }
+}
+
+/**
  * Validates the inputs for assigning a corrector to a task.
  * @param {string} task_id - The ID of the 'ASSIGN_CORRECTOR' task.
  * @param {string} corrector_id - The ID of the user being assigned as the corrector.
@@ -118,10 +184,13 @@ function ValidateAssignCorrectorInput(task_id, corrector_id, enter_marks_due_dat
         throw new ApolloError(`Invalid corrector ID: ${corrector_id}`, "BAD_USER_INPUT");
     }
 
-    if (!(enter_marks_due_date instanceof Date ? !isNaN(enter_marks_due_date.getTime()) : !isNaN(new Date(enter_marks_due_date).getTime()))) {
-        throw new ApolloError('A valid date format is required.', 'BAD_USER_INPUT', {
-            field: 'enter_marks_due_date'
-        });
+    if (enter_marks_due_date) {
+        const date = enter_marks_due_date instanceof Date ? enter_marks_due_date : new Date(enter_marks_due_date);
+        if (isNaN(date.getTime())) {
+            throw new ApolloError('A valid date format is required.', 'BAD_USER_INPUT', {
+                field: 'enter_marks_due_date'
+            });
+        }
     }
 }
 
@@ -172,10 +241,13 @@ function ValidateEnterMarksInput(task_id, test, student, marks, validate_marks_d
         }
     }
 
-    if (!(validate_marks_due_date instanceof Date ? !isNaN(validate_marks_due_date.getTime()) : !isNaN(new Date(validate_marks_due_date).getTime()))) {
-        throw new ApolloError('A valid date format is required.', 'BAD_USER_INPUT', {
-            field: 'validate_marks_due_date'
-        });
+    if (validate_marks_due_date) {
+        const date = validate_marks_due_date instanceof Date ? validate_marks_due_date : new Date(validate_marks_due_date);
+        if (isNaN(date.getTime())) {
+            throw new ApolloError('A valid date format is required.', 'BAD_USER_INPUT', {
+                field: 'validate_marks_due_date'
+            });
+        }
     }
 }
 
@@ -260,6 +332,7 @@ module.exports = {
     ValidateGetAllTasksInput,
     ValidateGetOneTaskInput,
     ValidateCreateTaskInput,
+    ValidateUpdateTaskInput,
     ValidateAssignCorrectorInput,
     ValidateEnterMarksInput,
     ValidateValidateMarksInput,

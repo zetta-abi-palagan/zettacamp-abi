@@ -57,6 +57,13 @@ async function GetOneTask(_, { id }) {
 }
 
 // *************** MUTATION ***************
+/**
+ * GraphQL resolver to create a new task.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {object} args.createTaskInput - An object containing the details for the new task.
+ * @returns {Promise<object>} - A promise that resolves to the newly created task object.
+ */
 async function CreateTask(_, { createTaskInput }) {
     try {
         validator.ValidateInputTypeObject(createTaskInput);
@@ -67,19 +74,53 @@ async function CreateTask(_, { createTaskInput }) {
             title,
             description,
             task_type,
-            task_status,
             due_date
         } = createTaskInput;
 
-        validator.ValidateCreateTaskInput(test, user, title, description, task_type, task_status, due_date);
+        validator.ValidateCreateTaskInput(test, user, title, description, task_type, due_date);
 
-        const newTask = await helper.CreateTaskHelper(test, user, title, description, task_type, task_status, due_date);
+        const newTask = await helper.CreateTaskHelper(test, user, title, description, task_type, due_date);
 
         return newTask;
     } catch (error) {
         console.error('Unexpected error in CreateTask:', error);
 
         throw new ApolloError('Failed to create task', 'CREATE_TASK_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * GraphQL resolver to update an existing task.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.id - The unique identifier of the task to update.
+ * @param {object} args.updateTaskInput - An object containing the fields to be updated.
+ * @returns {Promise<object>} - A promise that resolves to the updated task object.
+ */
+async function UpdateTask(_, { id, updateTaskInput }) {
+    try {
+        validator.ValidateInputTypeObject(updateTaskInput);
+
+        const {
+            user,
+            title,
+            description,
+            task_type,
+            task_status,
+            due_date
+        } = updateTaskInput;
+
+        validator.ValidateUpdateTaskInput(id, user, title, description, task_type, task_status, due_date);
+
+        const updatedTask = await helper.UpdateTaskHelper(id, user, title, description, task_type, task_status, due_date);
+
+        return updatedTask;
+    } catch (error) {
+        console.error('Unexpected error in UpdateTask:', error);
+
+        throw new ApolloError('Failed to update task', 'UPDATE_TASK_FAILED', {
             error: error.message
         });
     }
@@ -283,8 +324,8 @@ module.exports = {
 
     Mutation: {
         CreateTask,
-        // UpdateTask,
-        // DeleteTask,
+        UpdateTask,
+        DeleteTask,
         AssignCorrector,
         EnterMarks,
         ValidateMarks

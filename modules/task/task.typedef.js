@@ -33,7 +33,6 @@ module.exports = gql`
         title: String!
         description: String!
         task_type: TaskType!
-        task_status: TaskStatus!
         due_date: String
     }
 
@@ -84,7 +83,7 @@ module.exports = gql`
 
     type Mutation {
         CreateTask(createTaskInput: CreateTaskInput!): Task!
-        UpdateTask(id: ID!, input: UpdateTaskInput!): Task!
+        UpdateTask(id: ID!, updateTaskInput: UpdateTaskInput!): Task!
         DeleteTask(id: ID!): Task!
         AssignCorrector(task_id: ID!, corrector_id: ID!, enter_marks_due_date: String): Task!
         EnterMarks(task_id: ID!, enterMarksInput: EnterMarksInput, validate_marks_due_date: String): EnterMarksPayload!

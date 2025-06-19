@@ -59,9 +59,19 @@ async function GetOneTaskHelper(id) {
     }
 }
 
-async function CreateTaskHelper(test, user, title, description, task_type, task_status, due_date) {
+/**
+ * Creates a new task after validating inputs and linking it to the parent test.
+ * @param {string} test - The ID of the test this task is related to.
+ * @param {string} user - The ID of the user assigned to this task.
+ * @param {string} title - The title of the task.
+ * @param {string} description - The description of the task.
+ * @param {string} task_type - The type of the task (e.g., 'ASSIGN_CORRECTOR').
+ * @param {Date|string} due_date - The due date for the task.
+ * @returns {Promise<object>} - A promise that resolves to the newly created task object.
+ */
+async function CreateTaskHelper(test, user, title, description, task_type, due_date) {
     try {
-        validator.ValidateCreateTaskInput(test, user, title, description, task_type, task_status, due_date);
+        validator.ValidateCreateTaskInput(test, user, title, description, task_type, due_date);
 
         const testCheck = await TestModel.findOne({ _id: test, test_status: 'ACTIVE' });
         if (!testCheck) {
@@ -79,14 +89,7 @@ async function CreateTaskHelper(test, user, title, description, task_type, task_
             });
         }
 
-        if (typeof task_status !== 'string') {
-            throw new ApolloError('Task status must be a string.', 'BAD_USER_INPUT', {
-                field: 'task_status'
-            });
-        }
-
         const upperTaskType = task_type.toUpperCase()
-        const upperTaskStatus = task_status.toUpperCase()
 
         // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
         const createdByUserId = '6846e5769e5502fce150eb67';
@@ -97,7 +100,7 @@ async function CreateTaskHelper(test, user, title, description, task_type, task_
             title: title,
             description: description,
             task_type: upperTaskType,
-            task_status: upperTaskStatus,
+            task_status: 'PENDING',
             due_date: due_date,
             created_by: createdByUserId,
             updated_by: createdByUserId
@@ -122,6 +125,67 @@ async function CreateTaskHelper(test, user, title, description, task_type, task_
         return newTask;
     } catch (error) {
         throw new ApolloError('Failed to create task', 'TASK_CREATION_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Updates an existing task after validating inputs.
+ * @param {string} id - The unique identifier of the task to update.
+ * @param {string} user - The ID of the user assigned to the task.
+ * @param {string} title - The new title for the task.
+ * @param {string} description - The new description for the task.
+ * @param {string} task_type - The new type for the task.
+ * @param {string} task_status - The new status for the task.
+ * @param {Date|string} due_date - The new due date for the task.
+ * @returns {Promise<object>} - A promise that resolves to the updated task object.
+ */
+async function UpdateTaskHelper(id, user, title, description, task_type, task_status, due_date) {
+    try {
+        validator.ValidateUpdateTaskInput(id, user, title, description, task_type, task_status, due_date);
+
+        const userCheck = await UserModel.findOne({ _id: user, user_status: 'ACTIVE' });
+        if (!userCheck) {
+            throw new ApolloError('User not found', 'USER_NOT_FOUND');
+        }
+
+        if (typeof task_type !== 'string') {
+            throw new ApolloError('Task type must be a string.', 'BAD_USER_INPUT', {
+                field: 'task_type'
+            });
+        }
+
+        if (typeof task_status !== 'string') {
+            throw new ApolloError('Task type must be a string.', 'BAD_USER_INPUT', {
+                field: 'task_type'
+            });
+        }
+
+        const upperTaskType = task_type.toUpperCase()
+        const upperTaskStatus = task_status.toUpperCase()
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const updatedByUserId = '6846e5769e5502fce150eb67';
+
+        const taskData = {
+            user: user,
+            title: title,
+            description: description,
+            task_type: upperTaskType,
+            task_status: upperTaskStatus,
+            due_date: due_date,
+            updated_by: updatedByUserId,
+        }
+
+        const updatedTask = await TaskModel.findOne({ _id: id }, taskData, { new: true });
+        if (!updatedTask) {
+            throw new ApolloError('Task update failed', 'TASK_UPDATE_FAILED');
+        }
+
+        return updatedTask;
+    } catch (error) {
+        throw new ApolloError('Failed to update task', 'TASK_UPDATE_FAILED', {
             error: error.message
         });
     }
@@ -456,11 +520,9 @@ async function ValidateMarksHelper(task_id, student_test_result_id) {
 module.exports = {
     GetAllTasksHelper,
     GetOneTaskHelper,
-    // GetTasksForUserHelper,
-    // GetTasksForTestHelper,
-    // CreateTaskHelper,
-    // UpdateTaskHelper,
-    // DeleteTaskHelper,
+    CreateTaskHelper,
+    UpdateTaskHelper,
+    DeleteTaskHelper,
     AssignCorrectorHelper,
     EnterMarksHelper,
     ValidateMarksHelper
