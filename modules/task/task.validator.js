@@ -57,6 +57,49 @@ function ValidateGetOneTaskInput(id) {
     }
 }
 
+function ValidateCreateTaskInput(test, user, title, description, task_type, task_status, due_date) {
+    const validTaskType = ['ASSIGN_CORRECTOR', 'ENTER_MARKS', 'VALIDATE_MARKS'];
+    const validTaskStatus = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'DELETED'];
+
+    if (!mongoose.Types.ObjectId.isValid(test)) {
+        throw new ApolloError(`Invalid test ID: ${id}`, "BAD_USER_INPUT");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(user)) {
+        throw new ApolloError(`Invalid user ID: ${id}`, "BAD_USER_INPUT");
+    }
+
+    if (!title || typeof title !== 'string' || title.trim() === '') {
+        throw new ApolloError('Title is required.', 'BAD_USER_INPUT', {
+            field: 'title'
+        });
+    }
+
+    if (!description || typeof description !== 'string' || description.trim() === '') {
+        throw new ApolloError('Description is required.', 'BAD_USER_INPUT', {
+            field: 'description'
+        });
+    }
+
+    if (!task_type || typeof task_type !== 'string' || !validTaskType.includes(task_type.toUpperCase())) {
+        throw new ApolloError(`Task type must be one of: ${validTaskType.join(', ')}.`, 'BAD_USER_INPUT', {
+            field: 'task_type'
+        });
+    }
+
+    if (!task_status || typeof task_status !== 'string' || !validTaskStatus.includes(task_status.toUpperCase())) {
+        throw new ApolloError(`Task status must be one of: ${validTaskStatus.join(', ')}.`, 'BAD_USER_INPUT', {
+            field: 'task_status'
+        });
+    }
+
+    if (!(due_date instanceof Date ? !isNaN(due_date.getTime()) : !isNaN(new Date(due_date).getTime()))) {
+        throw new ApolloError('A valid date format is required.', 'BAD_USER_INPUT', {
+            field: 'due_date'
+        });
+    }
+}
+
 /**
  * Validates the inputs for assigning a corrector to a task.
  * @param {string} task_id - The ID of the 'ASSIGN_CORRECTOR' task.
@@ -216,6 +259,7 @@ module.exports = {
     ValidateInputTypeObject,
     ValidateGetAllTasksInput,
     ValidateGetOneTaskInput,
+    ValidateCreateTaskInput,
     ValidateAssignCorrectorInput,
     ValidateEnterMarksInput,
     ValidateValidateMarksInput,

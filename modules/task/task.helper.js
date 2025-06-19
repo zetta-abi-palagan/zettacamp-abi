@@ -5,6 +5,7 @@ const sgMail = require('@sendgrid/mail');
 // *************** IMPORT MODULE *************** 
 const TaskModel = require('./task.model');
 const StudentTestResultModel = require('../studentTestResult/student_test_result.model')
+const TestModel = require('../test/test.model');
 const UserModel = require('../user/user.model');
 const StudentModel = require('../student/student.model');
 const { SENDGRID_API_KEY, SENDGRID_SENDER_EMAIL } = require('../../core/config');
@@ -46,7 +47,7 @@ async function GetOneTaskHelper(id) {
     try {
         validator.ValidateGetOneTaskInput(id);
 
-        const task = TaskModel.findOne({ _id: id });
+        const task = await TaskModel.findOne({ _id: id });
 
         if (!task) {
             throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
@@ -55,6 +56,74 @@ async function GetOneTaskHelper(id) {
         return task;
     } catch (error) {
         throw new ApolloError(`Failed to fetch task: ${error.message}`, "INTERNAL_SERVER_ERROR");
+    }
+}
+
+async function CreateTaskHelper(test, user, title, description, task_type, task_status, due_date) {
+    try {
+        validator.ValidateCreateTaskInput(test, user, title, description, task_type, task_status, due_date);
+
+        const testCheck = await TestModel.findOne({ _id: test, test_status: 'ACTIVE' });
+        if (!testCheck) {
+            throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
+        }
+
+        const userCheck = await UserModel.findOne({ _id: user, user_status: 'ACTIVE' });
+        if (!userCheck) {
+            throw new ApolloError('User not found', 'USER_NOT_FOUND');
+        }
+
+        if (typeof task_type !== 'string') {
+            throw new ApolloError('Task type must be a string.', 'BAD_USER_INPUT', {
+                field: 'task_type'
+            });
+        }
+
+        if (typeof task_status !== 'string') {
+            throw new ApolloError('Task status must be a string.', 'BAD_USER_INPUT', {
+                field: 'task_status'
+            });
+        }
+
+        const upperTaskType = task_type.toUpperCase()
+        const upperTaskStatus = task_status.toUpperCase()
+
+        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
+        const createdByUserId = '6846e5769e5502fce150eb67';
+
+        const taskData = {
+            test: test,
+            user: user,
+            title: title,
+            description: description,
+            task_type: upperTaskType,
+            task_status: upperTaskStatus,
+            due_date: due_date,
+            created_by: createdByUserId,
+            updated_by: createdByUserId
+        }
+
+        const newTask = await TaskModel.create(taskData);
+        if (!newTask) {
+            throw new ApolloError('Task creation failed', 'TASK_CREATION_FAILED');
+        }
+
+        const updatedTest = await TestModel.updateOne(
+            { _id: testCheck._id, test_status: 'ACTIVE' },
+            {
+                $addToSet: { tests: newTask._id },
+            }
+        )
+
+        if (updatedTest.modifiedCount === 0) {
+            throw new ApolloError('Failed to add enter marks task to test', 'TEST_UPDATE_FAILED');
+        }
+
+        return newTask;
+    } catch (error) {
+        throw new ApolloError('Failed to create task', 'TASK_CREATION_FAILED', {
+            error: error.message
+        });
     }
 }
 

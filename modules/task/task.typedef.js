@@ -83,7 +83,7 @@ module.exports = gql`
     }
 
     type Mutation {
-        CreateTask(input: CreateTaskInput!): Task!
+        CreateTask(createTaskInput: CreateTaskInput!): Task!
         UpdateTask(id: ID!, input: UpdateTaskInput!): Task!
         DeleteTask(id: ID!): Task!
         AssignCorrector(task_id: ID!, corrector_id: ID!, enter_marks_due_date: String): Task!

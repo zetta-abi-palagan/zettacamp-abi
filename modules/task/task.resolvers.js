@@ -56,8 +56,35 @@ async function GetOneTask(_, { id }) {
     }
 }
 
-
 // *************** MUTATION ***************
+async function CreateTask(_, { createTaskInput }) {
+    try {
+        validator.ValidateInputTypeObject(createTaskInput);
+
+        const {
+            test,
+            user,
+            title,
+            description,
+            task_type,
+            task_status,
+            due_date
+        } = createTaskInput;
+
+        validator.ValidateCreateTaskInput(test, user, title, description, task_type, task_status, due_date);
+
+        const newTask = await helper.CreateTaskHelper(test, user, title, description, task_type, task_status, due_date);
+
+        return newTask;
+    } catch (error) {
+        console.error('Unexpected error in CreateTask:', error);
+
+        throw new ApolloError('Failed to create task', 'CREATE_TASK_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 /**
  * GraphQL resolver to assign a corrector to a test.
  * @param {object} _ - The parent object, which is not used in this resolver.
@@ -255,7 +282,7 @@ module.exports = {
     },
 
     Mutation: {
-        // CreateTask,
+        CreateTask,
         // UpdateTask,
         // DeleteTask,
         AssignCorrector,
