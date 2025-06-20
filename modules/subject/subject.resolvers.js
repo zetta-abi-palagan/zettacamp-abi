@@ -2,10 +2,10 @@
 const { ApolloError } = require('apollo-server');
 
 // *************** IMPORT HELPER FUNCTION *************** 
-const helper = require('./subject.helper');
+const SubjectHelper = require('./subject.helper');
 
 // *************** IMPORT VALIDATOR ***************
-const validator = require('./subject.validator');
+const SubjectValidator = require('./subject.validator');
 
 // *************** QUERY ***************
 /**
@@ -17,9 +17,11 @@ const validator = require('./subject.validator');
  */
 async function GetAllSubjects(_, { subject_status }) {
     try {
-        validator.ValidateGetAllSubjectsInput(subject_status);
+        SubjectValidator.ValidateGetAllSubjectsInput(subject_status);
 
-        const subjects = await helper.GetAllSubjectsHelper(subject_status);
+        const subjectFilter = subject_status ? { subject_status: subject_status } : {};
+
+        const subjects = await SubjectModel.find(subjectFilter);
 
         return subjects;
     } catch (error) {
@@ -40,9 +42,12 @@ async function GetAllSubjects(_, { subject_status }) {
  */
 async function GetOneSubject(_, { id }) {
     try {
-        validator.ValidateGetOneSubjectInput(id);
+        GlobalValidator.ValidateObjectId(id);
 
-        const subject = await helper.GetOneSubjectHelper(id);
+        const subject = await SubjectModel.findOne({ _id: id });
+        if (!subject) {
+            throw new ApolloError('Subject not found', 'NOT_FOUND');
+        }
 
         return subject;
     } catch (error) {
@@ -59,24 +64,37 @@ async function GetOneSubject(_, { id }) {
  * GraphQL resolver to create a new subject.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
- * @param {object} args.input - An object containing the details for the new subject.
+ * @param {object} args.createSubjectInput - An object containing the details for the new subject.
  * @returns {Promise<object>} - A promise that resolves to the newly created subject object.
  */
 async function CreateSubject(_, { createSubjectInput }) {
     try {
-        validator.ValidateInputTypeObject(createSubjectInput);
+        // *************** Dummy user ID (replace with real one later)
+        const userId = '6846e5769e5502fce150eb67';
 
-        const {
-            block,
-            name,
-            description,
-            coefficient,
-            subject_status
-        } = createSubjectInput;
+        GlobalValidator.ValidateInputTypeObject(createSubjectInput);
+        GlobalValidator.ValidateObjectId(createSubjectInput.block);
 
-        validator.ValidateCreateSubjectInput(block, name, description, coefficient, subject_status);
+        const parentBlock = await BlockModel.findOne({ _id: createSubjectInput.block, block_status: 'ACTIVE' });
+        if (!parentBlock) {
+            throw new ApolloError('Parent block not found or is not active.', 'NOT_FOUND');
+        }
 
-        const newSubject = await helper.CreateSubjectHelper(block, name, description, coefficient, subject_status);
+        const isTransversal = parentBlock.block_type === 'TRANSVERSAL';
+
+        SubjectValidator.ValidateSubjectInput(createSubjectInput, isTransversal);
+
+        const createPayload = SubjectHelper.GetCreateSubjectPayload(createSubjectInput, isTransversal, userId);
+
+        const newSubject = await SubjectModel.create(createPayload);
+        if (!newSubject) {
+            throw new ApolloError('Failed to create subject in database', 'CREATE_SUBJECT_FAILED');
+        }
+
+        const updatedBlock = await BlockModel.updateOne({ _id: createSubjectInput.block }, { $addToSet: { subjects: newSubject._id } });
+        if (updatedBlock.modifiedCount === 0) {
+            throw new ApolloError('Failed to add subject to block', 'BLOCK_UPDATE_FAILED');
+        }
 
         return newSubject;
     } catch (error) {
@@ -93,24 +111,29 @@ async function CreateSubject(_, { createSubjectInput }) {
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the subject to update.
- * @param {object} args.input - An object containing the new details for the subject.
+ * @param {object} args.updateSubjectInput - An object containing the new details for the subject.
  * @returns {Promise<object>} - A promise that resolves to the updated subject object.
  */
 async function UpdateSubject(_, { id, updateSubjectInput }) {
     try {
-        validator.ValidateInputTypeObject(updateSubjectInput);
+        // *************** Dummy user ID (replace with real one later)
+        const userId = '6846e5769e5502fce150eb67';
 
-        const {
-            name,
-            description,
-            coefficient,
-            connected_blocks,
-            subject_status
-        } = updateSubjectInput
+        GlobalValidator.ValidateObjectId(id);
+        GlobalValidator.ValidateInputTypeObject(updateSubjectInput);
 
-        validator.ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
+        const subject = await SubjectModel.findById(id);
+        if (!subject) {
+            throw new ApolloError('Subject not found', 'NOT_FOUND');
+        }
+        SubjectValidator.ValidateSubjectInput(updateSubjectInput, subject.is_transversal);
 
-        const updatedSubject = await helper.UpdateSubjectHelper(id, name, description, coefficient, connected_blocks, subject_status);
+        const updatePayload = SubjectHelper.GetUpdateSubjectPayload(updateSubjectInput, userId);
+
+        const updatedSubject = await SubjectModel.findByIdAndUpdate(id, updatePayload, { new: true });
+        if (!updatedSubject) {
+            throw new ApolloError('Subject update failed', 'UPDATE_SUBJECT_FAILED');
+        }
 
         return updatedSubject;
     } catch (error) {
@@ -123,17 +146,74 @@ async function UpdateSubject(_, { id, updateSubjectInput }) {
 }
 
 /**
- * GraphQL resolver to delete a subject by its ID.
+ * GraphQL resolver to perform a deep, cascading soft delete on a subject and all its descendants,
+ * and removes the subject's reference from its parent block.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the subject to delete.
- * @returns {Promise<object>} - A promise that resolves to the deleted subject object.
+ * @returns {Promise<object>} - A promise that resolves to the subject object as it was before being soft-deleted.
  */
 async function DeleteSubject(_, { id }) {
     try {
-        validator.ValidateDeleteSubjectInput(id);
+        const userId = '6846e5769e5502fce150eb67';
 
-        const deletedSubject = await helper.DeleteSubjectHelper(id);
+        GlobalValidator.ValidateObjectId(id);
+
+        const {
+            subject,
+            block,
+            tests,
+            tasks,
+            studentTestResults
+        } = await SubjectHelper.GetDeleteSubjectPayload(id, userId);
+
+        if (studentTestResults) {
+            const studentResultUpdate = await StudentTestResultModel.updateMany(
+                studentTestResults.filter,
+                studentTestResults.update
+            );
+            if (studentResultUpdate.matchedCount === 0) {
+                throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
+            }
+        }
+
+        if (tasks) {
+            const taskUpdate = await TaskModel.updateMany(
+                tasks.filter,
+                tasks.update
+            );
+            if (taskUpdate.matchedCount === 0) {
+                throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
+            }
+        }
+
+        if (tests) {
+            const testUpdate = await TestModel.updateMany(
+                tests.filter,
+                tests.update
+            );
+            if (testUpdate.matchedCount === 0) {
+                throw new ApolloError('No tests matched for deletion', 'TESTS_NOT_FOUND');
+            }
+        }
+
+        const deletedSubject = await SubjectModel.findOneAndUpdate(
+            subject.filter,
+            subject.update
+        );
+
+        if (!deletedSubject) {
+            throw new ApolloError('Subject deletion failed', 'SUBJECT_DELETION_FAILED');
+        }
+
+        const updatedBlock = await BlockModel.updateOne(
+            block.filter,
+            block.update
+        );
+
+        if (!updatedBlock) {
+            throw new ApolloError('Failed to update block (remove subject)', 'BLOCK_UPDATE_FAILED');
+        }
 
         return deletedSubject;
     } catch (error) {
@@ -156,7 +236,7 @@ async function DeleteSubject(_, { id }) {
  */
 async function BlockLoader(subject, _, context) {
     try {
-        validator.ValidateBlockLoaderInput(subject, context);
+        SubjectValidator.ValidateBlockLoaderInput(subject, context);
 
         const block = await context.dataLoaders.BlockLoader.load(subject.block);
 
@@ -178,8 +258,8 @@ async function BlockLoader(subject, _, context) {
  */
 async function ConnectedBlocksLoader(subject, _, context) {
     try {
-        validator.ValidateConnectedBlocksLoaderInput(subject, context);
-        
+        SubjectValidator.ValidateConnectedBlocksLoaderInput(subject, context);
+
         const connected_blocks = await context.dataLoaders.BlockLoader.loadMany(subject.connected_blocks);
 
         return connected_blocks;
@@ -202,7 +282,7 @@ async function ConnectedBlocksLoader(subject, _, context) {
  */
 async function TestLoader(subject, _, context) {
     try {
-        validator.ValidateTestLoaderInput(subject, context);
+        SubjectValidator.ValidateTestLoaderInput(subject, context);
 
         const tests = await context.dataLoaders.TestLoader.loadMany(subject.tests);
 
@@ -226,7 +306,7 @@ async function TestLoader(subject, _, context) {
  */
 async function CreatedByLoader(subject, _, context) {
     try {
-        validator.ValidateUserLoaderInput(subject, context, 'created_by');
+        SubjectValidator.ValidateUserLoaderInput(subject, context, 'created_by');
 
         const created_by = await context.dataLoaders.UserLoader.load(subject.created_by);
 
@@ -248,7 +328,7 @@ async function CreatedByLoader(subject, _, context) {
  */
 async function UpdatedByLoader(subject, _, context) {
     try {
-        validator.ValidateUserLoaderInput(subject, context, 'updated_by');
+        SubjectValidator.ValidateUserLoaderInput(subject, context, 'updated_by');
 
         const updated_by = await context.dataLoaders.UserLoader.load(subject.updated_by);
 
@@ -270,7 +350,7 @@ async function UpdatedByLoader(subject, _, context) {
  */
 async function DeletedByLoader(subject, _, context) {
     try {
-        validator.ValidateUserLoaderInput(subject, context, 'deleted_by');
+        SubjectValidator.ValidateUserLoaderInput(subject, context, 'deleted_by');
 
         const deleted_by = await context.dataLoaders.UserLoader.load(subject.deleted_by);
 

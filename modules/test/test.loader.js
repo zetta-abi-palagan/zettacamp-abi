@@ -16,7 +16,7 @@ function TestLoader() {
         try {
             const tests = await TestModel.find({
                 _id: { $in: testIds },
-                test_status: 'ACTIVE',
+                test_status: { $ne: 'DELETED' },
             });
 
             const testsById = new Map(tests.map(test => [String(test._id), test]));

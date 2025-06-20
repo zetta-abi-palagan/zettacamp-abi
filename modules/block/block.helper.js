@@ -1,27 +1,33 @@
+// *************** IMPORT CORE ***************
+const mongoose = require('mongoose');
+
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
 // *************** IMPORT MODULE *************** 
 const BlockModel = require('./block.model');
 const SubjectModel = require('../subject/subject.model');
+const TestModel = require('../test/test.model');
 
 // *************** IMPORT VALIDATOR ***************
 const GlobalValidator = require('../../shared/validator/index');
 
 /**
  * Creates a clean data payload from a raw block input object.
- * @param {object} BlockInput - An object containing the block's properties.
- * @param {string} BlockInput.name - The name of the block.
- * @param {string} BlockInput.description - The description of the block.
- * @param {string} BlockInput.evaluation_type - The evaluation method.
- * @param {string} BlockInput.block_type - The type of block.
- * @param {string} [BlockInput.connected_block] - Optional. The ID of a related block.
- * @param {boolean} BlockInput.is_counted_in_final_transcript - Flag indicating if the block affects the final transcript.
- * @param {string} BlockInput.block_status - The status of the block.
+ * @param {object} createBlockInput - An object containing the block's properties.
+ * @param {string} createBlockInput.name - The name of the block.
+ * @param {string} createBlockInput.description - The description of the block.
+ * @param {string} createBlockInput.evaluation_type - The evaluation method.
+ * @param {string} createBlockInput.block_type - The type of block.
+ * @param {string} [createBlockInput.connected_block] - Optional. The ID of a related block.
+ * @param {boolean} createBlockInput.is_counted_in_final_transcript - Flag indicating if the block affects the final transcript.
+ * @param {string} createBlockInput.block_status - The status of the block.
+ * @param {string} userId - The ID of the user creating or updating the block.
  * @returns {object} A processed data payload suitable for database operations.
  */
-function GetBlockPayload(BlockInput) {
-    GlobalValidator.ValidateInputTypeObject(BlockInput);
+function GetCreateBlockPayload(createBlockInput, userId) {
+    GlobalValidator.ValidateInputTypeObject(createBlockInput);
+    GlobalValidator.ValidateObjectId(userId);
 
     const {
         name,
@@ -31,10 +37,7 @@ function GetBlockPayload(BlockInput) {
         connected_block,
         is_counted_in_final_transcript,
         block_status
-    } = BlockInput;
-
-    // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-    const createdByUserId = '6846e5769e5502fce150eb67';
+    } = createBlockInput;
 
     return {
         name,
@@ -49,19 +52,59 @@ function GetBlockPayload(BlockInput) {
     }
 }
 
-/**
- * Generates a payload with filter and update documents for a cascading soft delete of a block, its subjects, and their tests.
- * @param {string} id - The unique identifier of the block to be deleted.
- * @returns {Promise<object>} A promise that resolves to a structured payload for the delete operations.
- */
-async function GetDeleteBlockPayload(id) {
-    GlobalValidator.ValidateObjectId(id);
 
-    // *************** Dummy user ID (replace with real one later)
-    const deletedByUserId = '6846e5769e5502fce150eb67';
+/**
+ * Generates the payload for updating a block with the provided input and user ID.
+ * @param {Object} updateBlockInput - The input object containing block details.
+ * @param {string} updateBlockInput.name - The name of the block.
+ * @param {string} updateBlockInput.description - The description of the block.
+ * @param {string} updateBlockInput.evaluation_type - The evaluation type of the block.
+ * @param {string} updateBlockInput.block_type - The type of the block.
+ * @param {string|number} updateBlockInput.connected_block - The connected block identifier.
+ * @param {boolean} updateBlockInput.is_counted_in_final_transcript - Whether the block is counted in the final transcript.
+ * @param {string} updateBlockInput.block_status - The status of the block.
+ * @param {string} userId - The ID of the user performing the update.
+ * @returns {Object} The payload object for updating the block.
+ */
+function GetUpdateBlockPayload(updateBlockInput, userId) {
+    GlobalValidator.ValidateInputTypeObject(updateBlockInput);
+    GlobalValidator.ValidateObjectId(userId);
+
+    const {
+        name,
+        description,
+        evaluation_type,
+        block_type,
+        connected_block,
+        is_counted_in_final_transcript,
+        block_status
+    } = updateBlockInput;
+
+    return {
+        name,
+        description,
+        evaluation_type: evaluation_type.toUpperCase(),
+        block_type: block_type.toUpperCase(),
+        connected_block,
+        is_counted_in_final_transcript,
+        block_status: block_status.toUpperCase(),
+        updated_by: userId
+    }
+}
+
+/**
+ * Generates a payload for a deep, cascading soft delete of a block and all its descendants.
+ * This includes the block itself, its subjects, their tests, and those tests' tasks and student results.
+ * @param {string} id - The unique identifier of the root block to be deleted.
+ * @param {string} userId - The ID of the user performing the deletion.
+ * @returns {Promise<object>} A promise that resolves to a structured payload for all required delete operations.
+ */
+async function GetDeleteBlockPayload(blockId, userId) {
+    GlobalValidator.ValidateObjectId(blockId);
+
     const deletionTimestamp = Date.now();
 
-    const block = await BlockModel.findById(id);
+    const block = await BlockModel.findById(blockId);
     if (!block) {
         throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
     }
@@ -70,16 +113,18 @@ async function GetDeleteBlockPayload(id) {
 
     const deleteBlockPayload = {
         block: {
-            filter: { _id: id },
+            filter: { _id: blockId },
             update: {
                 block_status: 'DELETED',
-                updated_at: deletedByUserId,
-                deleted_by: deletedByUserId,
+                updated_at: userId,
+                deleted_by: userId,
                 deleted_at: deletionTimestamp
             }
         },
         subjects: null,
-        tests: null
+        tests: null,
+        tasks: null,
+        studentTestResults: null
     };
 
     if (subjectIds.length) {
@@ -95,8 +140,8 @@ async function GetDeleteBlockPayload(id) {
             filter: { _id: { $in: subjectIds } },
             update: {
                 subject_status: 'DELETED',
-                updated_at: deletedByUserId,
-                deleted_by: deletedByUserId,
+                updated_at: userId,
+                deleted_by: userId,
                 deleted_at: deletionTimestamp
             }
         };
@@ -107,15 +152,54 @@ async function GetDeleteBlockPayload(id) {
                 throw new ApolloError('One or more test IDs are invalid', 'INVALID_TEST_ID');
             }
 
+            const tests = await TestModel.find({ _id: { $in: testIds } });
+
+            const allTaskIds = [].concat(...tests.map(test => test.tasks || []));
+            const allStudentResultIds = [].concat(...tests.map(test => test.student_test_results || []));
+
             deleteBlockPayload.tests = {
                 filter: { _id: { $in: testIds } },
                 update: {
                     test_status: 'DELETED',
-                    updated_at: deletedByUserId,
-                    deleted_by: deletedByUserId,
+                    updated_at: userId,
+                    deleted_by: userId,
                     deleted_at: deletionTimestamp
                 }
             };
+
+            if (allTaskIds.length) {
+                const areAllTaskIdsValid = allTaskIds.every(id => mongoose.Types.ObjectId.isValid(id));
+                if (!areAllTaskIdsValid) {
+                    throw new ApolloError('One or more task IDs are invalid', 'INVALID_TASK_ID');
+                }
+
+                deleteBlockPayload.tasks = {
+                    filter: { _id: { $in: allTaskIds } },
+                    update: {
+                        task_status: 'DELETED',
+                        updated_at: userId,
+                        deleted_by: userId,
+                        deleted_at: deletionTimestamp
+                    }
+                };
+            }
+
+            if (allStudentResultIds.length) {
+                const areAllStudentResultIdsValid = allStudentResultIds.every(id => mongoose.Types.ObjectId.isValid(id));
+                if (!areAllStudentResultIdsValid) {
+                    throw new ApolloError('One or more student test result IDs are invalid', 'INVALID_STUDENT_TEST_RESULT_ID');
+                }
+
+                deleteBlockPayload.studentTestResults = {
+                    filter: { _id: { $in: allStudentResultIds } },
+                    update: {
+                        result_status: 'DELETED',
+                        updated_at: userId,
+                        deleted_by: userId,
+                        deleted_at: deletionTimestamp
+                    }
+                };
+            }
         }
     }
 
@@ -124,6 +208,7 @@ async function GetDeleteBlockPayload(id) {
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetBlockPayload,
+    GetCreateBlockPayload,
+    GetUpdateBlockPayload,
     GetDeleteBlockPayload,
 }

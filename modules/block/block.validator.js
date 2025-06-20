@@ -82,9 +82,7 @@ function ValidateBlockInput(blockInput) {
     }
 
     if (connected_block && block_type.toUpperCase() !== 'RETAKE') {
-        throw new ApolloError('Block type must be RETAKE to have a connected block.', 'BAD_USER_INPUT', {
-            field: 'connected_block'
-        });
+        throw new ApolloError('Block type must be RETAKE to have a connected block.', 'BAD_USER_INPUT', { field: 'connected_block' });
     }
 }
 

@@ -5,33 +5,6 @@ const mongoose = require('mongoose');
 const { ApolloError } = require('apollo-server');
 
 /**
- * Validates that the provided input is a non-array object.
- * @param {object} input - The input variable to be validated.
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateInputTypeObject(input) {
-    if (!input || typeof input !== 'object' || Array.isArray(input)) {
-        throw new Error('Input must be a valid object');
-    }
-}
-
-/**
- * Validates if the provided value is a valid MongoDB ObjectId.
- * @param {string} id - The ID to be validated.
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateObjectId(id) {
-    if (!id) {
-        throw new ApolloError(`ID required: ${id}`, "INTERNAL_SERVER_ERROR");
-    }
-
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${id}`, "INTERNAL_SERVER_ERROR");
-    }
-}
-
-/**
  * Validates the input for fetching all subjects.
  * @param {string} subject_status - The status of the subjects to filter by (optional).
  * @returns {void} - This function does not return a value but throws an error if validation fails.
@@ -51,128 +24,56 @@ function ValidateGetAllSubjectsInput(subject_status) {
 }
 
 /**
- * Validates the input for fetching a single subject.
- * @param {string} id - The ID of the subject to validate.
+ * Validates the input object for creating or updating a subject.
+ * @param {object} subjectInput - An object containing the subject's properties to be validated.
+ * @param {string} subjectInput.name - The name of the subject.
+ * @param {string} subjectInput.description - The description of the subject.
+ * @param {number} subjectInput.coefficient - The coefficient value for the subject.
+ * @param {string} [subjectInput.subject_status] - Optional. The status of the subject (e.g., 'ACTIVE').
+ * @param {Array<string>} [subjectInput.connected_blocks] - Optional. An array of block IDs to connect.
+ * @param {boolean} isTransversal - A flag indicating if the subject belongs to a transversal block.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateGetOneSubjectInput(id) {
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
-    }
-}
-
-/**
- * Validates the input fields for creating a new subject.
- * @param {string} block - The ID of the block to which the subject will be added.
- * @param {string} name - The name of the subject.
- * @param {string} description - The description of the subject.
- * @param {number} coefficient - The coefficient value of the subject.
- * @param {string} subject_status - The initial status of the subject (e.g., 'ACTIVE').
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateCreateSubjectInput(block, name, description, coefficient, subject_status) {
+function ValidateSubjectInput(subjectInput, isTransversal) {
+    const { name, description, coefficient, subject_status, connected_blocks } = subjectInput;
     const validStatus = ['ACTIVE', 'INACTIVE'];
 
-    if (!mongoose.Types.ObjectId.isValid(block)) {
-        throw new ApolloError(`Invalid block ID: ${block}`, "BAD_USER_INPUT", {
-            field: 'block'
-        });
-    }
-
     if (!name || typeof name !== 'string' || name.trim() === '') {
-        throw new ApolloError('Name is required.', 'BAD_USER_INPUT', {
-            field: 'name'
-        });
+        throw new ApolloError('Name is required.', 'BAD_USER_INPUT', { field: 'name' });
     }
 
     if (!description || typeof description !== 'string' || description.trim() === '') {
-        throw new ApolloError('Description is required.', 'BAD_USER_INPUT', {
-            field: 'description'
-        });
+        throw new ApolloError('Description is required.', 'BAD_USER_INPUT', { field: 'description' });
     }
 
     if (typeof coefficient !== 'number' || isNaN(coefficient) || coefficient < 0) {
-        throw new ApolloError('Coefficient is required and must be a number greater than or equal to 0.', 'BAD_USER_INPUT', {
-            field: 'coefficient'
-        });
+        throw new ApolloError('Coefficient is required and must be a number >= 0.', 'BAD_USER_INPUT', { field: 'coefficient' });
     }
 
-    if (!subject_status || typeof subject_status !== 'string' || !validStatus.includes(subject_status.toUpperCase())) {
-        throw new ApolloError(`Subject status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
-            field: 'subject_status'
-        });
-    }
-}
-
-/**
- * Validates the input fields for updating an existing subject.
- * @param {string} id - The unique identifier of the subject to be updated.
- * @param {string} name - The name of the subject.
- * @param {string} description - The description of the subject.
- * @param {number} coefficient - The coefficient value of the subject.
- * @param {Array<string>} connected_blocks - An array of block IDs to connect to a transversal subject.
- * @param {string} subject_status - The status of the subject (e.g., 'ACTIVE').
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status) {
-    const validStatus = ['ACTIVE', 'INACTIVE'];
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
+    if (subject_status && !validStatus.includes(subject_status.toUpperCase())) {
+        throw new ApolloError(`Subject status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', { field: 'subject_status' });
     }
 
-    if (!name || typeof name !== 'string' || name.trim() === '') {
-        throw new ApolloError('Name is required.', 'BAD_USER_INPUT', {
-            field: 'name'
-        });
-    }
-
-    if (!description || typeof description !== 'string' || description.trim() === '') {
-        throw new ApolloError('Description is required.', 'BAD_USER_INPUT', {
-            field: 'description'
-        });
-    }
-
-    if (typeof coefficient !== 'number' || isNaN(coefficient) || coefficient < 0) {
-        throw new ApolloError('Coefficient is required and must be a number greater than or equal to 0.', 'BAD_USER_INPUT', {
-            field: 'coefficient'
-        });
+    if (typeof isTransversal !== 'boolean') {
+        throw new ApolloError('isTransversal must be a boolean.', 'BAD_USER_INPUT', { field: 'isTransversal' });
     }
 
     if (connected_blocks) {
         if (!Array.isArray(connected_blocks)) {
-            throw new ApolloError('Connected blocks must be an array.', 'BAD_USER_INPUT', {
-                field: 'connected_blocks'
-            });
+            throw new ApolloError('Connected blocks must be an array.', 'BAD_USER_INPUT', { field: 'connected_blocks' });
         }
 
         for (const blockId of connected_blocks) {
             if (!mongoose.Types.ObjectId.isValid(blockId)) {
-                throw new ApolloError(`Invalid connected block ID: ${blockId}`, 'BAD_USER_INPUT', {
-                    field: 'connected_blocks'
-                });
+                throw new ApolloError(`Invalid connected block ID: ${blockId}`, 'BAD_USER_INPUT', { field: 'connected_blocks' });
             }
         }
     }
 
-    if (!subject_status || typeof subject_status !== 'string' || !validStatus.includes(subject_status.toUpperCase())) {
-        throw new ApolloError(`Subject status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
-            field: 'subject_status'
-        });
+    if (connected_blocks && !isTransversal) {
+        throw new ApolloError('Connected blocks can only be assigned to a subject within a transversal block.', 'BAD_USER_INPUT', { field: 'connected_blocks' });
     }
-}
 
-/**
- * Validates the input ID for deleting a subject.
- * @param {string} id - The ID of the subject to validate.
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateDeleteSubjectInput(id) {
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
-    }
 }
 
 /**
@@ -302,13 +203,8 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    ValidateInputTypeObject,
-    ValidateObjectId,
     ValidateGetAllSubjectsInput,
-    ValidateGetOneSubjectInput,
-    ValidateCreateSubjectInput,
-    ValidateUpdateSubjectInput,
-    ValidateDeleteSubjectInput,
+    ValidateSubjectInput,
     ValidateBlockLoaderInput,
     ValidateConnectedBlocksLoaderInput,
     ValidateTestLoaderInput,

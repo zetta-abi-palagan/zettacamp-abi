@@ -9,265 +9,155 @@ const SubjectModel = require('./subject.model');
 const BlockModel = require('../block/block.model');
 
 // *************** IMPORT VALIDATOR ***************
-const validator = require('./subject.validator');
+const GlobalValidator = require('../../shared/validator/index');
 
 /**
- * Fetches all subjects from the database, with an optional filter for subject status.
- * @param {string} [subject_status] - Optional. The status of the subjects to fetch (e.g., 'ACTIVE').
- * @returns {Promise<Array<object>>} - A promise that resolves to an array of subject objects.
+ * Creates a clean data payload for a new subject.
+ * @param {object} subjectInput - The raw input object containing the subject's properties.
+ * @param {boolean} isTransversal - A flag indicating if the subject is transversal.
+ * @param {string} userId - The ID of the user creating the subject.
+ * @returns {object} A processed data payload suitable for a create operation.
  */
-async function GetAllSubjectsHelper(subject_status) {
-    try {
-        validator.ValidateGetAllSubjectsInput(subject_status);
+function GetCreateSubjectPayload(subjectInput, isTransversal, userId) {
+    GlobalValidator.ValidateInputTypeObject(subjectInput);
+    GlobalValidator.ValidateObjectId(userId);
 
-        const filter = {};
+    const {
+        name,
+        description,
+        coefficient,
+        subject_status
+    } = subjectInput;
 
-        if (subject_status) {
-            filter.subject_status = subject_status;
-        }
-
-        const subjects = await SubjectModel.find(filter);
-
-        return subjects;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch subjects: ${error.message}`, "INTERNAL_SERVER_ERROR");
-    }
+    return {
+        name,
+        description,
+        coefficient,
+        is_transversal: isTransversal,
+        subject_status: subject_status.toUpperCase(),
+        created_by: userId,
+        updated_by: userId
+    };
 }
 
 /**
- * Fetches a single subject by its unique ID.
- * @param {string} id - The unique identifier of the subject to retrieve.
- * @returns {Promise<object>} - A promise that resolves to the found subject object.
+ * Creates a clean data payload for updating an existing subject.
+ * @param {object} subjectInput - The raw input object containing the subject's properties to update.
+ * @param {string} userId - The ID of the user updating the subject.
+ * @returns {object} A processed data payload suitable for an update operation.
  */
-async function GetOneSubjectHelper(id) {
-    try {
-        validator.ValidateGetOneSubjectInput(id);
+function GetUpdateSubjectPayload(subjectInput, userId) {
+    GlobalValidator.ValidateInputTypeObject(subjectInput);
+    GlobalValidator.ValidateObjectId(userId);
 
-        const subject = await SubjectModel.findOne({ _id: id });
+    const {
+        name,
+        description,
+        coefficient,
+        connected_blocks,
+        subject_status
+    } = subjectInput;
 
-        if (!subject) {
-            throw new ApolloError('Subject not found', 'SUBJECT_NOT_FOUND');
-        }
-
-        return subject;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch subject: ${error.message}`, "INTERNAL_SERVER_ERROR");
-    }
+    return {
+        name,
+        description,
+        coefficient,
+        connected_blocks,
+        subject_status: subject_status.toUpperCase(),
+        updated_by: userId
+    };
 }
 
 /**
- * Creates a new subject after validating the input, and updates the parent block.
- * @param {string} block - The ID of the block to which the subject will be added.
- * @param {string} name - The name of the subject.
- * @param {string} description - The description of the subject.
- * @param {number} coefficient - The coefficient value of the subject.
- * @param {string} subject_status - The initial status of the subject (e.g., 'ACTIVE').
- * @returns {Promise<object>} - A promise that resolves to the newly created subject object.
+ * Generates a payload for a deep, cascading soft delete of a subject and all its descendants.
+ * This includes the subject itself, its tests, and those tests' tasks and student results.
+ * @param {string} subjectId - The unique identifier of the root subject to be deleted.
+ * @param {string} userId - The ID of the user performing the deletion.
+ * @returns {Promise<object>} A promise that resolves to a structured payload for all required delete operations.
  */
-async function CreateSubjectHelper(block, name, description, coefficient, subject_status) {
-    try {
-        validator.ValidateCreateSubjectInput(block, name, description, coefficient, subject_status);
+async function GetDeleteSubjectPayload(subjectId, userId) {
+    GlobalValidator.ValidateObjectId(subjectId);
 
-        const blockCheck = await BlockModel.findOne({
-            _id: block,
-            block_status: 'ACTIVE'
-        });
-        if (!blockCheck) {
-            throw new ApolloError('Block not found or is not active', 'NOT_FOUND', {
-                field: 'block'
-            });
+    const deletionTimestamp = Date.now();
+
+    const subject = await SubjectModel.findById(subjectId);
+    if (!subject) {
+        throw new ApolloError('Subject not found', 'SUBJECT_NOT_FOUND');
+    }
+
+    const testIds = subject.tests || [];
+
+    const deleteSubjectPayload = {
+        subject: {
+            filter: { _id: subjectId },
+            update: {
+                subject_status: 'DELETED',
+                updated_by: userId,
+                deleted_by: userId,
+                deleted_at: deletionTimestamp
+            }
+        },
+        block: {
+            filter: { subjects: { $in: [subjectId] } },
+            update: { $pull: { subjects: subjectId } }
+        },
+        tests: null,
+        tasks: null,
+        studentTestResults: null
+    };
+
+    if (testIds.length) {
+        const areValid = testIds.every(id => mongoose.Types.ObjectId.isValid(id));
+        if (!areValid) {
+            throw new ApolloError('One or more test IDs are invalid', 'INVALID_TEST_ID');
         }
 
-        if (typeof subject_status !== 'string') {
-            throw new ApolloError('Invalid subject_status: must be a string.', 'INTERNAL_LOGIC_ERROR');
-        }
+        const tests = await TestModel.find({ _id: { $in: testIds } });
 
-        const upperSubjectStatus = subject_status.toUpperCase();
+        const allTaskIds = [].concat(...tests.map(test => test.tasks || []));
+        const allStudentResultIds = [].concat(...tests.map(test => test.student_test_results || []));
 
-        const checkTransversalBlock = await BlockModel.findOne({ _id: block, block_type: 'TRANSVERSAL' });
-        const isTransversal = checkTransversalBlock ? true : false;
-
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const createdByUserId = '6846e5769e5502fce150eb67';
-
-        const subjectData = {
-            block: block,
-            name: name,
-            description: description,
-            coefficient: coefficient,
-            is_transversal: isTransversal,
-            subject_status: upperSubjectStatus,
-            created_by: createdByUserId,
-            updated_by: createdByUserId
+        deleteSubjectPayload.tests = {
+            filter: { _id: { $in: testIds } },
+            update: {
+                test_status: 'DELETED',
+                updated_by: userId,
+                deleted_by: userId,
+                deleted_at: deletionTimestamp
+            }
         };
 
-        const newSubject = await SubjectModel.create(subjectData);
-
-        if (!newSubject) {
-            throw new ApolloError('Subject creation failed', 'SUBJECT_CREATION_FAILED');
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(newSubject._id)) {
-            throw new ApolloError('Generated subject ID is invalid', 'INVALID_SUBJECT_ID');
-        }
-
-        await BlockModel.updateOne(
-            { _id: block, block_status: 'ACTIVE' },
-            {
-                $addToSet: { subjects: newSubject._id },
-                $set: { updated_by: createdByUserId }
-            }
-        );
-
-        return newSubject;
-    } catch (error) {
-        throw new ApolloError('Failed to create subject', 'SUBJECT_CREATION_FAILED', {
-            error: error.message
-        });
-    }
-}
-
-/**
- * Updates an existing subject after validating the provided data.
- * @param {string} id - The unique identifier of the subject to be updated.
- * @param {string} name - The name of the subject.
- * @param {string} description - The description of the subject.
- * @param {number} coefficient - The coefficient value of the subject.
- * @param {Array<string>} connected_blocks - An array of block IDs to connect to a transversal subject.
- * @param {string} subject_status - The status of the subject (e.g., 'ACTIVE').
- * @returns {Promise<object>} - A promise that resolves to the updated subject object.
- */
-async function UpdateSubjectHelper(id, name, description, coefficient, connected_blocks, subject_status) {
-    try {
-        validator.ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
-
-        const subject = await SubjectModel.findById(id);
-        if (!subject) {
-            throw new ApolloError(`Subject with ID ${id} not found.`, 'NOT_FOUND', {
-                field: 'id'
-            });
-        }
-
-        if (
-            Array.isArray(connected_blocks) &&
-            connected_blocks.length &&
-            !subject.is_transversal
-        ) {
-            throw new ApolloError('Connected blocks are only allowed when the subject is transversal.', 'BAD_USER_INPUT', {
-                field: 'connected_blocks'
-            });
-        }
-
-        if (typeof subject_status !== 'string') {
-            throw new ApolloError('Invalid subject_status: must be a string.', 'INTERNAL_LOGIC_ERROR');
-        }
-
-        const upperSubjectStatus = subject_status.toUpperCase();
-
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const updatedByUserId = '6846e5769e5502fce150eb67';
-
-        const subjectData = {
-            name: name,
-            description: description,
-            coefficient: coefficient,
-            connected_blocks: connected_blocks,
-            is_transversal: isTransversal,
-            subject_status: upperSubjectStatus,
-            updated_by: updatedByUserId
-        };
-
-        const updatedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, subjectData, { new: true });
-
-        if (!updatedSubject) {
-            throw new ApolloError('Subject update failed', 'SUBJECT_UPDATE_FAILED');
-        }
-
-        return updatedSubject;
-    } catch (error) {
-        throw new ApolloError('Failed to update subject', 'SUBJECT_UPDATE_FAILED', {
-            error: error.message
-        });
-    }
-}
-
-/**
- * Performs a cascading soft delete on a subject and its associated tests,
- * and removes the subject's reference from its parent block.
- * @param {string} id - The unique identifier of the subject to be deleted.
- * @returns {Promise<object>} - A promise that resolves to the subject object as it was before being updated.
- */
-async function DeleteSubjectHelper(id) {
-    try {
-        validator.ValidateDeleteSubjectInput(id);
-
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const deletedByUserId = '6846e5769e5502fce150eb67';
-        const deletionTimestamp = Date.now();
-
-        const subject = await SubjectModel.findById(id);
-        if (!subject) {
-            throw new ApolloError('Subject not found', 'BLOCK_NOT_FOUND');
-        }
-
-        const testIds = subject.tests || [];
-
-        if (testIds.length) {
-            const areAllValidIds = testIds.every(id => mongoose.Types.ObjectId.isValid(id));
-
-            if (!areAllValidIds) {
-                throw new ApolloError('One or more test IDs are invalid', 'INVALID_ID');
-            }
-
-            await testModel.updateMany(
-                { _id: { $in: testIds } },
-                {
-                    test_status: 'DELETED',
-                    updated_at: deletedByUserId,
-                    deleted_by: deletedByUserId,
+        if (allTaskIds.length) {
+            deleteSubjectPayload.tasks = {
+                filter: { _id: { $in: allTaskIds } },
+                update: {
+                    task_status: 'DELETED',
+                    updated_by: userId,
+                    deleted_by: userId,
                     deleted_at: deletionTimestamp
                 }
-            )
+            };
         }
 
-        const subjectData = {
-            subject_status: 'DELETED',
-            updated_at: deletedByUserId,
-            deleted_by: deletedByUserId,
-            deleted_at: deletionTimestamp
+        if (allStudentResultIds.length) {
+            deleteSubjectPayload.studentTestResults = {
+                filter: { _id: { $in: allStudentResultIds } },
+                update: {
+                    result_status: 'DELETED',
+                    updated_by: userId,
+                    deleted_by: userId,
+                    deleted_at: deletionTimestamp
+                }
+            };
         }
-
-        const deletedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, subjectData);
-
-        if (!deletedSubject) {
-            throw new ApolloError('Subject deletion failed', 'SUBJECT_DELETION_FAILED');
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(deletedSubject._id)) {
-            throw new ApolloError('Generated subject ID is invalid', 'INVALID_SUBJECT_ID');
-        }
-
-        await BlockModel.updateOne(
-            { _id: deletedSubject.block, block_status: 'ACTIVE' },
-            {
-                $pull: { subjects: deletedSubject._id },
-                $set: { updated_by: deletedByUserId }
-            }
-        );
-
-        return deletedSubject;
-    } catch (error) {
-        throw new ApolloError('Failed to delete subject', 'SUBJECT_DELETION_FAILED', {
-            error: error.message
-        });
     }
+
+    return deleteSubjectPayload;
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetAllSubjectsHelper,
-    GetOneSubjectHelper,
-    CreateSubjectHelper,
-    UpdateSubjectHelper,
-    DeleteSubjectHelper
+    GetCreateSubjectPayload,
+    GetUpdateSubjectPayload,
+    GetDeleteSubjectPayload
 }
