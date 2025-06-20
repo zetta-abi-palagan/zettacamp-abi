@@ -9,7 +9,7 @@ const { ApolloError } = require('apollo-server');
  * @param {string} block_status - The status of the blocks to filter by (optional).
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateGetAllBlocksInput(block_status) {
+function ValidateBlockStatusFilter(block_status) {
     const validStatus = ['ACTIVE', 'INACTIVE', 'DELETED'];
 
     if (!block_status) {
@@ -159,7 +159,7 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    ValidateGetAllBlocksInput,
+    ValidateBlockStatusFilter,
     ValidateBlockInput,
     ValidateSubjectLoaderInput,
     ValidateUserLoaderInput

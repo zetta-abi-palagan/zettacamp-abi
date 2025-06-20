@@ -10,7 +10,7 @@ const SubjectModel = require('../subject/subject.model');
 const TestModel = require('../test/test.model');
 
 // *************** IMPORT VALIDATOR ***************
-const GlobalValidator = require('../../shared/validator/index');
+const CommonValidator = require('../../shared/validator/index');
 
 /**
  * Creates a clean data payload from a raw block input object.
@@ -26,8 +26,8 @@ const GlobalValidator = require('../../shared/validator/index');
  * @returns {object} A processed data payload suitable for database operations.
  */
 function GetCreateBlockPayload(createBlockInput, userId) {
-    GlobalValidator.ValidateInputTypeObject(createBlockInput);
-    GlobalValidator.ValidateObjectId(userId);
+    CommonValidator.ValidateInputTypeObject(createBlockInput);
+    CommonValidator.ValidateObjectId(userId);
 
     const {
         name,
@@ -47,8 +47,8 @@ function GetCreateBlockPayload(createBlockInput, userId) {
         connected_block,
         is_counted_in_final_transcript,
         block_status: block_status.toUpperCase(),
-        created_by: createdByUserId,
-        updated_by: createdByUserId
+        created_by: userId,
+        updated_by: userId
     }
 }
 
@@ -67,8 +67,8 @@ function GetCreateBlockPayload(createBlockInput, userId) {
  * @returns {Object} The payload object for updating the block.
  */
 function GetUpdateBlockPayload(updateBlockInput, userId) {
-    GlobalValidator.ValidateInputTypeObject(updateBlockInput);
-    GlobalValidator.ValidateObjectId(userId);
+    CommonValidator.ValidateInputTypeObject(updateBlockInput);
+    CommonValidator.ValidateObjectId(userId);
 
     const {
         name,
@@ -100,10 +100,11 @@ function GetUpdateBlockPayload(updateBlockInput, userId) {
  * @returns {Promise<object>} A promise that resolves to a structured payload for all required delete operations.
  */
 async function GetDeleteBlockPayload(blockId, userId) {
-    GlobalValidator.ValidateObjectId(blockId);
+    CommonValidator.ValidateObjectId(blockId);
 
     const deletionTimestamp = Date.now();
 
+    // *************** Get block and prepare payload
     const block = await BlockModel.findById(blockId);
     if (!block) {
         throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
@@ -127,6 +128,7 @@ async function GetDeleteBlockPayload(blockId, userId) {
         studentTestResults: null
     };
 
+    // *************** Handle subjects
     if (subjectIds.length) {
         const areAllSubjectIdsValid = subjectIds.every(id => mongoose.Types.ObjectId.isValid(id));
         if (!areAllSubjectIdsValid) {
@@ -146,6 +148,7 @@ async function GetDeleteBlockPayload(blockId, userId) {
             }
         };
 
+        // *************** Handle tests
         if (testIds.length) {
             const areAllTestIdsValid = testIds.every(id => mongoose.Types.ObjectId.isValid(id));
             if (!areAllTestIdsValid) {
@@ -153,7 +156,6 @@ async function GetDeleteBlockPayload(blockId, userId) {
             }
 
             const tests = await TestModel.find({ _id: { $in: testIds } });
-
             const allTaskIds = [].concat(...tests.map(test => test.tasks || []));
             const allStudentResultIds = [].concat(...tests.map(test => test.student_test_results || []));
 
@@ -167,6 +169,7 @@ async function GetDeleteBlockPayload(blockId, userId) {
                 }
             };
 
+            // *************** Handle tasks
             if (allTaskIds.length) {
                 const areAllTaskIdsValid = allTaskIds.every(id => mongoose.Types.ObjectId.isValid(id));
                 if (!areAllTaskIdsValid) {
@@ -184,6 +187,7 @@ async function GetDeleteBlockPayload(blockId, userId) {
                 };
             }
 
+            // *************** Handle student test results
             if (allStudentResultIds.length) {
                 const areAllStudentResultIdsValid = allStudentResultIds.every(id => mongoose.Types.ObjectId.isValid(id));
                 if (!areAllStudentResultIdsValid) {

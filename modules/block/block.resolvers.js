@@ -13,7 +13,7 @@ const BlockHelper = require('./block.helper');
 
 // *************** IMPORT VALIDATOR ***************
 const BlockValidator = require('./block.validator');
-const GlobalValidator = require('../../shared/validator/index');
+const CommonValidator = require('../../shared/validator/index');
 
 // *************** QUERY ***************
 /**
@@ -25,9 +25,9 @@ const GlobalValidator = require('../../shared/validator/index');
  */
 async function GetAllBlocks(_, { block_status }) {
     try {
-        BlockValidator.ValidateGetAllBlocksInput(block_status);
+        BlockValidator.ValidateBlockStatusFilter(block_status);
 
-        const blockFilter = block_status ? { block_status: block_status } : {}
+        const blockFilter = block_status ? { block_status: block_status } : { block_status: { $ne: 'DELETED' } };
 
         const blocks = await BlockModel.find(blockFilter);
 
@@ -50,7 +50,7 @@ async function GetAllBlocks(_, { block_status }) {
  */
 async function GetOneBlock(_, { id }) {
     try {
-        GlobalValidator.ValidateObjectId(id)
+        CommonValidator.ValidateObjectId(id)
 
         const block = await BlockModel.findOne({ _id: id });
         if (!block) {
@@ -80,9 +80,10 @@ async function CreateBlock(_, { createBlockInput }) {
         // *************** Dummy user ID (replace with real one later)
         const userId = '6846e5769e5502fce150eb67';
 
-        GlobalValidator.ValidateInputTypeObject(createBlockInput);
+        CommonValidator.ValidateInputTypeObject(createBlockInput);
         BlockValidator.ValidateBlockInput(createBlockInput);
 
+        // *************** Prepare payload and create the block
         const createBlockPayload = BlockHelper.GetCreateBlockPayload(createBlockInput, userId);
 
         const newBlock = await BlockModel.create(createBlockPayload);
@@ -113,12 +114,14 @@ async function UpdateBlock(_, { id, updateBlockInput }) {
         // *************** Dummy user ID (replace with real one later)
         const userId = '6846e5769e5502fce150eb67';
 
-        GlobalValidator.ValidateObjectId(id);
-        GlobalValidator.ValidateInputTypeObject(updateBlockInput);
+        CommonValidator.ValidateObjectId(id);
+        CommonValidator.ValidateInputTypeObject(updateBlockInput);
         BlockValidator.ValidateBlockInput(updateBlockInput);
 
+        // *************** Get the payload for updating a block
         const updateBlockPayload = BlockHelper.GetUpdateBlockPayload(updateBlockInput, userId);
 
+        // *************** Update the block in the database
         const updatedBlock = await BlockModel.findOneAndUpdate({ _id: id }, updateBlockPayload, { new: true });
         if (!updatedBlock) {
             throw new ApolloError('Block update failed', 'BLOCK_UPDATE_FAILED');
@@ -146,8 +149,9 @@ async function DeleteBlock(_, { id }) {
         // *************** Dummy user ID (replace with real one later)
         const userId = '6846e5769e5502fce150eb67';
 
-        GlobalValidator.ValidateObjectId(id);
+        CommonValidator.ValidateObjectId(id);
 
+        // *************** Get the payload for deleting a block
         const {
             block,
             subjects,
@@ -156,50 +160,54 @@ async function DeleteBlock(_, { id }) {
             studentTestResults
         } = await BlockHelper.GetDeleteBlockPayload(id, userId);
 
+        // *************** Soft delete student test results if any
         if (studentTestResults) {
             const studentResultUpdate = await StudentTestResultModel.updateMany(
                 studentTestResults.filter,
                 studentTestResults.update
             );
-            if (studentResultUpdate.matchedCount === 0) {
+            if (studentResultUpdate.matchedCount) {
                 throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
             }
         }
 
+        // *************** Soft delete tasks if any
         if (tasks) {
             const taskUpdate = await TaskModel.updateMany(
                 tasks.filter,
                 tasks.update
             );
-            if (taskUpdate.matchedCount === 0) {
+            if (taskUpdate.matchedCount) {
                 throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
             }
         }
 
+        // *************** Soft delete tests if any
         if (tests) {
             const testUpdate = await TestModel.updateMany(
                 tests.filter,
                 tests.update
             );
-            if (testUpdate.matchedCount === 0) {
+            if (testUpdate.matchedCount) {
                 throw new ApolloError('No tests matched for deletion', 'TESTS_NOT_FOUND');
             }
         }
 
+        // *************** Soft delete subjects if any
         if (subjects) {
             const subjectUpdate = await SubjectModel.updateMany(
                 subjects.filter,
                 subjects.update
             );
-            if (subjectUpdate.matchedCount === 0) {
+            if (subjectUpdate.matchedCount) {
                 throw new ApolloError('No subjects matched for deletion', 'SUBJECTS_NOT_FOUND');
             }
         }
 
+        // *************** Soft delete the subject itself
         const deletedBlock = await BlockModel.findOneAndUpdate(
             block.filter,
-            block.update,
-            { new: true }
+            block.update
         );
 
         if (!deletedBlock) {

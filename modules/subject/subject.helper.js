@@ -9,7 +9,7 @@ const SubjectModel = require('./subject.model');
 const BlockModel = require('../block/block.model');
 
 // *************** IMPORT VALIDATOR ***************
-const GlobalValidator = require('../../shared/validator/index');
+const CommonValidator = require('../../shared/validator/index');
 
 /**
  * Creates a clean data payload for a new subject.
@@ -19,8 +19,8 @@ const GlobalValidator = require('../../shared/validator/index');
  * @returns {object} A processed data payload suitable for a create operation.
  */
 function GetCreateSubjectPayload(subjectInput, isTransversal, userId) {
-    GlobalValidator.ValidateInputTypeObject(subjectInput);
-    GlobalValidator.ValidateObjectId(userId);
+    CommonValidator.ValidateInputTypeObject(subjectInput);
+    CommonValidator.ValidateObjectId(userId);
 
     const {
         name,
@@ -47,8 +47,8 @@ function GetCreateSubjectPayload(subjectInput, isTransversal, userId) {
  * @returns {object} A processed data payload suitable for an update operation.
  */
 function GetUpdateSubjectPayload(subjectInput, userId) {
-    GlobalValidator.ValidateInputTypeObject(subjectInput);
-    GlobalValidator.ValidateObjectId(userId);
+    CommonValidator.ValidateInputTypeObject(subjectInput);
+    CommonValidator.ValidateObjectId(userId);
 
     const {
         name,
@@ -76,7 +76,7 @@ function GetUpdateSubjectPayload(subjectInput, userId) {
  * @returns {Promise<object>} A promise that resolves to a structured payload for all required delete operations.
  */
 async function GetDeleteSubjectPayload(subjectId, userId) {
-    GlobalValidator.ValidateObjectId(subjectId);
+    CommonValidator.ValidateObjectId(subjectId);
 
     const deletionTimestamp = Date.now();
 
@@ -87,6 +87,7 @@ async function GetDeleteSubjectPayload(subjectId, userId) {
 
     const testIds = subject.tests || [];
 
+    // *************** Build subject and block deletion payload
     const deleteSubjectPayload = {
         subject: {
             filter: { _id: subjectId },
@@ -106,9 +107,10 @@ async function GetDeleteSubjectPayload(subjectId, userId) {
         studentTestResults: null
     };
 
+    // *************** Handle tests
     if (testIds.length) {
-        const areValid = testIds.every(id => mongoose.Types.ObjectId.isValid(id));
-        if (!areValid) {
+        const areAllTestIdsValid = testIds.every(id => mongoose.Types.ObjectId.isValid(id));
+        if (!areAllTestIdsValid) {
             throw new ApolloError('One or more test IDs are invalid', 'INVALID_TEST_ID');
         }
 
@@ -127,7 +129,13 @@ async function GetDeleteSubjectPayload(subjectId, userId) {
             }
         };
 
+        // *************** Handle tasks
         if (allTaskIds.length) {
+            const areAllTaskIdsValid = allTaskIds.every(id => mongoose.Types.ObjectId.isValid(id));
+            if (!areAllTaskIdsValid) {
+                throw new ApolloError('One or more task IDs are invalid', 'INVALID_TASK_ID');
+            }
+
             deleteSubjectPayload.tasks = {
                 filter: { _id: { $in: allTaskIds } },
                 update: {
@@ -139,7 +147,13 @@ async function GetDeleteSubjectPayload(subjectId, userId) {
             };
         }
 
+        // *************** Handle student test results
         if (allStudentResultIds.length) {
+            const areAllStudentResultIdsValid = allStudentResultIds.every(id => mongoose.Types.ObjectId.isValid(id));
+            if (!areAllStudentResultIdsValid) {
+                throw new ApolloError('One or more student test result IDs are invalid', 'INVALID_STUDENT_TEST_RESULT_ID');
+            }
+
             deleteSubjectPayload.studentTestResults = {
                 filter: { _id: { $in: allStudentResultIds } },
                 update: {

@@ -6,6 +6,7 @@ const SubjectHelper = require('./subject.helper');
 
 // *************** IMPORT VALIDATOR ***************
 const SubjectValidator = require('./subject.validator');
+const CommonValidator = require('../../shared/validator/index');
 
 // *************** QUERY ***************
 /**
@@ -19,7 +20,7 @@ async function GetAllSubjects(_, { subject_status }) {
     try {
         SubjectValidator.ValidateGetAllSubjectsInput(subject_status);
 
-        const subjectFilter = subject_status ? { subject_status: subject_status } : {};
+        const subjectFilter = subject_status ? { subject_status: subject_status } : { subject_status: { $ne: 'DELETED' } };
 
         const subjects = await SubjectModel.find(subjectFilter);
 
@@ -42,7 +43,7 @@ async function GetAllSubjects(_, { subject_status }) {
  */
 async function GetOneSubject(_, { id }) {
     try {
-        GlobalValidator.ValidateObjectId(id);
+        CommonValidator.ValidateObjectId(id);
 
         const subject = await SubjectModel.findOne({ _id: id });
         if (!subject) {
@@ -72,18 +73,21 @@ async function CreateSubject(_, { createSubjectInput }) {
         // *************** Dummy user ID (replace with real one later)
         const userId = '6846e5769e5502fce150eb67';
 
-        GlobalValidator.ValidateInputTypeObject(createSubjectInput);
-        GlobalValidator.ValidateObjectId(createSubjectInput.block);
+        CommonValidator.ValidateInputTypeObject(createSubjectInput);
+        CommonValidator.ValidateObjectId(createSubjectInput.block);
 
+        // *************** Ensure parent block exists and is active
         const parentBlock = await BlockModel.findOne({ _id: createSubjectInput.block, block_status: 'ACTIVE' });
         if (!parentBlock) {
             throw new ApolloError('Parent block not found or is not active.', 'NOT_FOUND');
         }
 
+        // *************** Determine if subject is transversal based on parent block type
         const isTransversal = parentBlock.block_type === 'TRANSVERSAL';
 
         SubjectValidator.ValidateSubjectInput(createSubjectInput, isTransversal);
 
+        // *************** Prepare payload and create subject
         const createPayload = SubjectHelper.GetCreateSubjectPayload(createSubjectInput, isTransversal, userId);
 
         const newSubject = await SubjectModel.create(createPayload);
@@ -91,8 +95,12 @@ async function CreateSubject(_, { createSubjectInput }) {
             throw new ApolloError('Failed to create subject in database', 'CREATE_SUBJECT_FAILED');
         }
 
-        const updatedBlock = await BlockModel.updateOne({ _id: createSubjectInput.block }, { $addToSet: { subjects: newSubject._id } });
-        if (updatedBlock.modifiedCount === 0) {
+        // *************** Add new subject to parent block's subjects array
+        const updatedBlock = await BlockModel.updateOne(
+            { _id: createSubjectInput.block },
+            { $addToSet: { subjects: newSubject._id } }
+        );
+        if (updatedBlock.modifiedCount) {
             throw new ApolloError('Failed to add subject to block', 'BLOCK_UPDATE_FAILED');
         }
 
@@ -119,15 +127,17 @@ async function UpdateSubject(_, { id, updateSubjectInput }) {
         // *************** Dummy user ID (replace with real one later)
         const userId = '6846e5769e5502fce150eb67';
 
-        GlobalValidator.ValidateObjectId(id);
-        GlobalValidator.ValidateInputTypeObject(updateSubjectInput);
+        CommonValidator.ValidateObjectId(id);
+        CommonValidator.ValidateInputTypeObject(updateSubjectInput);
 
+        // *************** Find the subject to ensure it exists and get its is_transversal property
         const subject = await SubjectModel.findById(id);
         if (!subject) {
             throw new ApolloError('Subject not found', 'NOT_FOUND');
         }
         SubjectValidator.ValidateSubjectInput(updateSubjectInput, subject.is_transversal);
 
+        // *************** Prepare the payload and update the subject
         const updatePayload = SubjectHelper.GetUpdateSubjectPayload(updateSubjectInput, userId);
 
         const updatedSubject = await SubjectModel.findByIdAndUpdate(id, updatePayload, { new: true });
@@ -155,10 +165,12 @@ async function UpdateSubject(_, { id, updateSubjectInput }) {
  */
 async function DeleteSubject(_, { id }) {
     try {
+        // *************** Dummy user ID (replace with real one later)
         const userId = '6846e5769e5502fce150eb67';
 
-        GlobalValidator.ValidateObjectId(id);
+        CommonValidator.ValidateObjectId(id);
 
+        // *************** Prepare payloads for cascading soft delete
         const {
             subject,
             block,
@@ -167,36 +179,40 @@ async function DeleteSubject(_, { id }) {
             studentTestResults
         } = await SubjectHelper.GetDeleteSubjectPayload(id, userId);
 
+        // *************** Soft delete student test results if any
         if (studentTestResults) {
             const studentResultUpdate = await StudentTestResultModel.updateMany(
                 studentTestResults.filter,
                 studentTestResults.update
             );
-            if (studentResultUpdate.matchedCount === 0) {
+            if (studentResultUpdate.matchedCount) {
                 throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
             }
         }
 
+        // *************** Soft delete tasks if any
         if (tasks) {
             const taskUpdate = await TaskModel.updateMany(
                 tasks.filter,
                 tasks.update
             );
-            if (taskUpdate.matchedCount === 0) {
+            if (taskUpdate.matchedCount) {
                 throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
             }
         }
 
+        // *************** Soft delete tests if any
         if (tests) {
             const testUpdate = await TestModel.updateMany(
                 tests.filter,
                 tests.update
             );
-            if (testUpdate.matchedCount === 0) {
+            if (testUpdate.matchedCount) {
                 throw new ApolloError('No tests matched for deletion', 'TESTS_NOT_FOUND');
             }
         }
 
+        // *************** Soft delete the subject itself
         const deletedSubject = await SubjectModel.findOneAndUpdate(
             subject.filter,
             subject.update
@@ -206,6 +222,7 @@ async function DeleteSubject(_, { id }) {
             throw new ApolloError('Subject deletion failed', 'SUBJECT_DELETION_FAILED');
         }
 
+        // *************** Remove subject reference from parent block
         const updatedBlock = await BlockModel.updateOne(
             block.filter,
             block.update
