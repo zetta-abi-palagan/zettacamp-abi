@@ -1,11 +1,16 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
+// *************** IMPORT MODULE *************** 
+const BlockModel = require('./block.model');
+const SubjectModel = require('../subject/subject.model');
+
 // *************** IMPORT HELPER FUNCTION *************** 
-const helper = require('./block.helper');
+const BlockHelper = require('./block.helper');
 
 // *************** IMPORT VALIDATOR ***************
-const validator = require('./block.validator');
+const BlockValidator = require('./block.validator');
+const GlobalValidator = require('../../shared/validator/index');
 
 // *************** QUERY ***************
 /**
@@ -17,9 +22,15 @@ const validator = require('./block.validator');
  */
 async function GetAllBlocks(_, { block_status }) {
     try {
-        validator.ValidateGetAllBlocksInput(block_status);
+        BlockValidator.ValidateGetAllBlocksInput(block_status);
 
-        const blocks = await helper.GetAllBlocksHelper(block_status);
+        blockFilter = {}
+
+        if (block_status) {
+            blockFilter.block_status = block_status;
+        }
+
+        const blocks = await BlockModel.find(blockFilter);
 
         return blocks;
     } catch (error) {
@@ -40,9 +51,12 @@ async function GetAllBlocks(_, { block_status }) {
  */
 async function GetOneBlock(_, { id }) {
     try {
-        ValidateGetOneBlockInput(id);
+        GlobalValidator.ValidateObjectId(id)
 
-        const block = GetOneBlockHelper(id);
+        const block = await BlockModel.findOne({ _id: id });
+        if (!block) {
+            throw new ApolloError(`Block with ID ${id} not found`, 'BLOCK_NOT_FOUND');
+        }
 
         return block;
     } catch (error) {
@@ -59,26 +73,20 @@ async function GetOneBlock(_, { id }) {
  * GraphQL resolver to create a new block.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
- * @param {object} args.input - An object containing the details for the new block.
+ * @param {object} args.createBlockInput - An object containing the details for the new block.
  * @returns {Promise<object>} - A promise that resolves to the newly created block object.
  */
 async function CreateBlock(_, { createBlockInput }) {
     try {
-        validator.ValidateInputTypeObject(createBlockInput);
+        GlobalValidator.ValidateInputTypeObject(createBlockInput);
+        BlockValidator.ValidateBlockInput(createBlockInput);
 
-        const {
-            name,
-            description,
-            evaluation_type,
-            block_type,
-            connected_block,
-            is_counted_in_final_transcript,
-            block_status
-        } = createBlockInput;
+        const createBlockPayload = BlockHelper.GetBlockPayload(createBlockInput);
 
-        validator.ValidateCreateBlockInput(name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
-
-        const newBlock = await CreateBlockHelper(name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
+        const newBlock = await BlockModel.create(createBlockPayload);
+        if (!newBlock) {
+            throw new ApolloError('Failed to create block', 'CREATE_BLOCK_FAILED');
+        }
 
         return newBlock;
     } catch (error) {
@@ -95,26 +103,21 @@ async function CreateBlock(_, { createBlockInput }) {
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the block to update.
- * @param {object} args.input - An object containing the new details for the block.
+ * @param {object} args.updateBlockInput - An object containing the new details for the block.
  * @returns {Promise<object>} - A promise that resolves to the updated block object.
  */
 async function UpdateBlock(_, { id, updateBlockInput }) {
     try {
-        validator.ValidateInputTypeObject(updateBlockInput)
+        GlobalValidator.ValidateObjectId(id);
+        GlobalValidator.ValidateInputTypeObject(updateBlockInput);
+        BlockValidator.ValidateBlockInput(updateBlockInput);
 
-        const {
-            name,
-            description,
-            evaluation_type,
-            block_type,
-            connected_block,
-            is_counted_in_final_transcript,
-            block_status
-        } = updateBlockInput;
+        const updateBlockPayload = BlockHelper.GetBlockPayload(updateBlockInput);
 
-        validator.ValidateUpdateBlockInput(id, name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
-
-        const updatedBlock = await UpdateBlockHelper(id, name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status);
+        const updatedBlock = await BlockModel.findOneAndUpdate({ _id: id }, updateBlockPayload, { new: true });
+        if (!updatedBlock) {
+            throw new ApolloError('Block update failed', 'BLOCK_UPDATE_FAILED');
+        }
 
         return updatedBlock;
     } catch (error) {
@@ -127,17 +130,43 @@ async function UpdateBlock(_, { id, updateBlockInput }) {
 }
 
 /**
- * GraphQL resolver to delete a block by its ID.
+ * GraphQL resolver to perform a cascading soft delete on a block, its subjects, and their tests.
  * @param {object} _ - The parent object, which is not used in this resolver.
- * @param {object} args - The arguments for the mutation.
+ *- @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the block to delete.
- * @returns {Promise<object>} - A promise that resolves to the deleted block object.
+ * @returns {Promise<object>} - A promise that resolves to the soft-deleted block object.
  */
 async function DeleteBlock(_, { id }) {
     try {
-        validator.ValidateDeleteBlockInput(id);
+        const {
+            block,
+            subjects,
+            tests
+        } = await BlockHelper.GetDeleteBlockPayload(id);
 
-        const deletedBlock = DeleteBlockHelper(id);
+        if (tests) {
+            const testUpdateResult = await TestModel.updateMany(tests.filter, tests.update);
+            if (testUpdateResult.matchedCount === 0) {
+                throw new ApolloError('No tests matched for deletion', 'TESTS_NOT_FOUND');
+            }
+        }
+
+        if (subjects) {
+            const subjectUpdateResult = await SubjectModel.updateMany(subjects.filter, subjects.update);
+            if (subjectUpdateResult.matchedCount === 0) {
+                throw new ApolloError('No subjects matched for deletion', 'SUBJECTS_NOT_FOUND');
+            }
+        }
+
+        const deletedBlock = await BlockModel.findOneAndUpdate(
+            block.filter,
+            block.update,
+            { new: true }
+        );
+
+        if (!deletedBlock) {
+            throw new ApolloError('Block deletion failed', 'BLOCK_DELETION_FAILED');
+        }
 
         return deletedBlock;
     } catch (error) {
@@ -160,7 +189,7 @@ async function DeleteBlock(_, { id }) {
  */
 async function SubjectLoader(block, _, context) {
     try {
-        validator.ValidateSubjectLoaderInput(block, context);
+        BlockValidator.ValidateSubjectLoaderInput(block, context);
 
         const subjects = await context.dataLoaders.SubjectLoader.loadMany(block.subjects);
 
@@ -184,9 +213,9 @@ async function SubjectLoader(block, _, context) {
  */
 async function CreatedByLoader(block, _, context) {
     try {
-        validator.ValidateUserLoaderInput(block, context, 'created_by');
+        BlockValidator.ValidateUserLoaderInput(block, context, 'created_by');
 
-        const created_by =  await context.dataLoaders.UserLoader.load(block.created_by);
+        const created_by = await context.dataLoaders.UserLoader.load(block.created_by);
 
         return created_by;
     } catch (error) {
@@ -206,8 +235,8 @@ async function CreatedByLoader(block, _, context) {
  */
 async function UpdatedByLoader(block, _, context) {
     try {
-        validator.ValidateUserLoaderInput(block, context, 'updated_by');
-        
+        BlockValidator.ValidateUserLoaderInput(block, context, 'updated_by');
+
         const updated_by = await context.dataLoaders.UserLoader.load(block.updated_by);
 
         return updated_by;
@@ -228,7 +257,7 @@ async function UpdatedByLoader(block, _, context) {
  */
 async function DeletedByLoader(block, _, context) {
     try {
-        validator.ValidateUserLoaderInput(block, context, 'deleted_by');
+        BlockValidator.ValidateUserLoaderInput(block, context, 'deleted_by');
 
         const deleted_by = await context.dataLoaders.UserLoader.load(block.deleted_by);
 

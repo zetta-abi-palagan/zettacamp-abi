@@ -72,7 +72,7 @@ async function CreateSubject(_, { createSubjectInput }) {
             description,
             coefficient,
             subject_status
-        } = input;
+        } = createSubjectInput;
 
         validator.ValidateCreateSubjectInput(block, name, description, coefficient, subject_status);
 
@@ -106,7 +106,7 @@ async function UpdateSubject(_, { id, updateSubjectInput }) {
             coefficient,
             connected_blocks,
             subject_status
-        } = input
+        } = updateSubjectInput
 
         validator.ValidateUpdateSubjectInput(id, name, description, coefficient, connected_blocks, subject_status);
 

@@ -239,6 +239,7 @@ async function TaskLoader(test, _, context) {
         validator.ValidateTaskLoaderInput(test, context);
 
         const tasks = await context.dataLoaders.TaskLoader.loadMany(test.tasks);
+        console.log(tasks);
 
         return tasks;
     } catch (error) {

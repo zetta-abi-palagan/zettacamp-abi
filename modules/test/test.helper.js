@@ -221,7 +221,7 @@ async function PublishTestHelper(id, assign_corrector_due_date, test_due_date) {
         const academicDirectorId = '6846e5769e5502fce150eb67';
 
         const taskData = {
-            test: publishedTest.id,
+            test: publishedTest._id,
             user: academicDirectorId,
             title: 'Assign Corrector',
             description: 'Academic Director should assign corrector for student test',
@@ -239,9 +239,9 @@ async function PublishTestHelper(id, assign_corrector_due_date, test_due_date) {
         }
 
         await TestModel.updateOne(
-            { _id: publishedTest._id, test_status: 'ACTIVE' },
+            { _id: publishedTest._id },
             {
-                $addToSet: { tests: assignCorrectorTask._id },
+                $addToSet: { tasks: assignCorrectorTask._id },
             }
         )
 
@@ -277,7 +277,7 @@ async function UpdateTestHelper(id, name, description, test_type, result_visibil
 
         const test = await TestModel.findOne({
             _id: id,
-            subject_status: 'ACTIVE'
+            test_status: 'ACTIVE'
         });
         if (!test) {
             throw new ApolloError('Test not found', 'NOT_FOUND', {
