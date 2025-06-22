@@ -9,7 +9,7 @@ const { ApolloError } = require('apollo-server');
  * @param {string} subject_status - The status of the subjects to filter by (optional).
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateGetAllSubjectsInput(subject_status) {
+function ValidateSubjectStatusFilter(subject_status) {
     const validStatus = ['ACTIVE', 'INACTIVE', 'DELETED'];
 
     if (!subject_status) {
@@ -203,7 +203,7 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    ValidateGetAllSubjectsInput,
+    ValidateSubjectStatusFilter,
     ValidateSubjectInput,
     ValidateBlockLoaderInput,
     ValidateConnectedBlocksLoaderInput,

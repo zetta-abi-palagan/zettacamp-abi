@@ -162,11 +162,11 @@ async function DeleteBlock(_, { id }) {
 
         // *************** Soft delete student test results if any
         if (studentTestResults) {
-            const studentResultUpdate = await StudentTestResultModel.updateMany(
+            const studentTestResultUpdate = await StudentTestResultModel.updateMany(
                 studentTestResults.filter,
                 studentTestResults.update
             );
-            if (studentResultUpdate.matchedCount) {
+            if (studentTestResultUpdate.matchedCount) {
                 throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
             }
         }

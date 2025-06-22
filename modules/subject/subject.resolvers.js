@@ -1,6 +1,13 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
+// *************** IMPORT MODULE *************** 
+const BlockModel = require('./block.model');
+const SubjectModel = require('../subject/subject.model');
+const TestModel = require('../test/test.model');
+const StudentTestResultModel = require('../studentTestResult/student_test_result.model');
+const TaskModel = require('../task/task.model');
+
 // *************** IMPORT HELPER FUNCTION *************** 
 const SubjectHelper = require('./subject.helper');
 
@@ -18,7 +25,7 @@ const CommonValidator = require('../../shared/validator/index');
  */
 async function GetAllSubjects(_, { subject_status }) {
     try {
-        SubjectValidator.ValidateGetAllSubjectsInput(subject_status);
+        SubjectValidator.ValidateSubjectStatusFilter(subject_status);
 
         const subjectFilter = subject_status ? { subject_status: subject_status } : { subject_status: { $ne: 'DELETED' } };
 
@@ -77,9 +84,9 @@ async function CreateSubject(_, { createSubjectInput }) {
         CommonValidator.ValidateObjectId(createSubjectInput.block);
 
         // *************** Ensure parent block exists and is active
-        const parentBlock = await BlockModel.findOne({ _id: createSubjectInput.block, block_status: 'ACTIVE' });
+        const parentBlock = await BlockModel.findOne({ _id: createSubjectInput.block, block_status: { $ne: 'DELETED' } });
         if (!parentBlock) {
-            throw new ApolloError('Parent block not found or is not active.', 'NOT_FOUND');
+            throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
 
         // *************** Determine if subject is transversal based on parent block type
@@ -88,9 +95,9 @@ async function CreateSubject(_, { createSubjectInput }) {
         SubjectValidator.ValidateSubjectInput(createSubjectInput, isTransversal);
 
         // *************** Prepare payload and create subject
-        const createPayload = SubjectHelper.GetCreateSubjectPayload(createSubjectInput, isTransversal, userId);
+        const createSubjectPayload = SubjectHelper.GetCreateSubjectPayload(createSubjectInput, isTransversal, userId);
 
-        const newSubject = await SubjectModel.create(createPayload);
+        const newSubject = await SubjectModel.create(createSubjectPayload);
         if (!newSubject) {
             throw new ApolloError('Failed to create subject in database', 'CREATE_SUBJECT_FAILED');
         }
@@ -138,9 +145,9 @@ async function UpdateSubject(_, { id, updateSubjectInput }) {
         SubjectValidator.ValidateSubjectInput(updateSubjectInput, subject.is_transversal);
 
         // *************** Prepare the payload and update the subject
-        const updatePayload = SubjectHelper.GetUpdateSubjectPayload(updateSubjectInput, userId);
+        const updateSubjectPayload = SubjectHelper.GetUpdateSubjectPayload(updateSubjectInput, userId);
 
-        const updatedSubject = await SubjectModel.findByIdAndUpdate(id, updatePayload, { new: true });
+        const updatedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, updateSubjectPayload, { new: true });
         if (!updatedSubject) {
             throw new ApolloError('Subject update failed', 'UPDATE_SUBJECT_FAILED');
         }
