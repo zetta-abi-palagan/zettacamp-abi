@@ -5,41 +5,43 @@ const mongoose = require('mongoose');
 const { ApolloError } = require('apollo-server');
 
 /**
- * Validates the optional inputs for fetching all student test results.
- * @param {string} [student_test_result_status] - Optional. The status of the results to filter by.
- * @param {string} [test_id] - Optional. The ID of the test to filter by.
- * @param {string} [student_id] - Optional. The ID of the student to filter by.
+ * Validates the optional filters for fetching student test results.
+ * @param {object} args - The arguments for the filter validation.
+ * @param {string} [args.studentTestResult] - Optional. The status of the results to filter by (e.g., 'PENDING').
+ * @param {string} [args.testId] - Optional. The ID of the test to filter by.
+ * @param {string} [args.studentId] - Optional. The ID of the student to filter by.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateStudentTestResultFilter(student_test_result_status, test_id, student_id) {
+function ValidateStudentTestResultFilter({ studentTestResult, testId, studentId }) {
     const validStatus = ['PENDING', 'VALIDATED', 'DELETED'];
 
-    if (!student_test_result_status) {
+    if (!studentTestResult) {
         return;
     }
 
-    if (typeof student_test_result_status !== 'string' || !validStatus.includes(student_test_result_status.toUpperCase())) {
+    if (typeof studentTestResult !== 'string' || !validStatus.includes(studentTestResult.toUpperCase())) {
         throw new ApolloError(`Student test result status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
             field: 'student_test_result_status'
         });
     }
 
-    if (test_id && !mongoose.Types.ObjectId.isValid(test_id)) {
-        throw new ApolloError(`Invalid test ID: ${test_id}`, "BAD_USER_INPUT");
+    if (testId && !mongoose.Types.ObjectId.isValid(testId)) {
+        throw new ApolloError(`Invalid test ID: ${testId}`, "BAD_USER_INPUT");
     }
 
-    if (student_id && !mongoose.Types.ObjectId.isValid(student_id)) {
-        throw new ApolloError(`Invalid student ID: ${student_id}`, "BAD_USER_INPUT");
+    if (studentId && !mongoose.Types.ObjectId.isValid(studentId)) {
+        throw new ApolloError(`Invalid student ID: ${studentId}`, "BAD_USER_INPUT");
     }
 }
 
 /**
  * Validates the inputs for updating a student's test result against the test's rules.
- * @param {Array<object>} marks - A non-empty array of mark objects to be validated.
- * @param {object} test - The test document, used to validate notations and max points.
+ * @param {object} args - The arguments for the validation.
+ * @param {Array<object>} args.marks - A non-empty array of mark objects to be validated.
+ * @param {object} args.test - The test document, used to validate notations and max points.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateUpdateStudentTestResultInput(marks, test) {
+function ValidateUpdateStudentTestResultInput({ marks, test }) {
     if (!Array.isArray(marks) || !marks.length) {
         throw new ApolloError('Marks must be a non-empty array.', 'BAD_USER_INPUT', { field: 'marks' });
     }

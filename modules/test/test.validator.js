@@ -23,7 +23,23 @@ function ValidateTestStatusFilter(test_status) {
     }
 }
 
-
+/**
+ * Validates the input object for creating or updating a test.
+ * @param {object} args - The arguments for the validation.
+ * @param {object} args.testInput - An object containing the test's properties to be validated.
+ * @param {string} args.testInput.name - The name of the test.
+ * @param {string} args.testInput.description - The description of the test.
+ * @param {string} args.testInput.test_type - The type of the test.
+ * @param {string} args.testInput.result_visibility - The visibility setting for the test results.
+ * @param {number} args.testInput.weight - The weight of the test, must be between 0 and 1.
+ * @param {string} args.testInput.correction_type - The correction method for the test.
+ * @param {Array<object>} args.testInput.notations - The notation system used for the test.
+ * @param {boolean} args.testInput.is_retake - Flag indicating if this is a retake test.
+ * @param {string} [args.testInput.connected_test] - Optional. The ID of the original test, required if is_retake is true.
+ * @param {string} [args.testInput.test_status] - Optional. The status of the test.
+ * @param {string} args.evaluationType - The evaluation type of the parent block.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
 function ValidateTestInput({ testInput, evaluationType }) {
     const { name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status } = testInput;
     const validTestType = ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN'];
@@ -98,7 +114,13 @@ function ValidateTestInput({ testInput, evaluationType }) {
     }
 }
 
-
+/**
+ * Validates the due dates for publishing a test.
+ * @param {object} args - The arguments for the validation.
+ * @param {Date|string} [args.assignCorrectorDueDate] - Optional. The due date for assigning a corrector.
+ * @param {Date|string} [args.testDueDate] - Optional. The due date for the test.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
 function ValidatePublishTestInput({ assignCorrectorDueDate, testDueDate }) {
     if (assignCorrectorDueDate && isNaN(new Date(assignCorrectorDueDate).getTime())) {
         throw new ApolloError('A valid date format is required for assign_corrector_due_date.', 'BAD_USER_INPUT', {

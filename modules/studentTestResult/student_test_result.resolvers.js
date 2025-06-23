@@ -24,10 +24,10 @@ const CommonValidator = require('../../shared/validator/index');
  */
 async function GetAllStudentTestResults(_, { student_test_result_status, test_id, student_id }) {
     try {
-        StudentTestResultValidator.ValidateStudentTestResultFilter(student_test_result_status, test_id, student_id);
+        StudentTestResultValidator.ValidateStudentTestResultFilter({ student_test_result_status, test_id, student_id });
 
         const filter = {};
-        if (student_test_result_status) { filter.student_test_result_status = student_test_result_status; }
+        filter.student_test_result_status = student_test_result_status || { $ne: 'DELETED' };
         if (test_id) { filter.test = test_id; }
         if (student_id) { filter.student = student_id; }
 
@@ -100,10 +100,10 @@ async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }) 
             throw new ApolloError('Related test for this result could not be found.', 'NOT_FOUND');
         }
 
-        StudentTestResultValidator.ValidateUpdateStudentTestResultInput(marks, parentTest);
+        StudentTestResultValidator.ValidateUpdateStudentTestResultInput({ marks, test: parentTest });
 
         // *************** Prepare the payload for updating the student test result
-        const updateStudentTestResultPayload = StudentTestResultHelper.GetUpdateStudentTestResultPayload(marks, userId);
+        const updateStudentTestResultPayload = StudentTestResultHelper.GetUpdateStudentTestResultPayload({ marks, userId, test: parentTest });
 
         // *************** Update the student test result
         const updatedStudentTestResult = await StudentTestResultModel.findOneAndUpdate({ _id: id }, updateStudentTestResultPayload, { new: true });
@@ -139,7 +139,7 @@ async function DeleteStudentTestResult(_, { id }) {
         const {
             studentTestResult,
             test
-        } = await StudentTestResultHelper.GetDeleteStudentTestResultPayload(id, userId);
+        } = await StudentTestResultHelper.GetDeleteStudentTestResultPayload({ studentTestResultId: id, userId });
 
         // *************** Soft-delete the student test result and update the parent test
         const deletedStudentTestResult = await StudentTestResultModel.findOneAndUpdate(
