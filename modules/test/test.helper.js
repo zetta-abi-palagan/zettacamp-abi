@@ -6,16 +6,20 @@ const TestModel = require('./test.model');
 
 // *************** IMPORT VALIDATOR ***************
 const CommonValidator = require('../../shared/validator/index');
+const TestValidator = require('./test.validator');
 
 /**
- * Creates a clean data payload for a new test.
- * @param {object} createTestInput - The raw input object containing the test's properties.
- * @param {string} userId - The ID of the user creating the test.
- * @returns {object} A processed data payload suitable for a create operation.
+ * Processes and transforms a raw test input object into a structured data payload for a create operation.
+ * @param {object} args - The arguments for creating the payload.
+ * @param {object} args.testInput - The raw input object containing the test's properties.
+ * @param {string} args.userId - The ID of the user creating the test.
+ * @param {string} args.evaluationType - The evaluation type of the parent block.
+ * @returns {object} A processed data payload suitable for a database create operation.
  */
-function GetCreateTestPayload(createTestInput, userId) {
-    CommonValidator.ValidateInputTypeObject(createTestInput);
+function GetCreateTestPayload({ testInput, userId, evaluationType }) {
+    CommonValidator.ValidateInputTypeObject(testInput);
     CommonValidator.ValidateObjectId(userId);
+    TestValidator.ValidateTestInput({ testInput, evaluationType });
 
     const {
         subject,
@@ -29,7 +33,7 @@ function GetCreateTestPayload(createTestInput, userId) {
         is_retake,
         connected_test,
         test_status
-    } = createTestInput;
+    } = testInput;
 
     return {
         subject: subject,
@@ -49,12 +53,18 @@ function GetCreateTestPayload(createTestInput, userId) {
 }
 
 /**
- * Creates a clean data payload for updating an existing test.
- * @param {object} testInput - The raw input object containing the test's properties to update.
- * @param {string} userId - The ID of the user updating the test.
- * @returns {object} A processed data payload suitable for an update operation.
+ * Processes and transforms a raw test input object into a structured data payload for an update operation.
+ * @param {object} args - The arguments for creating the payload.
+ * @param {object} args.testInput - The raw input object containing the test's properties to update.
+ * @param {string} args.userId - The ID of the user updating the test.
+ * @param {string} args.evaluationType - The evaluation type of the parent block.
+ * @returns {object} A processed data payload suitable for a database update operation.
  */
-function GetUpdateTestPayload(testInput, userId) {
+function GetUpdateTestPayload({ testInput, userId, evaluationType }) {
+    CommonValidator.ValidateInputTypeObject(testInput);
+    CommonValidator.ValidateObjectId(userId);
+    TestValidator.ValidateTestInput({ testInput, evaluationType });
+
     const {
         name,
         description,
@@ -85,28 +95,34 @@ function GetUpdateTestPayload(testInput, userId) {
 
 /**
  * Creates the payload for publishing a test.
- * @param {string} userId - The ID of the user publishing the test.
- * @param {Date|string} test_due_date - The due date for the test.
+ * @param {object} args - The arguments for the publish payload.
+ * @param {string} args.userId - The ID of the user publishing the test.
+ * @param {Date|string} args.testDueDate - The due date for the test.
  * @returns {object} A data payload for updating the test's published status.
  */
-function GetPublishTestPayload(userId, test_due_date) {
+function GetPublishTestPayload({ userId, testDueDate }) {
+    CommonValidator.ValidateObjectId(userId);
+
     return {
         is_published: true,
         published_date: Date.now(),
         published_by: userId,
-        test_due_date: test_due_date,
+        test_due_date: testDueDate,
     };
 }
 
 /**
  * Creates the payload for a new 'ASSIGN_CORRECTOR' task.
- * @param {object} publishedTest - The test document that was just published.
- * @param {Date|string} assign_corrector_due_date - The due date for the new task.
- * @param {string} userId - The ID of the user who initiated the publish action.
+ * @param {object} args - The arguments for the task payload.
+ * @param {object} args.publishedTest - The test document that was just published.
+ * @param {Date|string} args.assignCorrectorDueDate - The due date for the new task.
+ * @param {string} args.userId - The ID of the user who initiated the publish action.
  * @returns {object} A data payload for creating the new task.
  */
-function GetAssignCorrectorTaskPayload(publishedTest, assign_corrector_due_date, userId) {
+function GetAssignCorrectorTaskPayload({ publishedTest, assignCorrectorDueDate, userId }) {
     CommonValidator.ValidateInputTypeObject(publishedTest);
+    CommonValidator.ValidateObjectId(userId);
+
     // Dummy ID for academic director, should eventually come from a config or role-based lookup
     const academicDirectorId = '6846e5769e5502fce150eb67';
 
@@ -117,7 +133,7 @@ function GetAssignCorrectorTaskPayload(publishedTest, assign_corrector_due_date,
         description: 'Academic Director should assign corrector for student test',
         task_type: 'ASSIGN_CORRECTOR',
         task_status: 'PENDING',
-        due_date: assign_corrector_due_date,
+        due_date: assignCorrectorDueDate,
         created_by: userId,
         updated_by: userId
     };
@@ -125,76 +141,128 @@ function GetAssignCorrectorTaskPayload(publishedTest, assign_corrector_due_date,
 
 /**
  * Generates a payload for a cascading soft delete of a test and its descendants.
- * @param {string} testId - The unique identifier of the test to be deleted.
- * @param {string} userId - The ID of the user performing the deletion.
+ * @param {object} args - The arguments for getting the delete payload.
+ * @param {string} args.testId - The unique identifier of the test to be deleted.
+ * @param {string} args.userId - The ID of the user performing the deletion.
  * @returns {Promise<object>} A promise that resolves to a structured payload for all required delete and update operations.
  */
-async function GetDeleteTestPayload(testId, userId) {
+async function GetDeleteTestPayload({ testId, userId }) {
     GlobalValidator.ValidateObjectId(testId);
+    GlobalValidator.ValidateObjectId(userId);
 
     const deletionTimestamp = Date.now();
-
-    const test = await TestModel.findById(testId);
-    if (!test) {
-        throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
-    }
-
-    const deleteTestPayload = {
-        test: {
-            filter: { _id: testId },
-            update: {
-                test_status: 'DELETED',
-                updated_by: userId,
-                deleted_by: userId,
-                deleted_at: deletionTimestamp
-            }
-        },
-        subject: {
-            filter: { tests: { $in: [testId] } },
-            update: { $pull: { tests: testId } }
-        },
-        tasks: null,
-        studentTestResults: null
-    };
+    const test = await GetTest(testId);
 
     const taskIds = test.tasks || [];
     const studentResultIds = test.student_test_results || [];
 
-    if (taskIds.length) {
-        const areAllTaskIdsValid = taskIds.every(id => mongoose.Types.ObjectId.isValid(id));
-        if (!areAllTaskIdsValid) {
-            throw new ApolloError('One or more task IDs are invalid', 'INVALID_TASK_ID');
-        }
+    const deleteTestPayload = {
+        test: BuildDeletePayload({
+            ids: [testId],
+            statusKey: 'test_status',
+            timestamp: deletionTimestamp,
+            userId
+        }),
+        subject: BuildPullTestFromSubjectPayload({ subjectId: test.subject, testId }),
+        tasks: null,
+        studentTestResults: null
+    };
 
-        deleteTestPayload.tasks = {
-            filter: { _id: { $in: taskIds } },
-            update: {
-                task_status: 'DELETED',
-                updated_by: userId,
-                deleted_by: userId,
-                deleted_at: deletionTimestamp
-            }
-        };
+    if (taskIds.length) {
+        deleteTestPayload.tasks = HandleDeleteTasks({ taskIds, userId, timestamp: deletionTimestamp });
     }
 
     if (studentResultIds.length) {
-        const areAllResultIdsValid = studentResultIds.every(id => mongoose.Types.ObjectId.isValid(id));
-        if (!areAllResultIdsValid) {
-            throw new ApolloError('One or more student test result IDs are invalid', 'INVALID_STUDENT_RESULT_ID');
-        }
-
-        deleteTestPayload.studentTestResults = {
-            filter: { _id: { $in: studentResultIds } },
-            update: {
-                result_status: 'DELETED',
-                updated_by: userId,
-                deleted_by: userId,
-                deleted_at: deletionTimestamp
-            }
-        };
+        deleteTestPayload.studentTestResults = HandleDeleteStudentTestResults({ resultIds: studentResultIds, userId, timestamp: deletionTimestamp });
     }
 
     return deleteTestPayload;
+}
+
+/**
+ * Fetches a single test document by its ID.
+ * @param {string} testId - The ID of the test to fetch.
+ * @returns {Promise<object>} A promise that resolves to the found test document.
+ */
+async function GetTest(testId) {
+    const test = await TestModel.findById(testId);
+    if (!test) {
+        throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
+    }
+    return test;
+}
+
+/**
+ * A generic utility to build a standard soft-delete payload object.
+ * @param {object} args - The arguments for building the payload.
+ * @param {Array<string>} args.ids - An array of document IDs to target.
+ * @param {string} args.statusKey - The name of the status field to be updated.
+ * @param {number} args.timestamp - The timestamp of the deletion.
+ * @param {string} args.userId - The ID of the user performing the deletion.
+ * @returns {object} An object containing 'filter' and 'update' properties for a database operation.
+ */
+function BuildDeletePayload({ ids, statusKey, timestamp, userId }) {
+    return {
+        filter: { _id: { $in: ids } },
+        update: {
+            [statusKey]: 'DELETED',
+            updated_by: userId,
+            deleted_by: userId,
+            deleted_at: timestamp
+        }
+    };
+}
+
+/**
+ * Builds a payload for removing a test's ID from a subject's 'tests' array.
+ * @param {object} args - The arguments for building the payload.
+ * @param {string} args.subjectId - The ID of the subject to update.
+ * @param {string} args.testId - The ID of the test to remove.
+ * @returns {object} An object containing 'filter' and 'update' properties for a MongoDB $pull operation.
+ */
+function BuildPullTestFromSubjectPayload({ subjectId, testId }) {
+    return {
+        filter: { _id: subjectId },
+        update: { $pull: { tests: testId } }
+    };
+}
+
+/**
+ * Handles the processing of task IDs for deletion and creates the corresponding payload.
+ * @param {object} args - The arguments for handling task deletion.
+ * @param {Array<string>} args.taskIds - An array of task IDs to process.
+ * @param {string} args.userId - The ID of the user performing the deletion.
+ * @param {number} args.timestamp - The timestamp of the deletion.
+ * @returns {object} An object containing the 'filter' and 'update' payload for tasks.
+ */
+function HandleDeleteTasks({ taskIds, userId, timestamp }) {
+    GlobalValidator.ValidateObjectIdArray(taskIds, 'INVALID_TASK_ID');
+
+    return BuildDeletePayload({
+        ids: taskIds,
+        statusKey: 'task_status',
+        timestamp,
+        userId
+    });
+}
+
+/**
+ * Handles the processing of student test result IDs for deletion and creates the corresponding payload.
+ * @param {object} args - The arguments for handling student test result deletion.
+ * @param {Array<string>} args.resultIds - An array of student test result IDs to process.
+ * @param {string} args.userId - The ID of the user performing the deletion.
+ * @param {number} args.timestamp - The timestamp of the deletion.
+ * @returns {object} An object containing the 'filter' and 'update' payload for student test results.
+ */
+function HandleDeleteStudentTestResults({ resultIds, userId, timestamp }) {
+    GlobalValidator.ValidateObjectIdArray(resultIds, 'INVALID_STUDENT_RESULT_ID');
+
+    return BuildDeletePayload({
+        ids: resultIds,
+        statusKey: 'result_status',
+        timestamp,
+        userId
+    });
 }
 
 // *************** EXPORT MODULE ***************

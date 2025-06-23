@@ -95,10 +95,10 @@ async function CreateTest(_, { createTestInput }) {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
 
-        TestValidator.ValidateTestInput(createTestInput, parentBlock.evaluation_type);
+        TestValidator.ValidateTestInput({ testInput: createTestInput, evaluationType: parentBlock.evaluation_type });
 
         // *************** Prepare payload and create test
-        const createTestPayload = TestHelper.GetCreateTestPayload(createTestInput, userId);
+        const createTestPayload = TestHelper.GetCreateTestPayload({ testInput: createTestInput, userId, evaluationType: parentBlock.evaluation_type });
 
         const newTest = await TestModel.create(createTestPayload);
         if (!newTest) {
@@ -139,10 +139,10 @@ async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }) 
         const userId = '6846e5769e5502fce150eb67';
 
         CommonValidator.ValidateObjectId(id);
-        TestValidator.ValidatePublishTestInput(assign_corrector_due_date, test_due_date);
+        TestValidator.ValidatePublishTestInput({ assignCorrectorDueDate: assign_corrector_due_date, testDueDate: test_due_date });
 
         // *************** Prepare payload for publishing the test
-        const publishTestPayload = TestHelper.GetPublishTestPayload(userId, test_due_date);
+        const publishTestPayload = TestHelper.GetPublishTestPayload({ userId, testDueDate: test_due_date });
 
         // *************** Update test status and due date
         const publishedTest = await TestModel.findOneAndUpdate({ _id: id, test_status: { $ne: 'DELETED' } }, publishTestPayload, { new: true });
@@ -151,7 +151,7 @@ async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }) 
         }
 
         // *************** Prepare payload for assign corrector task
-        const assignCorrectorTaskPayload = TestHelper.GetAssignCorrectorTaskPayload(publishedTest, assign_corrector_due_date, userId);
+        const assignCorrectorTaskPayload = TestHelper.GetAssignCorrectorTaskPayload({ publishedTest, assignCorrectorDueDate: assign_corrector_due_date, userId });
 
         // *************** Create assign corrector task
         const assignCorrectorTask = await TaskModel.create(assignCorrectorTaskPayload);
@@ -215,10 +215,10 @@ async function UpdateTest(_, { id, updateTestInput }) {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
 
-        TestValidator.ValidateTestInput(updateTestInput, parentBlock.evaluation_type);
+        TestValidator.ValidateTestInput({ testInput: updateTestInput, evaluationType: parentBlock.evaluation_type });
 
         // *************** Prepare payload and update test
-        const updateTestPayload = TestHelper.GetUpdateTestPayload(updateTestInput, userId);
+        const updateTestPayload = TestHelper.GetUpdateTestPayload({ testInput: updateTestInput, userId, evaluationType: parentBlock.evaluation_type });
 
         // *************** Update the test in the database
         const updatedTest = await TestModel.findOneAndUpdate({ _id: id }, updateTestPayload, { new: true });
@@ -256,27 +256,27 @@ async function DeleteTest(_, { id }) {
             subject,
             tasks,
             studentTestResults
-        } = await TestHelper.GetDeleteTestPayload(id, userId);
+        } = await TestHelper.GetDeleteTestPayload({ testId: id, userId });
 
         // *************** Soft delete all related student test results
         if (studentTestResults) {
             const deletedStudentTestResults = await StudentTestResultModel.updateMany(
-            studentTestResults.filter,
-            studentTestResults.update
+                studentTestResults.filter,
+                studentTestResults.update
             );
             if (!deletedStudentTestResults.nModified) {
-            throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
+                throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
             }
         }
 
         // *************** Soft delete all related tasks
         if (tasks) {
             const deletedTasks = await TaskModel.updateMany(
-            tasks.filter,
-            tasks.update
+                tasks.filter,
+                tasks.update
             );
             if (!deletedTasks.nModified) {
-            throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
+                throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
             }
         }
 

@@ -252,7 +252,7 @@ function HandleDeleteStudentTestResults({ resultIds, userId, timestamp }) {
 
     return BuildDeletePayload({
         ids: resultIds,
-        statusKey: 'result_status',
+        statusKey: 'student_test_result_status',
         timestamp,
         userId
     });
