@@ -92,10 +92,10 @@ async function CreateSubject(_, { createSubjectInput }) {
         // *************** Determine if subject is transversal based on parent block type
         const isTransversal = parentBlock.block_type === 'TRANSVERSAL';
 
-        SubjectValidator.ValidateSubjectInput(createSubjectInput, isTransversal);
+        SubjectValidator.ValidateSubjectInput({ subjectInput: createSubjectInput, isTransversal });
 
         // *************** Prepare payload and create subject
-        const createSubjectPayload = SubjectHelper.GetCreateSubjectPayload(createSubjectInput, isTransversal, userId);
+        const createSubjectPayload = SubjectHelper.GetCreateSubjectPayload({ subjectInput: createSubjectInput, isTransversal, userId });
 
         const newSubject = await SubjectModel.create(createSubjectPayload);
         if (!newSubject) {
@@ -145,7 +145,7 @@ async function UpdateSubject(_, { id, updateSubjectInput }) {
         SubjectValidator.ValidateSubjectInput(updateSubjectInput, subject.is_transversal);
 
         // *************** Prepare the payload and update the subject
-        const updateSubjectPayload = SubjectHelper.GetUpdateSubjectPayload(updateSubjectInput, userId);
+        const updateSubjectPayload = SubjectHelper.GetUpdateSubjectPayload({ updateSubjectInput, userId, isTransversal: subject.is_transversal });
 
         const updatedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, updateSubjectPayload, { new: true });
         if (!updatedSubject) {
@@ -184,7 +184,7 @@ async function DeleteSubject(_, { id }) {
             tests,
             tasks,
             studentTestResults
-        } = await SubjectHelper.GetDeleteSubjectPayload(id, userId);
+        } = await SubjectHelper.GetDeleteSubjectPayload({ subjectId: id, userId });
 
         // *************** Soft delete student test results if any
         if (studentTestResults) {

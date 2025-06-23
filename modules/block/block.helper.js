@@ -1,6 +1,3 @@
-// *************** IMPORT CORE ***************
-const mongoose = require('mongoose');
-
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
@@ -111,7 +108,7 @@ async function GetDeleteBlockPayload({ blockId, userId }) {
     const block = await GetBlock(blockId);
     const subjectIds = block.subjects || [];
 
-    const payload = {
+    const deleteBlockPayload = {
         block: BuildDeletePayload({ ids: [blockId], statusKey: 'block_status', timestamp: deletionTimestamp, userId }),
         subjects: null,
         tests: null,
@@ -119,29 +116,29 @@ async function GetDeleteBlockPayload({ blockId, userId }) {
         studentTestResults: null
     };
 
-    if (!subjectIds.length) return payload;
+    if (!subjectIds.length) return deleteBlockPayload;
 
     const { subjectPayload, testIds } = await HandleDeleteSubjects({ subjectIds, userId, timestamp: deletionTimestamp });
-    payload.subjects = subjectPayload;
+    deleteBlockPayload.subjects = subjectPayload;
 
-    if (!testIds.length) return payload;
+    if (!testIds.length) return deleteBlockPayload;
 
     const { testPayload, taskIds, studentResultIds } = await HandleDeleteTests({ testIds, userId, timestamp: deletionTimestamp });
-    payload.tests = testPayload;
+    deleteBlockPayload.tests = testPayload;
 
     if (taskIds.length) {
-        payload.tasks = HandleDeleteTasks({ taskIds, userId, timestamp: deletionTimestamp });
+        deleteBlockPayload.tasks = HandleDeleteTasks({ taskIds, userId, timestamp: deletionTimestamp });
     }
 
     if (studentResultIds.length) {
-        payload.studentTestResults = HandleDeleteStudentTestResults({ resultIds: studentResultIds, userId, timestamp: deletionTimestamp });
+        deleteBlockPayload.studentTestResults = HandleDeleteStudentTestResults({ resultIds: studentResultIds, userId, timestamp: deletionTimestamp });
     }
 
-    return payload;
+    return deleteBlockPayload;
 }
 
 /**
- * A generic utility to build a standard soft-delete payload object.
+ * A generic utility to build a standard soft-delete deleteBlockPayload object.
  * @param {object} args - The arguments for building the payload.
  * @param {Array<string>} args.ids - An array of document IDs to target.
  * @param {string} args.statusKey - The name of the status field to be updated (e.g., 'block_status').

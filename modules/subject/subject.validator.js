@@ -25,16 +25,17 @@ function ValidateSubjectStatusFilter(subject_status) {
 
 /**
  * Validates the input object for creating or updating a subject.
- * @param {object} subjectInput - An object containing the subject's properties to be validated.
- * @param {string} subjectInput.name - The name of the subject.
- * @param {string} subjectInput.description - The description of the subject.
- * @param {number} subjectInput.coefficient - The coefficient value for the subject.
- * @param {string} [subjectInput.subject_status] - Optional. The status of the subject (e.g., 'ACTIVE').
- * @param {Array<string>} [subjectInput.connected_blocks] - Optional. An array of block IDs to connect.
- * @param {boolean} isTransversal - A flag indicating if the subject belongs to a transversal block.
+ * @param {object} args - The arguments for the validation.
+ * @param {object} args.subjectInput - An object containing the subject's properties to be validated.
+ * @param {string} args.subjectInput.name - The name of the subject.
+ * @param {string} args.subjectInput.description - The description of the subject.
+ * @param {number} args.subjectInput.coefficient - The coefficient value for the subject.
+ * @param {string} [args.subjectInput.subject_status] - Optional. The status of the subject (e.g., 'ACTIVE').
+ * @param {Array<string>} [args.subjectInput.connected_blocks] - Optional. An array of block IDs to connect.
+ * @param {boolean} args.isTransversal - A flag indicating if the subject belongs to a transversal block.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateSubjectInput(subjectInput, isTransversal) {
+function ValidateSubjectInput({ subjectInput, isTransversal }) {
     const { name, description, coefficient, subject_status, connected_blocks } = subjectInput;
     const validStatus = ['ACTIVE', 'INACTIVE'];
 
@@ -73,7 +74,6 @@ function ValidateSubjectInput(subjectInput, isTransversal) {
     if (connected_blocks && !isTransversal) {
         throw new ApolloError('Connected blocks can only be assigned to a subject within a transversal block.', 'BAD_USER_INPUT', { field: 'connected_blocks' });
     }
-
 }
 
 /**

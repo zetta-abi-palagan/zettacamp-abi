@@ -158,7 +158,7 @@ async function DeleteBlock(_, { id }) {
             tests,
             tasks,
             studentTestResults
-        } = await BlockHelper.GetDeleteBlockPayload({ id, userId });
+        } = await BlockHelper.GetDeleteBlockPayload({ blockId: id, userId });
 
         // *************** Soft delete student test results if any
         if (studentTestResults) {
