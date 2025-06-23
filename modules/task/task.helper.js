@@ -222,7 +222,7 @@ async function SendEmailWithSendGrid(to, subject, html) {
             statusCode: response.statusCode
         };
     } catch (error) {
-        console.error('SendGrid Error:', error.response?.body || error.message);
+        console.error('SendGrid Error:', error.message || error);
         return {
             success: false,
             error: error.message || 'Unknown error'

@@ -2,7 +2,7 @@
 const { ApolloError } = require('apollo-server');
 
 // *************** IMPORT MODULE *************** 
-const BlockModel = require('..block/block.model');
+const BlockModel = require('../block/block.model');
 const SubjectModel = require('./subject.model');
 const TestModel = require('../test/test.model');
 const StudentTestResultModel = require('../studentTestResult/student_test_result.model');
