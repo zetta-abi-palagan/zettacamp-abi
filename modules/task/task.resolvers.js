@@ -423,7 +423,7 @@ async function ValidateMarks(_, { task_id, student_test_result_id }) {
  */
 async function TestLoader(task, _, context) {
     try {
-        validator.ValidateTestLoaderInput(task, context);
+        TaskValidator.ValidateTestLoaderInput(task, context);
 
         const test = await context.dataLoaders.TestLoader.load(task.test);
 
@@ -445,7 +445,7 @@ async function TestLoader(task, _, context) {
  */
 async function UserLoader(task, _, context) {
     try {
-        validator.ValidateUserLoaderInput(task, context, 'user');
+        TaskValidator.ValidateUserLoaderInput(task, context, 'user');
 
         const user = await context.dataLoaders.UserLoader.load(task.user);
 
@@ -467,7 +467,7 @@ async function UserLoader(task, _, context) {
  */
 async function CreatedByLoader(task, _, context) {
     try {
-        validator.ValidateUserLoaderInput(task, context, 'created_by');
+        TaskValidator.ValidateUserLoaderInput(task, context, 'created_by');
 
         const created_by = await context.dataLoaders.UserLoader.load(task.created_by);
 
@@ -489,7 +489,7 @@ async function CreatedByLoader(task, _, context) {
  */
 async function UpdatedByLoader(task, _, context) {
     try {
-        validator.ValidateUserLoaderInput(task, context, 'updated_by');
+        TaskValidator.ValidateUserLoaderInput(task, context, 'updated_by');
 
         const updated_by = await context.dataLoaders.UserLoader.load(task.updated_by);
 
@@ -511,7 +511,7 @@ async function UpdatedByLoader(task, _, context) {
  */
 async function DeletedByLoader(task, _, context) {
     try {
-        validator.ValidateUserLoaderInput(task, context, 'deleted_by');
+        TaskValidator.ValidateUserLoaderInput(task, context, 'deleted_by');
 
         const deleted_by = await context.dataLoaders.UserLoader.load(task.deleted_by);
 
