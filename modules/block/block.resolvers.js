@@ -84,7 +84,7 @@ async function CreateBlock(_, { createBlockInput }) {
         BlockValidator.ValidateBlockInput(createBlockInput);
 
         // *************** Prepare payload and create the block
-        const createBlockPayload = BlockHelper.GetCreateBlockPayload(createBlockInput, userId);
+        const createBlockPayload = BlockHelper.GetCreateBlockPayload({ createBlockInput, userId });
 
         const newBlock = await BlockModel.create(createBlockPayload);
         if (!newBlock) {
@@ -119,7 +119,7 @@ async function UpdateBlock(_, { id, updateBlockInput }) {
         BlockValidator.ValidateBlockInput(updateBlockInput);
 
         // *************** Get the payload for updating a block
-        const updateBlockPayload = BlockHelper.GetUpdateBlockPayload(updateBlockInput, userId);
+        const updateBlockPayload = BlockHelper.GetUpdateBlockPayload({ updateBlockInput, userId });
 
         // *************** Update the block in the database
         const updatedBlock = await BlockModel.findOneAndUpdate({ _id: id }, updateBlockPayload, { new: true });
@@ -158,7 +158,7 @@ async function DeleteBlock(_, { id }) {
             tests,
             tasks,
             studentTestResults
-        } = await BlockHelper.GetDeleteBlockPayload(id, userId);
+        } = await BlockHelper.GetDeleteBlockPayload({ id, userId });
 
         // *************** Soft delete student test results if any
         if (studentTestResults) {
@@ -166,7 +166,7 @@ async function DeleteBlock(_, { id }) {
                 studentTestResults.filter,
                 studentTestResults.update
             );
-            if (studentTestResultUpdate.matchedCount) {
+            if (!studentTestResultUpdate.nModified) {
                 throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
             }
         }
@@ -177,7 +177,7 @@ async function DeleteBlock(_, { id }) {
                 tasks.filter,
                 tasks.update
             );
-            if (taskUpdate.matchedCount) {
+            if (!taskUpdate.nModified) {
                 throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
             }
         }
@@ -188,7 +188,7 @@ async function DeleteBlock(_, { id }) {
                 tests.filter,
                 tests.update
             );
-            if (testUpdate.matchedCount) {
+            if (!testUpdate.nModified) {
                 throw new ApolloError('No tests matched for deletion', 'TESTS_NOT_FOUND');
             }
         }
@@ -199,7 +199,7 @@ async function DeleteBlock(_, { id }) {
                 subjects.filter,
                 subjects.update
             );
-            if (subjectUpdate.matchedCount) {
+            if (!subjectUpdate.nModified) {
                 throw new ApolloError('No subjects matched for deletion', 'SUBJECTS_NOT_FOUND');
             }
         }

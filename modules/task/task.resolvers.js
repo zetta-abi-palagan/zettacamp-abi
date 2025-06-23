@@ -4,6 +4,7 @@ const { ApolloError } = require('apollo-server');
 // *************** IMPORT MODULE *************** 
 const TaskModel = require('./task.model');
 const TestModel = require('../test/test.model');
+const SubjectModel = require('../subject/subject.model');
 const UserModel = require('../user/user.model');
 const StudentModel = require('../student/student.model');
 const StudentTestResultModel = require('../studentTestResult/student_test_result.model');
@@ -108,7 +109,7 @@ async function CreateTask(_, { createTaskInput }) {
 
         // *************** Add new task to test's tasks array
         const updatedTest = await TestModel.updateOne({ _id: createTaskInput.test }, { $addToSet: { tasks: newTask._id } });
-        if (updatedTest.modifiedCount) {
+        if (!updatedTest.nModified) {
             throw new ApolloError('Failed to add test to subject', 'SUBJECT_UPDATE_FAILED');
         }
 
@@ -189,7 +190,7 @@ async function DeleteTask(_, { id }) {
 
         // *************** Remove task reference from test
         const testUpdate = await TestModel.updateOne(test.filter, test.update);
-        if (testUpdate.matchedCount) {
+        if (!testUpdate.nModified) {
             throw new ApolloError('Failed to update test', 'TEST_UPDATE_FAILED');
         }
 
@@ -238,6 +239,11 @@ async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date 
             throw new ApolloError('Related test not found.', 'NOT_FOUND');
         }
 
+        const subject = await SubjectModel.findById(test.subject);
+        if (!subject) {
+            throw new ApolloError('Related subject not found.', 'NOT_FOUND');
+        }
+
         // *************** Get all active students
         const students = await StudentModel.find({ student_status: 'ACTIVE' })
         if (!students) {
@@ -271,14 +277,15 @@ async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date 
 
         // *************** Add the new enter marks task to the test
         const updatedTest = await TestModel.updateOne({ _id: test._id }, { $push: { tasks: enterMarksTask._id } });
-        if (!updatedTest.modifiedCount) {
+        console.log(updatedTest.nModified);
+        if (!updatedTest.nModified) {
             throw new ApolloError('Failed to add task to test', 'TEST_UPDATE_FAILED');
         }
 
         // *************** Send notification email to the corrector (replace with corrector.email in production)
         const emailRecipient = 'palaganabimanyu@gmail.com'
 
-        const emailContent = TaskHelper.GetAssignCorrectorEmail(test, test.subject, students);
+        const emailContent = TaskHelper.GetAssignCorrectorEmail(test, subject, students);
 
         const sendEmail = await TaskHelper.SendEmailWithSendGrid(
             emailRecipient,
@@ -362,7 +369,7 @@ async function EnterMarks(_, { task_id, enterMarksInput, validate_marks_due_date
 
         // *************** Add validate marks task to test
         const updatedTest = await TestModel.updateOne({ _id: enterMarksInput.test }, { $push: { tasks: validateMarksTask._id } });
-        if (!updatedTest.modifiedCount) {
+        if (!updatedTest.nModified) {
             throw new ApolloError('Failed to add task to test', 'TEST_UPDATE_FAILED');
         }
 

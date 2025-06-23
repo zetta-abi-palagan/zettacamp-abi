@@ -1,5 +1,7 @@
-// *************** IMPORT LIBRARY ***************
+// *************** IMPORT CORE ***************
 const DataLoader = require('dataloader');
+
+// *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
 // *************** IMPORT MODULE ***************

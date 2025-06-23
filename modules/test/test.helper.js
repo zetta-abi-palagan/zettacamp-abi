@@ -106,7 +106,7 @@ function GetPublishTestPayload(userId, test_due_date) {
  * @returns {object} A data payload for creating the new task.
  */
 function GetAssignCorrectorTaskPayload(publishedTest, assign_corrector_due_date, userId) {
-    CommonValidator.ValidateInputTypeObject(test);
+    CommonValidator.ValidateInputTypeObject(publishedTest);
     // Dummy ID for academic director, should eventually come from a config or role-based lookup
     const academicDirectorId = '6846e5769e5502fce150eb67';
 

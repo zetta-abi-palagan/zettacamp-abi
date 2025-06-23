@@ -107,7 +107,7 @@ async function CreateSubject(_, { createSubjectInput }) {
             { _id: createSubjectInput.block },
             { $addToSet: { subjects: newSubject._id } }
         );
-        if (updatedBlock.modifiedCount) {
+        if (!updatedBlock.nModified) {
             throw new ApolloError('Failed to add subject to block', 'BLOCK_UPDATE_FAILED');
         }
 
@@ -192,7 +192,7 @@ async function DeleteSubject(_, { id }) {
                 studentTestResults.filter,
                 studentTestResults.update
             );
-            if (studentResultUpdate.matchedCount) {
+            if (!studentResultUpdate.nModified) {
                 throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
             }
         }
@@ -203,7 +203,7 @@ async function DeleteSubject(_, { id }) {
                 tasks.filter,
                 tasks.update
             );
-            if (taskUpdate.matchedCount) {
+            if (!taskUpdate.nModified) {
                 throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
             }
         }
@@ -214,7 +214,7 @@ async function DeleteSubject(_, { id }) {
                 tests.filter,
                 tests.update
             );
-            if (testUpdate.matchedCount) {
+            if (!testUpdate.nModified) {
                 throw new ApolloError('No tests matched for deletion', 'TESTS_NOT_FOUND');
             }
         }

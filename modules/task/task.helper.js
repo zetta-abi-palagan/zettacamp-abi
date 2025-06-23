@@ -50,7 +50,6 @@ function GetUpdateTaskPayload(taskInput, userId) {
     CommonValidator.ValidateInputTypeObject(taskInput);
 
     const {
-        test,
         user,
         title,
         description,

@@ -91,7 +91,7 @@ async function CreateTest(_, { createTestInput }) {
 
         // *************** Ensure parent block to the subject exists and is active
         const parentBlock = await BlockModel.findById(parentSubject.block);
-        if (!block || block.block_status !== 'ACTIVE') {
+        if (!parentBlock || parentBlock.block_status !== 'ACTIVE') {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
 
@@ -110,7 +110,7 @@ async function CreateTest(_, { createTestInput }) {
             { _id: createTestInput.subject },
             { $addToSet: { tests: newTest._id } }
         )
-        if (updatedSubject.modifiedCount) {
+        if (!updatedSubject.nModified) {
             throw new ApolloError('Failed to add test to subject', 'SUBJECT_UPDATE_FAILED');
         }
 
@@ -164,7 +164,7 @@ async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }) 
             { _id: assignCorrectorTask.test },
             { $push: { tasks: assignCorrectorTask._id } }
         );
-        if (updatedTest.modifiedCount) {
+        if (!updatedTest.nModified) {
             throw new ApolloError('Failed to add task to test', 'TEST_UPDATE_FAILED');
         }
 
@@ -264,7 +264,7 @@ async function DeleteTest(_, { id }) {
             studentTestResults.filter,
             studentTestResults.update
             );
-            if (deletedStudentTestResults.matchedCount) {
+            if (!deletedStudentTestResults.nModified) {
             throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
             }
         }
@@ -275,7 +275,7 @@ async function DeleteTest(_, { id }) {
             tasks.filter,
             tasks.update
             );
-            if (deletedTasks.matchedCount) {
+            if (!deletedTasks.nModified) {
             throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
             }
         }
@@ -291,7 +291,7 @@ async function DeleteTest(_, { id }) {
 
         // *************** Remove test reference from parent subject
         const updatedSubject = await SubjectModel.updateOne(subject.filter, subject.update);
-        if (updatedSubject.matchedCount) {
+        if (!updatedSubject.nModified) {
             throw new ApolloError('Failed to update subject (remove test)', 'SUBJECT_UPDATE_FAILED');
         }
 

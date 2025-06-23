@@ -22,6 +22,7 @@ function GetCreateSubjectPayload(subjectInput, isTransversal, userId) {
     CommonValidator.ValidateObjectId(userId);
 
     const {
+        block,
         name,
         description,
         coefficient,
@@ -29,6 +30,7 @@ function GetCreateSubjectPayload(subjectInput, isTransversal, userId) {
     } = subjectInput;
 
     return {
+        block,
         name,
         description,
         coefficient,

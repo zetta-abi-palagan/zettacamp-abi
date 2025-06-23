@@ -152,7 +152,7 @@ async function DeleteStudentTestResult(_, { id }) {
         }
 
         const updatedTest = await TestModel.updateOne(test.filter, test.update);
-        if (updatedTest.matchedCount) {
+        if (!updatedTest.nModified) {
             throw new ApolloError('Failed to update test', 'TEST_UPDATE_FAILED');
         }
 
