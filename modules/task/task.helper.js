@@ -8,15 +8,19 @@ const { SENDGRID_API_KEY, SENDGRID_SENDER_EMAIL } = require('../../core/config')
 
 // *************** IMPORT VALIDATOR ***************
 const CommonValidator = require('../../shared/validator/index');
+const TaskValidator = require('./task.validator');
 
 /**
- * Creates a clean data payload for a new task.
- * @param {object} taskInput - The raw input object containing the task's properties.
- * @param {string} userId - The ID of the user creating the task.
- * @returns {object} A processed data payload suitable for a create operation.
+ * Processes and transforms a raw task input object into a structured data payload for a create operation.
+ * @param {object} args - The arguments for creating the payload.
+ * @param {object} args.taskInput - The raw input object containing the task's properties.
+ * @param {string} args.userId - The ID of the user creating the task.
+ * @returns {object} A processed data payload suitable for a database create operation.
  */
-function GetCreateTaskPayload(taskInput, userId) {
+function GetCreateTaskPayload({ taskInput, userId }) {
     CommonValidator.ValidateInputTypeObject(taskInput);
+    CommonValidator.ValidateObjectId(userId);
+    TaskValidator.ValidateCreateTaskInput(taskInput);
 
     const {
         test,
@@ -41,19 +45,24 @@ function GetCreateTaskPayload(taskInput, userId) {
 }
 
 /**
- * Creates a clean data payload for updating an existing task.
- * @param {object} taskInput - The raw input object containing the task's properties to update.
- * @param {string} userId - The ID of the user updating the task.
- * @returns {object} A processed data payload suitable for an update operation.
+ * Processes and transforms a raw task input object into a structured data payload for an update operation.
+ * @param {object} args - The arguments for creating the payload.
+ * @param {object} args.taskInput - The raw input object containing the task's properties to update.
+ * @param {string} args.userId - The ID of the user updating the task.
+ * @param {string} args.taskId - The ID of the task being updated.
+ * @returns {object} A processed data payload suitable for a database update operation.
  */
-function GetUpdateTaskPayload(taskInput, userId) {
+function GetUpdateTaskPayload({ taskInput, userId, taskId }) {
     CommonValidator.ValidateInputTypeObject(taskInput);
+    CommonValidator.ValidateObjectId(userId);
+    TaskValidator.ValidateUpdateTaskInput({ taskInput, taskId });
 
     const {
         user,
         title,
         description,
         task_type,
+        task_status,
         due_date
     } = taskInput;
 
@@ -70,42 +79,82 @@ function GetUpdateTaskPayload(taskInput, userId) {
 
 /**
  * Generates a payload for soft-deleting a task and removing its reference from the parent test.
- * @param {string} taskId - The unique identifier of the task to be deleted.
- * @param {string} userId - The ID of the user performing the deletion.
+ * @param {object} args - The arguments for getting the delete payload.
+ * @param {string} args.taskId - The unique identifier of the task to be deleted.
+ * @param {string} args.userId - The ID of the user performing the deletion.
  * @returns {Promise<object>} A promise that resolves to a structured payload for the delete and update operations.
  */
-async function GetDeleteTaskPayload(taskId, userId) {
-    GlobalValidator.ValidateObjectId(taskId);
+async function GetDeleteTaskPayload({ taskId, userId }) {
+    CommonValidator.ValidateObjectId(taskId);
+    CommonValidator.ValidateObjectId(userId);
 
     const deletionTimestamp = Date.now();
+    const task = await GetTask(taskId);
+    const testId = task.test;
 
+    const deleteTaskPayload = {
+        task: BuildDeletePayload({
+            ids: [taskId],
+            statusKey: 'task_status',
+            timestamp: deletionTimestamp,
+            userId
+        }),
+        test: BuildPullTaskFromTestPayload(testId, taskId)
+    };
+
+    return deleteTaskPayload;
+}
+
+/**
+ * Fetches a single task document by its ID and validates its contents.
+ * @param {string} taskId - The ID of the task to fetch.
+ * @returns {Promise<object>} A promise that resolves to the found task document.
+ */
+async function GetTask(taskId) {
     const task = await TaskModel.findById(taskId);
     if (!task) {
         throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
     }
 
-    const testId = task.test;
-    if (!mongoose.Types.ObjectId.isValid(testId)) {
+    if (!mongoose.Types.ObjectId.isValid(task.test)) {
         throw new ApolloError('Invalid test ID in task', 'INVALID_TEST_ID');
     }
 
-    const deleteTaskPayload = {
-        task: {
-            filter: { _id: taskId },
-            update: {
-                task_status: 'DELETED',
-                updated_by: userId,
-                deleted_by: userId,
-                deleted_at: deletionTimestamp
-            }
-        },
-        test: {
-            filter: { _id: testId },
-            update: { $pull: { tasks: taskId } }
+    return task;
+}
+
+/**
+ * A generic utility to build a standard soft-delete payload object.
+ * @param {object} args - The arguments for building the payload.
+ * @param {Array<string>} args.ids - An array of document IDs to target.
+ * @param {string} args.statusKey - The name of the status field to be updated.
+ * @param {number} args.timestamp - The timestamp of the deletion.
+ * @param {string} args.userId - The ID of the user performing the deletion.
+ * @returns {object} An object containing 'filter' and 'update' properties for a database operation.
+ */
+function BuildDeletePayload({ ids, statusKey, timestamp, userId }) {
+    return {
+        filter: { _id: { $in: ids } },
+        update: {
+            [statusKey]: 'DELETED',
+            updated_by: userId,
+            deleted_by: userId,
+            deleted_at: timestamp
         }
     };
+}
 
-    return deleteTaskPayload;
+/**
+ * Builds a payload for removing a task's ID from a test's 'tasks' array.
+ * @param {string} testId - The ID of the test to update.
+ * @param {string} taskId - The ID of the task to remove.
+ * @returns {object} An object containing 'filter' and 'update' properties for a MongoDB $pull operation.
+ */
+function BuildPullTaskFromTestPayload(testId, taskId) {
+    return {
+        filter: { _id: testId },
+        update: { $pull: { tasks: taskId } }
+    };
 }
 
 /**
@@ -124,12 +173,16 @@ function GetTaskCompletionPayload(userId) {
 
 /**
  * Creates the full payload for a new student test result document.
- * @param {object} enterMarksInput - The input object containing test, student, and marks data.
- * @param {string} userId - The ID of the user creating the result.
+ * @param {object} args - The arguments for creating the payload.
+ * @param {object} args.enterMarksInput - The input object containing test, student, and marks data.
+ * @param {string} args.userId - The ID of the user creating the result.
+ * @param {object} args.parentTest - The parent test document, used for validation.
  * @returns {object} A data payload for creating the new student test result.
  */
-function GetStudentTestResultPayload(enterMarksInput, userId) {
+function GetStudentTestResultPayload({ enterMarksInput, userId, parentTest }) {
     CommonValidator.ValidateInputTypeObject(enterMarksInput);
+    CommonValidator.ValidateObjectId(userId);
+    TaskValidator.ValidateEnterMarksInput({ enterMarksInput, parentTest });
 
     const { test, student, marks } = enterMarksInput;
 
@@ -139,7 +192,7 @@ function GetStudentTestResultPayload(enterMarksInput, userId) {
         totalMarks += item.mark
     }
 
-    const averageMark = totalMarks / marks.length;
+    const averageMark = marks.length ? (totalMarks / marks.length) : 0;
 
     return {
         student: student,
@@ -168,12 +221,13 @@ function GetStudentTestResultValidationPayload(userId) {
 
 /**
  * Constructs the content for the 'Assign Corrector' email notification.
- * @param {object} test - The test document object.
- * @param {object} subject - The subject document object.
- * @param {Array<object>} students - An array of student document objects.
- * @returns {object} An object containing the email `subject` and `html` content.
+ * @param {object} args - The arguments for creating the email content.
+ * @param {object} args.test - The test document object.
+ * @param {object} args.subject - The subject document object.
+ * @param {Array<object>} args.students - An array of student document objects.
+ * @returns {object} An object containing the email 'subject' and 'html' content.
  */
-function GetAssignCorrectorEmail(test, subject, students) {
+function GetAssignCorrectorEmail({ test, subject, students }) {
     const studentNames = students.map(function (s) {
         return s.first_name + ' ' + s.last_name;
     });
@@ -197,13 +251,14 @@ function GetAssignCorrectorEmail(test, subject, students) {
 }
 
 /**
- * Sends an email using the SendGrid service.
- * @param {string} to - The email address of the recipient.
- * @param {string} subject - The subject line of the email.
- * @param {string} html - The HTML content for the email body.
+ * Sends an email using the SendGrid service with error handling.
+ * @param {object} args - The arguments for sending the email.
+ * @param {string} args.to - The email address of the recipient.
+ * @param {string} args.subject - The subject line of the email.
+ * @param {string} args.html - The HTML content for the email body.
  * @returns {Promise<object>} - A promise that resolves to an object indicating the outcome of the email sending attempt.
  */
-async function SendEmailWithSendGrid(to, subject, html) {
+async function SendEmailWithSendGrid({ to, subject, html }) {
     try {
         sgMail.setApiKey(SENDGRID_API_KEY);
 

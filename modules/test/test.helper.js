@@ -147,8 +147,8 @@ function GetAssignCorrectorTaskPayload({ publishedTest, assignCorrectorDueDate, 
  * @returns {Promise<object>} A promise that resolves to a structured payload for all required delete and update operations.
  */
 async function GetDeleteTestPayload({ testId, userId }) {
-    GlobalValidator.ValidateObjectId(testId);
-    GlobalValidator.ValidateObjectId(userId);
+    CommonValidator.ValidateObjectId(testId);
+    CommonValidator.ValidateObjectId(userId);
 
     const deletionTimestamp = Date.now();
     const test = await GetTest(testId);
@@ -236,7 +236,7 @@ function BuildPullTestFromSubjectPayload({ subjectId, testId }) {
  * @returns {object} An object containing the 'filter' and 'update' payload for tasks.
  */
 function HandleDeleteTasks({ taskIds, userId, timestamp }) {
-    GlobalValidator.ValidateObjectIdArray(taskIds, 'INVALID_TASK_ID');
+    CommonValidator.ValidateObjectIdArray(taskIds, 'INVALID_TASK_ID');
 
     return BuildDeletePayload({
         ids: taskIds,
@@ -255,7 +255,7 @@ function HandleDeleteTasks({ taskIds, userId, timestamp }) {
  * @returns {object} An object containing the 'filter' and 'update' payload for student test results.
  */
 function HandleDeleteStudentTestResults({ resultIds, userId, timestamp }) {
-    GlobalValidator.ValidateObjectIdArray(resultIds, 'INVALID_STUDENT_RESULT_ID');
+    CommonValidator.ValidateObjectIdArray(resultIds, 'INVALID_STUDENT_RESULT_ID');
 
     return BuildDeletePayload({
         ids: resultIds,

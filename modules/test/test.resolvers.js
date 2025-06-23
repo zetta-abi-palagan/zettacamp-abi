@@ -162,7 +162,7 @@ async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }) 
         // *************** Add assign corrector task to test's tasks array
         const updatedTest = await TestModel.updateOne(
             { _id: assignCorrectorTask.test },
-            { $push: { tasks: assignCorrectorTask._id } }
+            { $addToSet: { tasks: assignCorrectorTask._id } }
         );
         if (!updatedTest.nModified) {
             throw new ApolloError('Failed to add task to test', 'TEST_UPDATE_FAILED');
@@ -248,7 +248,7 @@ async function DeleteTest(_, { id }) {
         // *************** Dummy user ID (replace with real one later)
         const userId = '6846e5769e5502fce150eb67';
 
-        GlobalValidator.ValidateObjectId(id);
+        CommonValidator.ValidateObjectId(id);
 
         // *************** Prepare payloads for cascading soft delete
         const {

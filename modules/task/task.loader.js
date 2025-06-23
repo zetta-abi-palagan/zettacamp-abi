@@ -1,11 +1,18 @@
-// *************** IMPORT LIBRARY ***************
+// *************** IMPORT CORE ***************
 const DataLoader = require('dataloader');
+
+// *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
 // *************** IMPORT MODULE ***************
 const TaskModel = require('./task.model');
 
-
+/**
+ * Creates a new DataLoader for batch-loading non-deleted task data by their IDs.
+ * This function is used to solve the N+1 problem by collecting individual task ID
+ * requests and fetching them in a single database query.
+ * @returns {DataLoader} - An instance of DataLoader for fetching tasks by their unique ID.
+ */
 function TaskLoader() {
     return new DataLoader(async (taskIds) => {
         try {
