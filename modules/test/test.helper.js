@@ -3,9 +3,6 @@ const { ApolloError } = require('apollo-server');
 
 // *************** IMPORT MODULE *************** 
 const TestModel = require('./test.model');
-const SubjectModel = require('../subject/subject.model');
-const BlockModel = require('../block/block.model');
-const TaskModel = require('../task/task.model');
 
 // *************** IMPORT VALIDATOR ***************
 const CommonValidator = require('../../shared/validator/index');

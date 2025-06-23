@@ -4,232 +4,197 @@ const sgMail = require('@sendgrid/mail');
 
 // *************** IMPORT MODULE *************** 
 const TaskModel = require('./task.model');
-const StudentTestResultModel = require('../studentTestResult/student_test_result.model')
-const TestModel = require('../test/test.model');
-const UserModel = require('../user/user.model');
-const StudentModel = require('../student/student.model');
-const SubjectModel = require('../subject/subject.model');
 const { SENDGRID_API_KEY, SENDGRID_SENDER_EMAIL } = require('../../core/config');
 
 // *************** IMPORT VALIDATOR ***************
-const validator = require('./task.validator');
+const CommonValidator = require('../../shared/validator/index');
 
 /**
- * Fetches all tasks from the database, applying an optional status filter.
- * @param {string} [task_status] - Optional. The status of the tasks to fetch (e.g., 'PENDING').
- * @param {string} [test_id] - Optional. The ID of the test to filter tasks by.
- * @param {string} [user_id] - Optional. The ID of the user to filter tasks by.
- * @returns {Promise<Array<object>>} - A promise that resolves to an array of task objects.
+ * Creates a clean data payload for a new task.
+ * @param {object} taskInput - The raw input object containing the task's properties.
+ * @param {string} userId - The ID of the user creating the task.
+ * @returns {object} A processed data payload suitable for a create operation.
  */
-async function GetAllTasksHelper(task_status, test_id, user_id) {
-    try {
-        validator.ValidateGetAllTasksInput(task_status, test_id, user_id);
+function GetCreateTaskPayload(taskInput, userId) {
+    CommonValidator.ValidateInputTypeObject(taskInput);
 
-        const filter = {};
+    const {
+        test,
+        user,
+        title,
+        description,
+        task_type,
+        due_date
+    } = taskInput;
 
-        if (task_status) {
-            filter.task_status = task_status;
-        }
-
-        const tasks = await TaskModel.find(filter);
-
-        return tasks;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch tasks: ${error.message}`, "INTERNAL_SERVER_ERROR");
-    }
+    return {
+        test: test,
+        user: user,
+        title: title,
+        description: description,
+        task_type: task_type.toUpperCase(),
+        task_status: 'PENDING',
+        due_date: due_date,
+        created_by: userId,
+        updated_by: userId
+    };
 }
 
 /**
- * Fetches a single task by its unique ID after validating the ID.
- * @param {string} id - The unique identifier of the task to retrieve.
- * @returns {Promise<object>} - A promise that resolves to the found task object.
+ * Creates a clean data payload for updating an existing task.
+ * @param {object} taskInput - The raw input object containing the task's properties to update.
+ * @param {string} userId - The ID of the user updating the task.
+ * @returns {object} A processed data payload suitable for an update operation.
  */
-async function GetOneTaskHelper(id) {
-    try {
-        validator.ValidateObjectId(id);
+function GetUpdateTaskPayload(taskInput, userId) {
+    CommonValidator.ValidateInputTypeObject(taskInput);
 
-        const task = await TaskModel.findOne({ _id: id });
+    const {
+        test,
+        user,
+        title,
+        description,
+        task_type,
+        due_date
+    } = taskInput;
 
-        if (!task) {
-            throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
-        }
-
-        return task;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch task: ${error.message}`, "INTERNAL_SERVER_ERROR");
-    }
+    return {
+        user: user,
+        title: title,
+        description: description,
+        task_type: task_type.toUpperCase(),
+        task_status: task_status.toUpperCase(),
+        due_date: due_date,
+        updated_by: userId
+    };
 }
 
 /**
- * Creates a new task after validating inputs and linking it to the parent test.
- * @param {string} test - The ID of the test this task is related to.
- * @param {string} user - The ID of the user assigned to this task.
- * @param {string} title - The title of the task.
- * @param {string} description - The description of the task.
- * @param {string} task_type - The type of the task (e.g., 'ASSIGN_CORRECTOR').
- * @param {Date|string} due_date - The due date for the task.
- * @returns {Promise<object>} - A promise that resolves to the newly created task object.
+ * Generates a payload for soft-deleting a task and removing its reference from the parent test.
+ * @param {string} taskId - The unique identifier of the task to be deleted.
+ * @param {string} userId - The ID of the user performing the deletion.
+ * @returns {Promise<object>} A promise that resolves to a structured payload for the delete and update operations.
  */
-async function CreateTaskHelper(test, user, title, description, task_type, due_date) {
-    try {
-        validator.ValidateCreateTaskInput(test, user, title, description, task_type, due_date);
+async function GetDeleteTaskPayload(taskId, userId) {
+    GlobalValidator.ValidateObjectId(taskId);
 
-        const testCheck = await TestModel.findOne({ _id: test, test_status: 'ACTIVE' });
-        if (!testCheck) {
-            throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
-        }
+    const deletionTimestamp = Date.now();
 
-        const userCheck = await UserModel.findOne({ _id: user, user_status: 'ACTIVE' });
-        if (!userCheck) {
-            throw new ApolloError('User not found', 'USER_NOT_FOUND');
-        }
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+        throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
+    }
 
-        if (typeof task_type !== 'string') {
-            throw new ApolloError('Task type must be a string.', 'BAD_USER_INPUT', {
-                field: 'task_type'
-            });
-        }
+    const testId = task.test;
+    if (!mongoose.Types.ObjectId.isValid(testId)) {
+        throw new ApolloError('Invalid test ID in task', 'INVALID_TEST_ID');
+    }
 
-        const upperTaskType = task_type.toUpperCase()
-
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const createdByUserId = '6846e5769e5502fce150eb67';
-
-        const taskData = {
-            test: test,
-            user: user,
-            title: title,
-            description: description,
-            task_type: upperTaskType,
-            task_status: 'PENDING',
-            due_date: due_date,
-            created_by: createdByUserId,
-            updated_by: createdByUserId
-        }
-
-        const newTask = await TaskModel.create(taskData);
-        if (!newTask) {
-            throw new ApolloError('Task creation failed', 'TASK_CREATION_FAILED');
-        }
-
-        const updatedTest = await TestModel.updateOne(
-            { _id: testCheck._id, test_status: 'ACTIVE' },
-            {
-                $addToSet: { tests: newTask._id },
+    const deleteTaskPayload = {
+        task: {
+            filter: { _id: taskId },
+            update: {
+                task_status: 'DELETED',
+                updated_by: userId,
+                deleted_by: userId,
+                deleted_at: deletionTimestamp
             }
-        )
-
-        if (updatedTest.modifiedCount === 0) {
-            throw new ApolloError('Failed to add enter marks task to test', 'TEST_UPDATE_FAILED');
+        },
+        test: {
+            filter: { _id: testId },
+            update: { $pull: { tasks: taskId } }
         }
+    };
 
-        return newTask;
-    } catch (error) {
-        throw new ApolloError('Failed to create task', 'TASK_CREATION_FAILED', {
-            error: error.message
-        });
-    }
+    return deleteTaskPayload;
 }
 
 /**
- * Updates an existing task after validating inputs.
- * @param {string} id - The unique identifier of the task to update.
- * @param {string} user - The ID of the user assigned to the task.
- * @param {string} title - The new title for the task.
- * @param {string} description - The new description for the task.
- * @param {string} task_type - The new type for the task.
- * @param {string} task_status - The new status for the task.
- * @param {Date|string} due_date - The new due date for the task.
- * @returns {Promise<object>} - A promise that resolves to the updated task object.
+ * Creates the payload for marking a task as completed.
+ * @param {string} userId - The ID of the user completing the task.
+ * @returns {object} A data payload for the update operation.
  */
-async function UpdateTaskHelper(id, user, title, description, task_type, task_status, due_date) {
-    try {
-        validator.ValidateUpdateTaskInput(id, user, title, description, task_type, task_status, due_date);
-
-        const userCheck = await UserModel.findOne({ _id: user, user_status: 'ACTIVE' });
-        if (!userCheck) {
-            throw new ApolloError('User not found', 'USER_NOT_FOUND');
-        }
-
-        if (typeof task_type !== 'string') {
-            throw new ApolloError('Task type must be a string.', 'BAD_USER_INPUT', {
-                field: 'task_type'
-            });
-        }
-
-        if (typeof task_status !== 'string') {
-            throw new ApolloError('Task type must be a string.', 'BAD_USER_INPUT', {
-                field: 'task_type'
-            });
-        }
-
-        const upperTaskType = task_type.toUpperCase()
-        const upperTaskStatus = task_status.toUpperCase()
-
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const updatedByUserId = '6846e5769e5502fce150eb67';
-
-        const taskData = {
-            user: user,
-            title: title,
-            description: description,
-            task_type: upperTaskType,
-            task_status: upperTaskStatus,
-            due_date: due_date,
-            updated_by: updatedByUserId,
-        }
-
-        const updatedTask = await TaskModel.findOne({ _id: id }, taskData, { new: true });
-        if (!updatedTask) {
-            throw new ApolloError('Task update failed', 'TASK_UPDATE_FAILED');
-        }
-
-        return updatedTask;
-    } catch (error) {
-        throw new ApolloError('Failed to update task', 'TASK_UPDATE_FAILED', {
-            error: error.message
-        });
-    }
+function GetTaskCompletionPayload(userId) {
+    return {
+        task_status: 'COMPLETED',
+        completed_by: userId,
+        completed_at: Date.now(),
+        updated_by: userId
+    };
 }
 
 /**
- * Soft deletes a task and removes its reference from the parent document.
- * @param {string} id - The unique identifier of the task to be deleted.
- * @returns {Promise<object>} - A promise that resolves to the task object as it was before being updated.
+ * Creates the full payload for a new student test result document.
+ * @param {object} enterMarksInput - The input object containing test, student, and marks data.
+ * @param {string} userId - The ID of the user creating the result.
+ * @returns {object} A data payload for creating the new student test result.
  */
-async function DeleteTaskHelper(id) {
-    try {
-        validator.ValidateObjectId(id);
+function GetStudentTestResultPayload(enterMarksInput, userId) {
+    CommonValidator.ValidateInputTypeObject(enterMarksInput);
 
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const deletedByUserId = '6846e5769e5502fce150eb67';
+    const { test, student, marks } = enterMarksInput;
 
-        const taskData = {
-            task_status: 'DELETED',
-            updated_at: deletedByUserId,
-            deleted_by: deletedByUserId,
-            deleted_at: Date.now()
-        }
+    let totalMarks = 0;
 
-        const deletedTask = await TaskModel.findOneAndUpdate({ _id: id }, taskData);
-        if (!deletedTask) {
-            throw new ApolloError('Task deletion failed', 'TASK_DELETION_FAILED');
-        }
-
-        await SubjectModel.updateOne(
-            { _id: deletedTask.test, subject_status: 'ACTIVE' },
-            {
-                $pull: { tasks: deletedTask._id },
-                $set: { updated_by: deletedByUserId }
-            }
-        );
-
-        return deletedTask;
-    } catch (error) {
-        throw new ApolloError('Failed to delete task', 'TASK_DELETION_FAILED', {
-            error: error.message
-        });
+    for (const item of marks) {
+        totalMarks += item.mark
     }
+
+    const averageMark = totalMarks / marks.length;
+
+    return {
+        student: student,
+        test: test,
+        marks: marks,
+        average_mark: averageMark,
+        mark_entry_date: Date.now(),
+        student_test_result_status: 'PENDING',
+        created_by: userId,
+        updated_by: userId
+    };
+}
+
+/**
+ * Creates the payload for validating a student's test result.
+ * @param {string} userId - The ID of the user validating the result.
+ * @returns {object} A data payload for the update operation.
+ */
+function GetStudentTestResultValidationPayload(userId) {
+    return {
+        student_test_result_status: 'VALIDATED',
+        marks_validated_date: Date.now(),
+        updated_by: userId
+    };
+}
+
+/**
+ * Constructs the content for the 'Assign Corrector' email notification.
+ * @param {object} test - The test document object.
+ * @param {object} subject - The subject document object.
+ * @param {Array<object>} students - An array of student document objects.
+ * @returns {object} An object containing the email `subject` and `html` content.
+ */
+function GetAssignCorrectorEmail(test, subject, students) {
+    const studentNames = students.map(function (s) {
+        return s.first_name + ' ' + s.last_name;
+    });
+
+    const subjectMsg = 'You have been assigned as a Test Corrector!';
+
+    const html = `
+    <h2>You have been assigned as a Test Corrector!</h2>
+    <p><strong>Test Name:</strong> ${test.name}</p>
+    <p><strong>Subject:</strong> ${subject.name}</p>
+    <p><strong>Description:</strong> ${test.description}</p>
+    <p><strong>Students to Correct:</strong></p>
+    <ol>
+        ${studentNames.map(function (name) {
+        return `<li>${name}</li>`;
+    }).join('')}
+    </ol>
+`;
+
+    return { subject: subjectMsg, html: html };
 }
 
 /**
@@ -237,340 +202,42 @@ async function DeleteTaskHelper(id) {
  * @param {string} to - The email address of the recipient.
  * @param {string} subject - The subject line of the email.
  * @param {string} html - The HTML content for the email body.
- * @returns {Promise<object>} - A promise that resolves to an object indicating success or failure.
+ * @returns {Promise<object>} - A promise that resolves to an object indicating the outcome of the email sending attempt.
  */
 async function SendEmailWithSendGrid(to, subject, html) {
     try {
         sgMail.setApiKey(SENDGRID_API_KEY);
 
         const msg = {
-            to: to,
+            to,
             from: SENDGRID_SENDER_EMAIL,
-            subject: subject,
-            html: html,
+            subject,
+            html
         };
+
         const [response] = await sgMail.send(msg);
 
-        if (response.statusCode === 202) {
-            return { success: true };
-        } else {
-            return { success: false, error: `Unexpected status code: ${response.statusCode}` };
-        }
-    } catch (error) {
-        console.error('Failed to send email:', error.message);
-        return { success: false, error: error.message };
-    }
-}
-
-/**
- * Assigns a corrector to a test, completes the assignment task, creates a new task for entering marks, and sends an email notification.
- * @param {string} task_id - The ID of the 'ASSIGN_CORRECTOR' task to be completed.
- * @param {string} corrector_id - The ID of the user being assigned as the corrector.
- * @param {Date|string} enter_marks_due_date - The due date for the new 'ENTER_MARKS' task.
- * @returns {Promise<object>} - A promise that resolves to the newly created 'ENTER_MARKS' task object.
- */
-async function AssignCorrectorHelper(task_id, corrector_id, enter_marks_due_date) {
-    try {
-        validator.ValidateAssignCorrectorInput(task_id, corrector_id, enter_marks_due_date);
-
-        const assignCorrectorTask = await TaskModel.findOne({ _id: task_id, task_type: 'ASSIGN_CORRECTOR', task_status: 'PENDING' });
-        if (!assignCorrectorTask) {
-            throw new ApolloError('Assign corrector task not found', 'NOT_FOUND', {
-                field: 'task_id'
-            });
-        }
-
-        const corrector = await UserModel.findOne({ _id: corrector_id, role: 'CORRECTOR', user_status: 'ACTIVE' });
-        if (!corrector) {
-            throw new ApolloError('Corrector not found', 'NOT_FOUND', {
-                field: 'corrector_id'
-            });
-        }
-
-        const students = await StudentModel.find({ student_status: 'ACTIVE' })
-        if (!students) {
-            throw new ApolloError('Students not found', 'NOT_FOUND');
-        }
-
-        const test = await TestModel.findOne({ _id: assignCorrectorTask.test });
-        if (!test) {
-            throw new ApolloError('Test not found', 'NOT_FOUND');
-        }
-
-        const subject = await SubjectModel.findOne({ _id: test.subject });
-        if (!subject) {
-            throw new ApolloError('Subject not found', 'NOT_FOUND');
-        }
-
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const completedByUserId = '6846e5769e5502fce150eb67';
-
-        const assignCorrectorTaskData = {
-            task_status: 'COMPLETED',
-            completed_by: completedByUserId,
-            completed_at: Date.now(),
-            updated_by: completedByUserId
-        }
-
-        const completeAssignCorrectorTask = await TaskModel.updateOne({ _id: task_id, task_type: 'ASSIGN_CORRECTOR', task_status: 'PENDING' }, assignCorrectorTaskData);
-        if (!completeAssignCorrectorTask) {
-            throw new ApolloError('Assign corrector task completion failed', 'TASK_COMPLETION_FAILED');
-        }
-
-        const enterMarksTaskData = {
-            test: test._id,
-            user: corrector_id,
-            title: 'Enter Marks',
-            description: 'Corrector should enter marks for student test',
-            task_type: 'ENTER_MARKS',
-            task_status: 'PENDING',
-            due_date: enter_marks_due_date,
-            created_by: completedByUserId,
-            updated_by: completedByUserId
-        }
-
-        const enterMarksTask = await TaskModel.create(enterMarksTaskData);
-        if (!enterMarksTask) {
-            throw new ApolloError('Enter marks task creation failed', 'TASK_CREATION_FAILED');
-        }
-
-        const updatedTest = await TestModel.updateOne(
-            { _id: test._id },
-            { $push: { tasks: enterMarksTask._id } }
-        );
-
-        if (updatedTest.modifiedCount === 0) {
-            throw new ApolloError('Failed to add enter marks task to test', 'TEST_UPDATE_FAILED');
-        }
-
-        // *************** Prepare email content
-        const studentNames = students.map((s) => `${s.first_name} ${s.last_name}`);
-
-        const subjectMsg = 'You have been assigned as a Test Corrector!';
-
-        const html = `
-            <h2>You have been assigned as a Test Corrector!</h2>
-            <p><strong>Test Name:</strong> ${test.name}</p>
-            <p><strong>Subject:</strong> ${subject.name}</p>
-            <p><strong>Description:</strong> ${test.description}</p>
-            <p><strong>Students to Correct:</strong></p>
-            <ul>
-                ${studentNames.map((name, i) => `<li>${i + 1}. ${name}</li>`).join('')}
-            </ul>
-        `;
-        // *************** For testing purposes
-        const emailRecipient = 'palaganabimanyu@gmail.com'
-
-        const emailResult = await SendEmailWithSendGrid(emailRecipient, subjectMsg, html);
-
-        if (!emailResult.success) {
-            throw new ApolloError('Email sending failed', 'SENDGRID_FAILED', {
-                error: emailResult.error
-            });
-        }
-
-        return enterMarksTask;
-    } catch (error) {
-        throw new ApolloError('Failed to assign corrector', 'TASK_CREATION_FAILED', {
-            error: error.message
-        });
-    }
-}
-
-/**
- * Enters marks for a student's test, creates a result document, completes the current task, and creates a new task for validation.
- * @param {string} task_id - The ID of the 'ENTER_MARKS' task.
- * @param {string} test - The ID of the related test.
- * @param {string} student - The ID of the related student.
- * @param {Array<object>} marks - The array of marks to be entered.
- * @param {Date|string} validate_marks_due_date - The due date for the new 'VALIDATE_MARKS' task.
- * @returns {Promise<object>} - A promise that resolves to an object containing the new student test result and the new validation task.
- */
-async function EnterMarksHelper(task_id, test, student, marks, validate_marks_due_date) {
-    try {
-        validator.ValidateEnterMarksInput(task_id, test, student, marks, validate_marks_due_date);
-
-        const enterMarksTask = await TaskModel.findOne({ _id: task_id, task_type: 'ENTER_MARKS', task_status: 'PENDING' })
-        if (!enterMarksTask) {
-            throw new ApolloError('Enter marks task not found', 'NOT_FOUND');
-        }
-
-        const studentCheck = await StudentModel.findOne({ _id: student, student_status: 'ACTIVE' })
-        if (!studentCheck) {
-            throw new ApolloError('Student not found', 'NOT_FOUND');
-        }
-
-        const testCheck = await TestModel.findOne({ _id: test });
-        if (!testCheck) {
-            throw new ApolloError('Test not found', 'NOT_FOUND');
-        }
-
-        const notationMap = new Map();
-        for (const notation of testCheck.notations) {
-            notationMap.set(notation.notation_text, notation.max_points);
-        }
-
-        for (const markEntry of marks) {
-            const { notation_text, mark } = markEntry;
-
-            if (!notationMap.has(notation_text)) {
-                throw new ApolloError(`Invalid notation_text: ${notation_text}`, 'INVALID_NOTATION');
-            }
-
-            const maxPoints = notationMap.get(notation_text);
-            if (mark < 0 || mark > maxPoints) {
-                throw new ApolloError(
-                    `Mark for '${notation_text}' must be between 0 and ${maxPoints}`,
-                    'INVALID_MARK_VALUE'
-                );
-            }
-        }
-
-        // *************** Count average mark
-        let totalMarks = 0;
-
-        for (const item of marks) {
-            totalMarks += item.mark
-        }
-
-        const averageMark = totalMarks / marks.length;
-
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const completedByUserId = '6846e5769e5502fce150eb67';
-
-        const studentTestResultData = {
-            student: student,
-            test: test,
-            marks: marks,
-            average_mark: averageMark,
-            mark_entry_date: Date.now(),
-            student_test_result_status: 'PENDING',
-            created_by: completedByUserId,
-            updated_by: completedByUserId
-        }
-
-        const newStudentTestResult = await StudentTestResultModel.create(studentTestResultData);
-        if (!newStudentTestResult) {
-            throw new ApolloError('Student test result creation failed', 'STUDENT_TEST_RESULT_CREATION_FAILED');
-        }
-
-        const enterMarksTaskData = {
-            task_status: 'COMPLETED',
-            completed_by: completedByUserId,
-            completed_at: Date.now(),
-            updated_by: completedByUserId
-        }
-
-        const completeEnterMarksTask = await TaskModel.updateOne({ _id: enterMarksTask._id, task_type: 'ENTER_MARKS', task_status: 'PENDING' }, enterMarksTaskData);
-        if (!completeEnterMarksTask) {
-            throw new ApolloError('Enter marks task completion failed', 'TASK_COMPLETION_FAILED');
-        }
-
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const academicDirectorId = '6846e5769e5502fce150eb67';
-
-        const validateMarksTaskData = {
-            test: test,
-            user: academicDirectorId,
-            title: 'Validate Marks',
-            description: 'Academic Director should validate mark entry for student test',
-            task_type: 'VALIDATE_MARKS',
-            task_status: 'PENDING',
-            due_date: validate_marks_due_date,
-            created_by: completedByUserId,
-            updated_by: completedByUserId
-        }
-
-        const validateMarksTask = await TaskModel.create(validateMarksTaskData);
-        if (!validateMarksTask) {
-            throw new ApolloError('Validate marks task creation failed', 'TASK_CREATION_FAILED');
-        }
-
-        const updatedTest = await TestModel.updateOne(
-            { _id: testCheck._id },
-            { $push: { tasks: validateMarksTask._id } }
-        );
-
-        if (updatedTest.modifiedCount === 0) {
-            throw new ApolloError('Failed to add enter marks task to test', 'TEST_UPDATE_FAILED');
-        }
-
         return {
-            student_test_result: newStudentTestResult,
-            validate_marks_task: validateMarksTask
-        }
+            success: response.statusCode >= 200 && response.statusCode < 300,
+            statusCode: response.statusCode
+        };
     } catch (error) {
-        throw new ApolloError('Failed to enter marks', 'TASK_CREATION_FAILED', {
-            error: error.message
-        });
-    }
-}
-
-/**
- * Validates a student's test result, updating its status and completing the associated task.
- * @param {string} task_id - The ID of the 'VALIDATE_MARKS' task.
- * @param {string} student_test_result_id - The ID of the student test result to validate.
- * @returns {Promise<void>} - This function does not return a value but performs database operations.
- */
-async function ValidateMarksHelper(task_id, student_test_result_id) {
-    try {
-        validator.ValidateValidateMarksInput(task_id, student_test_result_id);
-
-        const validateMarksTask = await TaskModel.findOne({ _id: task_id, task_type: 'VALIDATE_MARKS', task_status: 'PENDING' });
-        if (!validateMarksTask) {
-            throw new ApolloError('Validate marks task not found', 'NOT_FOUND');
-        }
-
-        const studentTestResultCheck = await StudentTestResultModel.findOne({ _id: student_test_result_id, student_test_result_status: 'PENDING' });
-        if (!studentTestResultCheck) {
-            throw new ApolloError('Student test result not found', 'NOT_FOUND');
-        }
-
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const completedByUserId = '6846e5769e5502fce150eb67';
-
-        const studentTestResultData = {
-            student_test_result_status: 'VALIDATED',
-            updated_by: completedByUserId
-        }
-
-        const validatedStudentTestResult = await StudentTestResultModel.findOneAndUpdate({ _id: student_test_result_id, student_test_result_status: 'PENDING' }, studentTestResultData);
-        if (!validatedStudentTestResult) {
-            throw new ApolloError('Student test result validation failed', 'STUDENT_TEST_RESULT_VALIDATION_FAILED');
-        }
-
-        const validateMarksTaskData = {
-            task_status: 'COMPLETED',
-            marks_validated_date: Date.now(),
-            completed_by: completedByUserId,
-            completed_at: Date.now(),
-            updated_by: completedByUserId
-        }
-
-        const completeValidateMarksTask = await TaskModel.findOneAndUpdate({ _id: task_id, task_type: 'VALIDATE_MARKS', task_status: 'PENDING' }, validateMarksTaskData);
-        if (!completeValidateMarksTask) {
-            throw new ApolloError('Validate marks task completion failed', 'TASK_COMPLETION_FAILED');
-        }
-
+        console.error('SendGrid Error:', error.response?.body || error.message);
         return {
-            student_test_result: validatedStudentTestResult,
-            validate_marks_task: completeValidateMarksTask
-        }
-    } catch (error) {
-        throw new ApolloError('Failed to validate marks', 'TASK_COMPLETION_FAILED', {
-            error: error.message
-        });
+            success: false,
+            error: error.message || 'Unknown error'
+        };
     }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetAllTasksHelper,
-    GetOneTaskHelper,
-    CreateTaskHelper,
-    UpdateTaskHelper,
-    DeleteTaskHelper,
-    AssignCorrectorHelper,
-    EnterMarksHelper,
-    ValidateMarksHelper
+    GetCreateTaskPayload,
+    GetUpdateTaskPayload,
+    GetDeleteTaskPayload,
+    GetTaskCompletionPayload,
+    GetStudentTestResultPayload,
+    GetStudentTestResultValidationPayload,
+    GetAssignCorrectorEmail,
+    SendEmailWithSendGrid
 }

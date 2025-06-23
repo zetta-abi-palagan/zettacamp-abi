@@ -1,11 +1,16 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
+// *************** IMPORT MODULE *************** 
+const TestModel = require('../test/test.model');
+const StudentTestResultModel = require('./student_test_result.model');
+
 // *************** IMPORT HELPER FUNCTION *************** 
-const helper = require('./student_test_result.helper');
+const StudentTestResultHelper = require('./student_test_result.helper');
 
 // *************** IMPORT VALIDATOR ***************
-const validator = require('./student_test_result.validator');
+const StudentTestResultValidator = require('./student_test_result.validator');
+const CommonValidator = require('../../shared/validator/index');
 
 // *************** QUERY ***************
 /**
@@ -17,12 +22,16 @@ const validator = require('./student_test_result.validator');
  * @param {string} [args.student_id] - Optional. The ID of the student to filter results by.
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of student test result objects.
  */
-
 async function GetAllStudentTestResults(_, { student_test_result_status, test_id, student_id }) {
     try {
-        validator.ValidateGetAllStudentTestResultsInput(student_test_result_status, test_id, student_id);
+        StudentTestResultValidator.ValidateStudentTestResultFilter(student_test_result_status, test_id, student_id);
 
-        const studentTestResults = await helper.GetAllStudentTestResultsHelper(student_test_result_status);
+        const filter = {};
+        if (student_test_result_status) { filter.student_test_result_status = student_test_result_status; }
+        if (test_id) { filter.test = test_id; }
+        if (student_id) { filter.student = student_id; }
+
+        const studentTestResults = await StudentTestResultModel.find(filter);
 
         return studentTestResults;
     } catch (error) {
@@ -43,9 +52,12 @@ async function GetAllStudentTestResults(_, { student_test_result_status, test_id
  */
 async function GetOneStudentTestResult(_, { id }) {
     try {
-        validator.ValidateGetOneStudentTestResultInput(id);
+        CommonValidator.ValidateObjectId(id);
 
-        const studentTestResult = await helper.GetOneStudentTestResultHelper(id);
+        const studentTestResult = await StudentTestResultModel.findOne({ _id: id });
+        if (!studentTestResult) {
+            throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
+        }
 
         return studentTestResult;
     } catch (error) {
@@ -59,22 +71,41 @@ async function GetOneStudentTestResult(_, { id }) {
 
 // *************** MUTATION ***************
 /**
- * GraphQL resolver to update a student's test result.
+ * GraphQL resolver to update an existing student's test result.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the student test result to update.
- * @param {object} args.UpdateStudentTestResult - An input object containing the new marks.
+ * @param {object} args.updateStudentTestResultInput - An object containing the new marks data.
  * @returns {Promise<object>} - A promise that resolves to the updated student test result object.
  */
 async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }) {
     try {
-        validator.ValidateInputTypeObject(updateStudentTestResultInput);
+        // *************** Dummy user ID (replace with real one later)
+        const userId = '6846e5769e5502fce150eb67';
 
-        const { marks } = updateStudentTestResultInput;
+        CommonValidator.ValidateObjectId(id);
+        CommonValidator.ValidateInputTypeObject(updateStudentTestResultInput);
 
-        validator.ValidateUpdateStudentTestResultInput(id, marks);
+        const marks = updateStudentTestResultInput.marks;
 
-        const updatedStudentTestResult = await helper.UpdateStudentTestResultHelper(id, marks);
+        const studentTestResult = await StudentTestResultModel.findOne({ _id: id, student_test_result_status: { $ne: 'DELETED' } });
+        if (!studentTestResult) {
+            throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
+        }
+
+        const parentTest = await TestModel.findOne({ _id: studentTestResult.test });
+        if (!parentTest) {
+            throw new ApolloError('Related test for this result could not be found.', 'NOT_FOUND');
+        }
+
+        StudentTestResultValidator.ValidateUpdateStudentTestResultInput(marks, parentTest);
+
+        const updateStudentTestResultPayload = StudentTestResultHelper.GetUpdateStudentTestResultPayload(marks, userId);
+
+        const updatedStudentTestResult = await StudentTestResultModel.findOneAndUpdate({ _id: id }, updateStudentTestResultPayload, { new: true });
+        if (!updatedStudentTestResult) {
+            throw new ApolloError('Failed to update student test result', 'STUDENT_TEST_RESULT_UPDATE_FAILED');
+        }
 
         return updatedStudentTestResult;
     } catch (error) {
@@ -87,23 +118,43 @@ async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }) 
 }
 
 /**
- * GraphQL resolver to invalidate a student's test result.
+ * GraphQL resolver to soft-delete a student test result and remove its reference from the parent test.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
- * @param {string} args.id - The unique identifier of the student test result to invalidate.
- * @returns {Promise<object>} - A promise that resolves to the invalidated student test result object.
+ * @param {string} args.id - The unique identifier of the student test result to delete.
+ * @returns {Promise<object>} - A promise that resolves to the soft-deleted student test result object.
  */
-async function InvalidateStudentTestResult(_, { id }) {
+async function DeleteStudentTestResult(_, { id }) {
     try {
-        validator.ValidateInvalidateStudentTestResultInput(id);
+        // *************** Dummy user ID (replace with real one later)
+        const userId = '6846e5769e5502fce150eb67';
 
-        const invalidatedStudentTestResult = await helper.InvalidateStudentTestResultHelper(id)
+        CommonValidator.ValidateObjectId(id);
 
-        return invalidatedStudentTestResult;
+        const {
+            studentTestResult,
+            test
+        } = await StudentTestResultHelper.GetDeleteStudentTestResultPayload(id, userId);
+
+        const deletedStudentTestResult = await StudentTestResultModel.findOneAndUpdate(
+            studentTestResult.filter,
+            studentTestResult.update,
+        );
+
+        if (!deletedStudentTestResult) {
+            throw new ApolloError('Failed to delete student test result', 'STUDENT_TEST_RESULT_DELETION_FAILED');
+        }
+
+        const updatedTest = await TestModel.updateOne(test.filter, test.update);
+        if (updatedTest.matchedCount) {
+            throw new ApolloError('Failed to update test', 'TEST_UPDATE_FAILED');
+        }
+
+        return deletedStudentTestResult;
     } catch (error) {
-        console.error('Unexpected error in InvalidateStudentTestResult:', error);
+        console.error('Unexpected error in DeleteStudentTestResult:', error);
 
-        throw new ApolloError('Failed to invalidate student test result', 'INVALIDATE_STUDENT_TEST_RESULT_FAILED', {
+        throw new ApolloError('Failed to delete student test result', 'DELETE_STUDENT_TEST_RESULT_FAILED', {
             error: error.message
         });
     }
@@ -120,7 +171,7 @@ async function InvalidateStudentTestResult(_, { id }) {
  */
 async function StudentLoader(studentTestResult, _, context) {
     try {
-        validator.ValidateStudentLoaderInput(studentTestResult, context);
+        StudentTestResultValidator.ValidateStudentLoaderInput(studentTestResult, context);
 
         const student = await context.dataLoaders.StudentLoader.load(studentTestResult.student);
 
@@ -142,7 +193,7 @@ async function StudentLoader(studentTestResult, _, context) {
  */
 async function TestLoader(studentTestResult, _, context) {
     try {
-        validator.ValidateTestLoaderInput(studentTestResult, context);
+        StudentTestResultValidator.ValidateTestLoaderInput(studentTestResult, context);
 
         const test = await context.dataLoaders.TestLoader.load(studentTestResult.test);
 
@@ -164,7 +215,7 @@ async function TestLoader(studentTestResult, _, context) {
  */
 async function CreatedByLoader(studentTestResult, _, context) {
     try {
-        validator.ValidateUserLoaderInput(studentTestResult, context, 'created_by');
+        StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'created_by');
 
         const created_by = await context.dataLoaders.UserLoader.load(studentTestResult.created_by);
 
@@ -186,7 +237,7 @@ async function CreatedByLoader(studentTestResult, _, context) {
  */
 async function UpdatedByLoader(studentTestResult, _, context) {
     try {
-        validator.ValidateUserLoaderInput(studentTestResult, context, 'updated_by');
+        StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'updated_by');
 
         const updated_by = await context.dataLoaders.UserLoader.load(studentTestResult.updated_by);
 
@@ -208,7 +259,7 @@ async function UpdatedByLoader(studentTestResult, _, context) {
  */
 async function DeletedByLoader(studentTestResult, _, context) {
     try {
-        validator.ValidateUserLoaderInput(studentTestResult, context, 'deleted_by');
+        StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'deleted_by');
 
         const deleted_by = await context.dataLoaders.UserLoader.load(studentTestResult.deleted_by);
 
@@ -229,7 +280,7 @@ module.exports = {
 
     Mutation: {
         UpdateStudentTestResult,
-        InvalidateStudentTestResult
+        DeleteStudentTestResult
     },
 
     StudentTestResult: {

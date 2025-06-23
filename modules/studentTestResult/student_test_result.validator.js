@@ -5,24 +5,13 @@ const mongoose = require('mongoose');
 const { ApolloError } = require('apollo-server');
 
 /**
- * Validates that the provided input is a non-array object.
- * @param {object} input - The input variable to be validated.
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateInputTypeObject(input) {
-    if (!input || typeof input !== 'object' || Array.isArray(input)) {
-        throw new Error('Input must be a valid object');
-    }
-}
-
-/**
  * Validates the optional inputs for fetching all student test results.
  * @param {string} [student_test_result_status] - Optional. The status of the results to filter by.
  * @param {string} [test_id] - Optional. The ID of the test to filter by.
  * @param {string} [student_id] - Optional. The ID of the student to filter by.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateGetAllStudentTestResultsInput(student_test_result_status, test_id, student_id) {
+function ValidateStudentTestResultFilter(student_test_result_status, test_id, student_id) {
     const validStatus = ['PENDING', 'VALIDATED', 'DELETED'];
 
     if (!student_test_result_status) {
@@ -45,61 +34,36 @@ function ValidateGetAllStudentTestResultsInput(student_test_result_status, test_
 }
 
 /**
- * Validates if the provided value is a valid MongoDB ObjectId.
- * @param {string} id - The ID to be validated.
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateGetOneStudentTestResultInput(id) {
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
-    }
-}
-
-/**
- * Validates the inputs for updating a student's test result.
- * @param {string} id - The unique identifier of the student test result.
+ * Validates the inputs for updating a student's test result against the test's rules.
  * @param {Array<object>} marks - A non-empty array of mark objects to be validated.
+ * @param {object} test - The test document, used to validate notations and max points.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateUpdateStudentTestResultInput(id, marks) {
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
-    }
-
+function ValidateUpdateStudentTestResultInput(marks, test) {
     if (!Array.isArray(marks) || !marks.length) {
-        throw new ApolloError('Notations must be a non-empty array.', 'BAD_USER_INPUT', {
-            field: 'marks'
-        });
+        throw new ApolloError('Marks must be a non-empty array.', 'BAD_USER_INPUT', { field: 'marks' });
     }
 
-    for (const [index, notation] of marks.entries()) {
-        const { notation_text, mark } = notation;
-
-        if (!notation_text || typeof notation_text !== 'string' || notation_text.trim() === '') {
-            throw new ApolloError(`Notation at index ${index} must have non-empty text.`, 'BAD_USER_INPUT', {
-                field: `notations[${index}].notation_text`
-            });
-        }
-
-        if (typeof mark !== 'number' || isNaN(mark) || mark < 0) {
-            throw new ApolloError(`Notation at index ${index} must have a valid mark (number ≥ 0).`, 'BAD_USER_INPUT', {
-                field: `notations[${index}].mark`
-            });
-        }
+    const notationMap = new Map();
+    for (const notation of test.notations) {
+        notationMap.set(notation.notation_text, notation.max_points);
     }
-}
 
-/**
- * Validates the input ID for invalidating a student test result.
- * @param {string} id - The ID of the student test result to validate.
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateInvalidateStudentTestResultInput(id) {
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
+    for (const [index, markEntry] of marks.entries()) {
+        if (!markEntry.notation_text || typeof markEntry.notation_text !== 'string' || markEntry.notation_text.trim() === '') {
+            throw new ApolloError(`Mark at index ${index} must have non-empty text.`, 'BAD_USER_INPUT');
+        }
+        if (typeof markEntry.mark !== 'number' || isNaN(markEntry.mark) || markEntry.mark < 0) {
+            throw new ApolloError(`Mark at index ${index} must have a valid mark (number ≥ 0).`, 'BAD_USER_INPUT');
+        }
+
+        if (!notationMap.has(markEntry.notation_text)) {
+            throw new ApolloError(`Invalid notation_text: '${markEntry.notation_text}' does not exist on this test.`, 'BAD_USER_INPUT');
+        }
+        const maxPoints = notationMap.get(markEntry.notation_text);
+        if (markEntry.mark > maxPoints) {
+            throw new ApolloError(`Mark for '${markEntry.notation_text}' (${markEntry.mark}) cannot exceed the max points (${maxPoints}).`, 'BAD_USER_INPUT');
+        }
     }
 }
 
@@ -195,11 +159,8 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    ValidateInputTypeObject,
-    ValidateGetAllStudentTestResultsInput,
-    ValidateGetOneStudentTestResultInput,
+    ValidateStudentTestResultFilter,
     ValidateUpdateStudentTestResultInput,
-    ValidateInvalidateStudentTestResultInput,
     ValidateStudentLoaderInput,
     ValidateTestLoaderInput,
     ValidateUserLoaderInput

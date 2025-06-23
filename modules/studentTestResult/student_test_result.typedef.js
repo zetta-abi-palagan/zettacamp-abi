@@ -46,6 +46,6 @@ module.exports = gql`
 
     type Mutation {
         UpdateStudentTestResult(id: ID!, updateStudentTestResultInput: UpdateStudentTestResultInput!): StudentTestResult!
-        InvalidateStudentTestResult(id: ID!): StudentTestResult!
+        DeleteStudentTestResult(id: ID!): StudentTestResult!
     }
 `

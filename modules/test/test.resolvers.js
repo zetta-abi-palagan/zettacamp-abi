@@ -2,9 +2,9 @@
 const { ApolloError } = require('apollo-server');
 
 // *************** IMPORT MODULE *************** 
-const BlockModel = require('./block.model');
+const BlockModel = require('../block/block.model');
 const SubjectModel = require('../subject/subject.model');
-const TestModel = require('../test/test.model');
+const TestModel = require('./test.model');
 const StudentTestResultModel = require('../studentTestResult/student_test_result.model');
 const TaskModel = require('../task/task.model');
 
@@ -98,7 +98,7 @@ async function CreateTest(_, { createTestInput }) {
         TestValidator.ValidateTestInput(createTestInput, parentBlock.evaluation_type);
 
         // *************** Prepare payload and create test
-        const createTestPayload = TestHelper.CreateTestPayload(createTestInput, userId);
+        const createTestPayload = TestHelper.GetCreateTestPayload(createTestInput, userId);
 
         const newTest = await TestModel.create(createTestPayload);
         if (!newTest) {
@@ -260,22 +260,22 @@ async function DeleteTest(_, { id }) {
 
         // *************** Soft delete all related student test results
         if (studentTestResults) {
-            const studentTestResultUpdate = await StudentTestResultModel.updateMany(
+            const deletedStudentTestResults = await StudentTestResultModel.updateMany(
             studentTestResults.filter,
             studentTestResults.update
             );
-            if (studentTestResultUpdate.matchedCount) {
+            if (deletedStudentTestResults.matchedCount) {
             throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
             }
         }
 
         // *************** Soft delete all related tasks
         if (tasks) {
-            const result = await TaskModel.updateMany(
+            const deletedTasks = await TaskModel.updateMany(
             tasks.filter,
             tasks.update
             );
-            if (result.matchedCount) {
+            if (deletedTasks.matchedCount) {
             throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
             }
         }
@@ -285,13 +285,13 @@ async function DeleteTest(_, { id }) {
             test.filter,
             test.update
         );
-        if (!testUpdate) {
+        if (!deletedTest) {
             throw new ApolloError('Test deletion failed', 'TEST_DELETION_FAILED');
         }
 
         // *************** Remove test reference from parent subject
-        const subjectUpdateResult = await SubjectModel.updateOne(subject.filter, subject.update);
-        if (subjectUpdateResult.matchedCount) {
+        const updatedSubject = await SubjectModel.updateOne(subject.filter, subject.update);
+        if (updatedSubject.matchedCount) {
             throw new ApolloError('Failed to update subject (remove test)', 'SUBJECT_UPDATE_FAILED');
         }
 
@@ -316,7 +316,7 @@ async function DeleteTest(_, { id }) {
  */
 async function SubjectLoader(test, _, context) {
     try {
-        validator.ValidateSubjectLoaderInput(test, context);
+        TestValidator.ValidateSubjectLoaderInput(test, context);
 
         const subject = await context.dataLoaders.SubjectLoader.load(test.subject);
 
@@ -338,7 +338,7 @@ async function SubjectLoader(test, _, context) {
  */
 async function StudentTestResultLoader(test, _, context) {
     try {
-        validator.ValidateStudentTestResultLoaderInput(test, context);
+        TestValidator.ValidateStudentTestResultLoaderInput(test, context);
 
         const student_test_results = await context.dataLoaders.StudentTestResultLoader.loadMany(test.student_test_results);
 
@@ -360,7 +360,7 @@ async function StudentTestResultLoader(test, _, context) {
  */
 async function TaskLoader(test, _, context) {
     try {
-        validator.ValidateTaskLoaderInput(test, context);
+        TestValidator.ValidateTaskLoaderInput(test, context);
 
         const tasks = await context.dataLoaders.TaskLoader.loadMany(test.tasks);
 
@@ -382,7 +382,7 @@ async function TaskLoader(test, _, context) {
  */
 async function CreatedByLoader(test, _, context) {
     try {
-        validator.ValidateUserLoaderInput(test, context, 'created_by');
+        TestValidator.ValidateUserLoaderInput(test, context, 'created_by');
 
         const created_by = await context.dataLoaders.UserLoader.load(test.created_by);
 
@@ -404,7 +404,7 @@ async function CreatedByLoader(test, _, context) {
  */
 async function UpdatedByLoader(test, _, context) {
     try {
-        validator.ValidateUserLoaderInput(test, context, 'updated_by');
+        TestValidator.ValidateUserLoaderInput(test, context, 'updated_by');
 
         const updated_by = await context.dataLoaders.UserLoader.load(test.updated_by);
 
@@ -426,7 +426,7 @@ async function UpdatedByLoader(test, _, context) {
  */
 async function PublishedByLoader(test, _, context) {
     try {
-        validator.ValidateUserLoaderInput(test, context, 'published_by');
+        TestValidator.ValidateUserLoaderInput(test, context, 'published_by');
 
         const updated_by = await context.dataLoaders.UserLoader.load(test.published_by);
 
@@ -448,7 +448,7 @@ async function PublishedByLoader(test, _, context) {
  */
 async function DeletedByLoader(test, _, context) {
     try {
-        validator.ValidateUserLoaderInput(test, context, 'deleted_by');
+        TestValidator.ValidateUserLoaderInput(test, context, 'deleted_by');
 
         const deleted_by = await context.dataLoaders.UserLoader.load(test.deleted_by);
 
