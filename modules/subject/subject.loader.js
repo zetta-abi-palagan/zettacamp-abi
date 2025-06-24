@@ -19,7 +19,7 @@ function SubjectLoader() {
             const subjects = await SubjectModel.find({
                 _id: { $in: subjectIds },
                 subject_status: { $ne: 'DELETED' },
-            });
+            }).lean();
 
             const subjectsById = new Map(subjects.map(subject => [String(subject._id), subject]));
 

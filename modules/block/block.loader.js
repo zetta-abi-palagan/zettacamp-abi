@@ -18,7 +18,7 @@ function BlockLoader() {
         try {
             const blocks = await BlockModel.find({
                 _id: { $in: blockIds },
-            });
+            }).lean();
 
             const blocksById = new Map(blocks.map(block => [String(block._id), block]));
 

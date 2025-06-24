@@ -18,7 +18,7 @@ function StudentTestResultLoader() {
         try {
             const results = await StudentTestResultModel.find({
                 _id: { $in: studentTestResultIds },
-            });
+            }).lean();
 
             const resultsById = new Map(results.map(result => [String(result._id), result]));
 

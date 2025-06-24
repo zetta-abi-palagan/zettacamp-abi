@@ -19,7 +19,7 @@ function TestLoader() {
             const tests = await TestModel.find({
                 _id: { $in: testIds },
                 test_status: { $ne: 'DELETED' },
-            });
+            }).lean();
 
             const testsById = new Map(tests.map(test => [String(test._id), test]));
 
