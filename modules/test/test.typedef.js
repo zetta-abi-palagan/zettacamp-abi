@@ -70,7 +70,7 @@ module.exports = gql`
     }
 
     type Test {
-        id: ID!
+        _id: ID!
         subject: Subject!
         name: String!
         description: String!

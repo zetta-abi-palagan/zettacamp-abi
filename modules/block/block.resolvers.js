@@ -29,7 +29,8 @@ async function GetAllBlocks(_, { block_status }) {
 
         const blockFilter = block_status ? { block_status: block_status } : { block_status: { $ne: 'DELETED' } };
 
-        const blocks = await BlockModel.find(blockFilter);
+        const blocks = await BlockModel.find(blockFilter).lean();
+        console.log(blocks);
 
         return blocks;
     } catch (error) {
@@ -52,7 +53,7 @@ async function GetOneBlock(_, { id }) {
     try {
         CommonValidator.ValidateObjectId(id)
 
-        const block = await BlockModel.findOne({ _id: id });
+        const block = await BlockModel.findOne({ _id: id }).lean();
         if (!block) {
             throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
         }
@@ -122,7 +123,7 @@ async function UpdateBlock(_, { id, updateBlockInput }) {
         const updateBlockPayload = BlockHelper.GetUpdateBlockPayload({ updateBlockInput, userId });
 
         // *************** Update the block in the database
-        const updatedBlock = await BlockModel.findOneAndUpdate({ _id: id }, updateBlockPayload, { new: true });
+        const updatedBlock = await BlockModel.findOneAndUpdate({ _id: id }, updateBlockPayload, { new: true }).lean();
         if (!updatedBlock) {
             throw new ApolloError('Block update failed', 'BLOCK_UPDATE_FAILED');
         }
@@ -166,6 +167,7 @@ async function DeleteBlock(_, { id }) {
                 studentTestResults.filter,
                 studentTestResults.update
             );
+            console.log(studentTestResultUpdate);
             if (!studentTestResultUpdate.nModified) {
                 throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
             }
@@ -208,7 +210,7 @@ async function DeleteBlock(_, { id }) {
         const deletedBlock = await BlockModel.findOneAndUpdate(
             block.filter,
             block.update
-        );
+        ).lean();
 
         if (!deletedBlock) {
             throw new ApolloError('Block deletion failed', 'BLOCK_DELETION_FAILED');

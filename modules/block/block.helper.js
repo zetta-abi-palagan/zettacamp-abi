@@ -183,7 +183,7 @@ async function HandleDeleteSubjects({ subjectIds, userId, timestamp }) {
     CommonValidator.ValidateObjectIdArray(subjectIds, 'INVALID_SUBJECT_ID');
 
     const subjects = await SubjectModel.find({ _id: { $in: subjectIds } });
-    const testIds = subjects.flatMap(subject => subject.tests || []);
+    const testIds = [].concat(...subjects.map(subject => subject.tests || []));
 
     const subjectPayload = BuildDeletePayload({
         ids: subjectIds,
@@ -207,8 +207,8 @@ async function HandleDeleteTests({ testIds, userId, timestamp }) {
     CommonValidator.ValidateObjectIdArray(testIds, 'INVALID_TEST_ID');
 
     const tests = await TestModel.find({ _id: { $in: testIds } });
-    const taskIds = tests.flatMap(test => test.tasks || []);
-    const studentResultIds = tests.flatMap(test => test.student_test_results || []);
+    const taskIds = [].concat(...tests.map(test => test.tasks || []));
+    const studentResultIds = [].concat(...tests.map(test => test.student_test_results || []));
 
     const testPayload = BuildDeletePayload({
         ids: testIds,

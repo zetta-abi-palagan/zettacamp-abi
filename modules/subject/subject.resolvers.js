@@ -29,7 +29,7 @@ async function GetAllSubjects(_, { subject_status }) {
 
         const subjectFilter = subject_status ? { subject_status: subject_status } : { subject_status: { $ne: 'DELETED' } };
 
-        const subjects = await SubjectModel.find(subjectFilter);
+        const subjects = await SubjectModel.find(subjectFilter).lean();
 
         return subjects;
     } catch (error) {
@@ -52,7 +52,7 @@ async function GetOneSubject(_, { id }) {
     try {
         CommonValidator.ValidateObjectId(id);
 
-        const subject = await SubjectModel.findOne({ _id: id });
+        const subject = await SubjectModel.findOne({ _id: id }).lean();
         if (!subject) {
             throw new ApolloError('Subject not found', 'NOT_FOUND');
         }
@@ -84,7 +84,7 @@ async function CreateSubject(_, { createSubjectInput }) {
         CommonValidator.ValidateObjectId(createSubjectInput.block);
 
         // *************** Ensure parent block exists and is active
-        const parentBlock = await BlockModel.findOne({ _id: createSubjectInput.block, block_status: { $ne: 'DELETED' } });
+        const parentBlock = await BlockModel.findOne({ _id: createSubjectInput.block, block_status: { $ne: 'DELETED' } }).lean();
         if (!parentBlock) {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
@@ -138,7 +138,7 @@ async function UpdateSubject(_, { id, updateSubjectInput }) {
         CommonValidator.ValidateInputTypeObject(updateSubjectInput);
 
         // *************** Find the subject to ensure it exists and get its is_transversal property
-        const subject = await SubjectModel.findById(id);
+        const subject = await SubjectModel.findById(id).lean();
         if (!subject) {
             throw new ApolloError('Subject not found', 'NOT_FOUND');
         }
@@ -147,7 +147,7 @@ async function UpdateSubject(_, { id, updateSubjectInput }) {
         // *************** Prepare the payload and update the subject
         const updateSubjectPayload = SubjectHelper.GetUpdateSubjectPayload({ updateSubjectInput, userId, isTransversal: subject.is_transversal });
 
-        const updatedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, updateSubjectPayload, { new: true });
+        const updatedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, updateSubjectPayload, { new: true }).lean();
         if (!updatedSubject) {
             throw new ApolloError('Subject update failed', 'UPDATE_SUBJECT_FAILED');
         }
@@ -223,7 +223,7 @@ async function DeleteSubject(_, { id }) {
         const deletedSubject = await SubjectModel.findOneAndUpdate(
             subject.filter,
             subject.update
-        );
+        ).lean();
 
         if (!deletedSubject) {
             throw new ApolloError('Subject deletion failed', 'SUBJECT_DELETION_FAILED');

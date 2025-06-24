@@ -45,7 +45,7 @@ module.exports = gql`
     }
 
     type Block {
-        id: ID!
+        _id: ID!
         name: String!
         description: String!
         evaluation_type: EvaluationType!

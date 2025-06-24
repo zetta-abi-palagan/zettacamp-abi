@@ -5,14 +5,14 @@ const taskSchema = mongoose.Schema({
     // The ID of the test to which the task belongs
     test: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Test',
+        ref: 'test',
         required: true
     },
 
     // The ID of the user to which the task belongs
     user: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
@@ -50,7 +50,7 @@ const taskSchema = mongoose.Schema({
     // The ID of user that completed this task
     completed_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
     },
 
     // Timestamp for when this task was completed
@@ -61,21 +61,21 @@ const taskSchema = mongoose.Schema({
     // ID of the user who created this task record
     created_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who last updated this task record
     updated_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who deleted this task (if applicable)
     deleted_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
     },
 
     // Timestamp when the task was marked as deleted
@@ -92,5 +92,7 @@ const taskSchema = mongoose.Schema({
     }
 });
 
+const TaskModel = mongoose.model('Task', taskSchema);
+
 // *************** EXPORT MODULE ***************
-module.exports = mongoose.model('Task', taskSchema);
+module.exports = TaskModel;

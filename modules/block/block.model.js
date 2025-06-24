@@ -31,7 +31,7 @@ const blockSchema = mongoose.Schema({
     // Other block that is connected to this block, only for block type: RETAKE
     connected_block: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Block"
+        ref: "block"
     },
 
     // Check whether the block is counted in the final transcript or not
@@ -43,7 +43,7 @@ const blockSchema = mongoose.Schema({
     // List of subject IDs associated with the block
     subjects: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Subject"
+        ref: "subject"
     }],
 
     // Current status of the block: ACTIVE, INACTIVE, or DELETED
@@ -56,21 +56,21 @@ const blockSchema = mongoose.Schema({
     // ID of the user who created this block record
     created_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who last updated this block record
     updated_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who deleted this block (if applicable)
     deleted_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
     },
 
     // Timestamp when the block was marked as deleted
@@ -87,5 +87,7 @@ const blockSchema = mongoose.Schema({
     }
 });
 
+const BlockModel = mongoose.model('block', blockSchema);
+
 // *************** EXPORT MODULE ***************
-module.exports = mongoose.model('Block', blockSchema);
+module.exports = BlockModel;

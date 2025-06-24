@@ -24,14 +24,14 @@ const CommonValidator = require('../../shared/validator/index');
  */
 async function GetAllStudentTestResults(_, { student_test_result_status, test_id, student_id }) {
     try {
-        StudentTestResultValidator.ValidateStudentTestResultFilter({ student_test_result_status, test_id, student_id });
+        StudentTestResultValidator.ValidateStudentTestResultFilter({ studentTestResult: student_test_result_status, testId: test_id, studentId: student_id });
 
         const filter = {};
         filter.student_test_result_status = student_test_result_status || { $ne: 'DELETED' };
         if (test_id) { filter.test = test_id; }
         if (student_id) { filter.student = student_id; }
 
-        const studentTestResults = await StudentTestResultModel.find(filter);
+        const studentTestResults = await StudentTestResultModel.find(filter).lean();
 
         return studentTestResults;
     } catch (error) {
@@ -54,7 +54,7 @@ async function GetOneStudentTestResult(_, { id }) {
     try {
         CommonValidator.ValidateObjectId(id);
 
-        const studentTestResult = await StudentTestResultModel.findOne({ _id: id });
+        const studentTestResult = await StudentTestResultModel.findOne({ _id: id }).lean();
         if (!studentTestResult) {
             throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
         }
@@ -89,13 +89,13 @@ async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }) 
         const marks = updateStudentTestResultInput.marks;
 
         // *************** Check the to be updated student test result
-        const studentTestResult = await StudentTestResultModel.findOne({ _id: id, student_test_result_status: { $ne: 'DELETED' } });
+        const studentTestResult = await StudentTestResultModel.findOne({ _id: id, student_test_result_status: { $ne: 'DELETED' } }).lean();
         if (!studentTestResult) {
             throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
         }
 
         // *************** Check the parent test of the student test result
-        const parentTest = await TestModel.findOne({ _id: studentTestResult.test });
+        const parentTest = await TestModel.findOne({ _id: studentTestResult.test }).lean();
         if (!parentTest) {
             throw new ApolloError('Related test for this result could not be found.', 'NOT_FOUND');
         }
@@ -106,7 +106,7 @@ async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }) 
         const updateStudentTestResultPayload = StudentTestResultHelper.GetUpdateStudentTestResultPayload({ marks, userId, test: parentTest });
 
         // *************** Update the student test result
-        const updatedStudentTestResult = await StudentTestResultModel.findOneAndUpdate({ _id: id }, updateStudentTestResultPayload, { new: true });
+        const updatedStudentTestResult = await StudentTestResultModel.findOneAndUpdate({ _id: id }, updateStudentTestResultPayload, { new: true }).lean();
         if (!updatedStudentTestResult) {
             throw new ApolloError('Failed to update student test result', 'STUDENT_TEST_RESULT_UPDATE_FAILED');
         }
@@ -145,7 +145,7 @@ async function DeleteStudentTestResult(_, { id }) {
         const deletedStudentTestResult = await StudentTestResultModel.findOneAndUpdate(
             studentTestResult.filter,
             studentTestResult.update,
-        );
+        ).lean();
 
         if (!deletedStudentTestResult) {
             throw new ApolloError('Failed to delete student test result', 'STUDENT_TEST_RESULT_DELETION_FAILED');

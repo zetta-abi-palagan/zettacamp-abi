@@ -5,7 +5,7 @@ const testSchema = mongoose.Schema({
     // ID of the subject the test belongs to
     subject: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Subject",
+        ref: "subject",
         required: true
     },
 
@@ -73,7 +73,7 @@ const testSchema = mongoose.Schema({
     // The test that this test is retake for (only for retake by test)
     connected_test: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Test"
+        ref: "test"
     },
 
     // Current status of the test: ACTIVE, INACTIVE, or DELETED
@@ -98,7 +98,7 @@ const testSchema = mongoose.Schema({
     //  ID of the user that published this test
     published_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
     },
 
     // Timestamp for when the test is due
@@ -109,33 +109,33 @@ const testSchema = mongoose.Schema({
     //  List of student test result's IDs associated with this test
     student_test_results: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'StudentTestResult'
+        ref: 'student_test_result'
     }],
 
     //  List of task's IDs associated with this test
     tasks: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Task'
+        ref: 'task'
     }],
 
     // ID of the user who created this test record
     created_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who last updated this test record
     updated_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who deleted this test (if applicable)
     deleted_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
     },
 
     // Timestamp when the test was marked as deleted
@@ -152,5 +152,7 @@ const testSchema = mongoose.Schema({
     }
 });
 
+const TestModel = mongoose.model('Test', testSchema);
+
 // *************** EXPORT MODULE ***************
-module.exports = mongoose.model('Test', testSchema);
+module.exports = TestModel;

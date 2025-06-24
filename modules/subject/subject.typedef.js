@@ -26,7 +26,7 @@ module.exports = gql`
     }
 
     type Subject {
-        id: ID!
+        _id: ID!
         block: Block!
         name: String!
         description: String!

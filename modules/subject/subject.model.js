@@ -5,7 +5,7 @@ const subjectSchema = mongoose.Schema({
     // ID of the block the subject belongs to
     block: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Block",
+        ref: "block",
         required: true
     },
 
@@ -37,13 +37,13 @@ const subjectSchema = mongoose.Schema({
     // List of blocks that are connected to this subject (only for subject in transversal block)
     connected_blocks: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Block"
+        ref: "block"
     }],
 
     // List of test IDs associated with the subject
     tests: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Test"
+        ref: "test"
     }],
 
     // Current status of the subject: ACTIVE, INACTIVE, or DELETED
@@ -56,21 +56,21 @@ const subjectSchema = mongoose.Schema({
     // ID of the user who created this subject record
     created_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who last updated this subject record
     updated_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who deleted this subject (if applicable)
     deleted_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
     },
 
     // Timestamp when the subject was marked as deleted
@@ -87,5 +87,7 @@ const subjectSchema = mongoose.Schema({
     }
 });
 
+const SubjectModel = mongoose.model('subject', subjectSchema);
+
 // *************** EXPORT MODULE ***************
-module.exports = mongoose.model('Subject', subjectSchema);
+module.exports = SubjectModel;

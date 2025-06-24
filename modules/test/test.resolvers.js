@@ -29,7 +29,7 @@ async function GetAllTests(_, { test_status }) {
 
         const testFilter = test_status ? { test_status: test_status } : { test_status: { $ne: 'DELETED' } };
 
-        const tests = await TestModel.find(testFilter);
+        const tests = await TestModel.find(testFilter).lean();
 
         return tests;
     } catch (error) {
@@ -52,7 +52,7 @@ async function GetOneTest(_, { id }) {
     try {
         CommonValidator.ValidateObjectId(id);
 
-        const test = await TestModel.findOne({ _id: id });
+        const test = await TestModel.findOne({ _id: id }).lean();
         if (!test) {
             throw new ApolloError('Test not found', 'NOT_FOUND');
         }
@@ -84,13 +84,13 @@ async function CreateTest(_, { createTestInput }) {
         CommonValidator.ValidateObjectId(createTestInput.subject);
 
         // *************** Ensure parent subject exists and is active
-        const parentSubject = await SubjectModel.findOne({ _id: createTestInput.subject, subject_status: { $ne: 'DELETED' } });
+        const parentSubject = await SubjectModel.findOne({ _id: createTestInput.subject, subject_status: { $ne: 'DELETED' } }).lean();
         if (!parentSubject) {
             throw new ApolloError('Parent subject not found.', 'NOT_FOUND');
         }
 
         // *************** Ensure parent block to the subject exists and is active
-        const parentBlock = await BlockModel.findById(parentSubject.block);
+        const parentBlock = await BlockModel.findById(parentSubject.block).lean();
         if (!parentBlock || parentBlock.block_status !== 'ACTIVE') {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
@@ -145,7 +145,7 @@ async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }) 
         const publishTestPayload = TestHelper.GetPublishTestPayload({ userId, testDueDate: test_due_date });
 
         // *************** Update test status and due date
-        const publishedTest = await TestModel.findOneAndUpdate({ _id: id, test_status: { $ne: 'DELETED' } }, publishTestPayload, { new: true });
+        const publishedTest = await TestModel.findOneAndUpdate({ _id: id, test_status: { $ne: 'DELETED' } }, publishTestPayload, { new: true }).lean();
         if (!publishedTest) {
             throw new ApolloError('Test not found', 'NOT_FOUND');
         }
@@ -198,19 +198,19 @@ async function UpdateTest(_, { id, updateTestInput }) {
         CommonValidator.ValidateObjectId(updateTestInput.subject);
 
         // *************** Fetch the test to be updated
-        const test = await TestModel.findById(id);
+        const test = await TestModel.findById(id).lean();
         if (!test) {
             throw new ApolloError('Test not found', 'NOT_FOUND');
         }
 
         // *************** Ensure parent subject exists and is active
-        const parentSubject = await SubjectModel.findOne({ _id: updateTestInput.subject, subject_status: { $ne: 'DELETED' } });
+        const parentSubject = await SubjectModel.findOne({ _id: updateTestInput.subject, subject_status: { $ne: 'DELETED' } }).lean();
         if (!parentSubject) {
             throw new ApolloError('Parent subject not found.', 'NOT_FOUND');
         }
 
         // *************** Ensure parent block to the subject exists and is active
-        const parentBlock = await BlockModel.findById(parentSubject.block);
+        const parentBlock = await BlockModel.findById({ _id: parentSubject.block, block_status: { $ne: 'DELETED' } }).lean();
         if (!block || block.block_status !== 'ACTIVE') {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
@@ -221,7 +221,7 @@ async function UpdateTest(_, { id, updateTestInput }) {
         const updateTestPayload = TestHelper.GetUpdateTestPayload({ testInput: updateTestInput, userId, evaluationType: parentBlock.evaluation_type });
 
         // *************** Update the test in the database
-        const updatedTest = await TestModel.findOneAndUpdate({ _id: id }, updateTestPayload, { new: true });
+        const updatedTest = await TestModel.findOneAndUpdate({ _id: id }, updateTestPayload, { new: true }).lean();
         if (!updatedTest) {
             throw new ApolloError('Failed to update test', 'UPDATE_TEST_FAILED');
         }
@@ -284,7 +284,7 @@ async function DeleteTest(_, { id }) {
         const deletedTest = await TestModel.findOneAndUpdate(
             test.filter,
             test.update
-        );
+        ).lean();
         if (!deletedTest) {
             throw new ApolloError('Test deletion failed', 'TEST_DELETION_FAILED');
         }

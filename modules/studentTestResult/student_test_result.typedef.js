@@ -23,7 +23,7 @@ module.exports = gql`
     }
 
     type StudentTestResult {
-        id: ID!
+        _id: ID!
         student: Student!
         test: Test!
         marks: [Mark!]

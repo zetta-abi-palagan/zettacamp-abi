@@ -1,6 +1,9 @@
 // *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
+// *************** IMPORT LIBRARY ***************
+const { ApolloError } = require('apollo-server');
+
 /**
  * Validates if the provided value is a valid MongoDB ObjectId.
  * @param {string} id - The ID to be validated.

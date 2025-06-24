@@ -49,21 +49,21 @@ const userSchema = mongoose.Schema({
     // ID of the user who created this user record
     created_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who last updated this user record
     updated_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who deleted this user (if applicable)
     deleted_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
     },
 
     // Timestamp when the user was marked as deleted
@@ -80,5 +80,7 @@ const userSchema = mongoose.Schema({
     }
 });
 
+const UserModel = mongoose.model('User', userSchema);
+
 // *************** EXPORT MODULE ***************
-module.exports = mongoose.model('User', userSchema);
+module.exports = UserModel;

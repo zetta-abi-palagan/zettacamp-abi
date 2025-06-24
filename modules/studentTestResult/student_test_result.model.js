@@ -5,14 +5,14 @@ const studentTestResultSchema = mongoose.Schema({
     // The ID of the student to whom the test result belongs
     student: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Student',
+        ref: 'student',
         required: true
     },
 
     // The ID of the test to which the test result belongs
     test: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Test',
+        ref: 'test',
         required: true
     },
 
@@ -58,21 +58,21 @@ const studentTestResultSchema = mongoose.Schema({
     // ID of the user who created this student test result record
     created_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who last updated this student test result record
     updated_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who deleted this student test result (if applicable)
     deleted_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
     },
 
     // Timestamp when the student test result was marked as deleted
@@ -89,5 +89,7 @@ const studentTestResultSchema = mongoose.Schema({
     }
 });
 
+const StudentTestResultModel = mongoose.model('student_test_result', studentTestResultSchema);
+
 // *************** EXPORT MODULE ***************
-module.exports = mongoose.model('StudentTestResult', studentTestResultSchema);
+module.exports = StudentTestResultModel;

@@ -46,7 +46,7 @@ module.exports = gql`
     }
 
     type Task {
-        id: ID!
+        _id: ID!
         test: Test!
         user: User!
         title: String!
