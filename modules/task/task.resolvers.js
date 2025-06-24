@@ -266,14 +266,14 @@ async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date 
         // *************** Mark the assign corrector task as completed
         const taskCompletionPayload = TaskHelper.GetTaskCompletionPayload(userId);
 
-        const completeAssignCorrectorTask = await TaskModel.updateOne({ _id: task_id, task_type: 'ASSIGN_CORRECTOR', task_status: 'PENDING' }, { $set: updateTaskPayload });
+        const completeAssignCorrectorTask = await TaskModel.updateOne({ _id: task_id, task_type: 'ASSIGN_CORRECTOR', task_status: 'PENDING' }, { $set: taskCompletionPayload });
         if (!completeAssignCorrectorTask.nModified) {
             throw new ApolloError('Assign corrector task completion failed', 'TASK_COMPLETION_FAILED');
         }
 
         // *************** Create a new enter marks task for the corrector
         const enterMarksTaskData = {
-            test: test._id,
+            test: String(test._id),
             user: corrector_id,
             title: 'Enter Marks',
             description: 'Corrector should enter marks for student test: ' + test.name,
@@ -290,7 +290,6 @@ async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date 
 
         // *************** Add the new enter marks task to the test
         const updatedTest = await TestModel.updateOne({ _id: test._id }, { $addToSet: { tasks: enterMarksTask._id } });
-        console.log(updatedTest.nModified);
         if (!updatedTest.nModified) {
             throw new ApolloError('Failed to add task to test', 'TEST_UPDATE_FAILED');
         }

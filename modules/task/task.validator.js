@@ -52,6 +52,8 @@ function ValidateTaskInput({ taskInput, isUpdate = false }) {
     const validTaskType = ['ASSIGN_CORRECTOR', 'ENTER_MARKS', 'VALIDATE_MARKS'];
     const validTaskStatus = ['PENDING', 'IN_PROGRESS'];
 
+    console.log(taskInput);
+
     if (isUpdate) {
         const { task_status } = taskInput;
         if (!task_status || typeof task_status == 'string' || !validTaskStatus.includes(task_status.toUpperCase())) {

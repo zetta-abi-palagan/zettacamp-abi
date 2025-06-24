@@ -30,7 +30,6 @@ async function GetAllBlocks(_, { block_status }) {
         const blockFilter = block_status ? { block_status: block_status } : { block_status: { $ne: 'DELETED' } };
 
         const blocks = await BlockModel.find(blockFilter).lean();
-        console.log(blocks);
 
         return blocks;
     } catch (error) {
@@ -180,7 +179,6 @@ async function DeleteBlock(_, { id }, context) {
                 studentTestResults.filter,
                 studentTestResults.update
             );
-            console.log(studentTestResultUpdate);
             if (!studentTestResultUpdate.nModified) {
                 throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
             }

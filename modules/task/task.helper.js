@@ -20,7 +20,7 @@ const TaskValidator = require('./task.validator');
 function GetCreateTaskPayload({ taskInput, userId }) {
     CommonValidator.ValidateInputTypeObject(taskInput);
     CommonValidator.ValidateObjectId(userId);
-    TaskValidator.ValidateTaskInput(taskInput);
+    TaskValidator.ValidateTaskInput({ taskInput });
 
     const {
         test,
@@ -197,7 +197,7 @@ function BuildPullTaskFromTestPayload(testId, taskId) {
  */
 function GetTaskCompletionPayload(userId) {
     CommonValidator.ValidateObjectId(userId);
-    
+
     return {
         task_status: 'COMPLETED',
         completed_by: userId,
@@ -214,10 +214,10 @@ function GetTaskCompletionPayload(userId) {
  * @param {object} args.parentTest - The parent test document, used for validation.
  * @returns {object} A data payload for creating the new student test result.
  */
-function GetStudentTestResultPayload({ enterMarksInput, userId, parentTest }) {
+function GetStudentTestResultPayload({ enterMarksInput, userId, notations }) {
     CommonValidator.ValidateInputTypeObject(enterMarksInput);
     CommonValidator.ValidateObjectId(userId);
-    TaskValidator.ValidateEnterMarksInput({ enterMarksInput, parentTest });
+    TaskValidator.ValidateEnterMarksInput({ enterMarksInput, notations });
 
     const { test, student, marks } = enterMarksInput;
 
@@ -264,7 +264,6 @@ function GetStudentTestResultValidationPayload(userId) {
  * @returns {object} An object containing the email 'subject' and 'html' content.
  */
 function GetAssignCorrectorEmail({ test, subject, students }) {
-    CommonValidator.ValidateObjectIdArray(students, 'INVALID_STUDENT_ID')
     const studentNames = students.map(function (student) {
         return student.first_name + ' ' + student.last_name;
     });

@@ -7,6 +7,7 @@ const SubjectModel = require('../subject/subject.model');
 const TestModel = require('./test.model');
 const StudentTestResultModel = require('../studentTestResult/student_test_result.model');
 const TaskModel = require('../task/task.model');
+const UserModel = require('../user/user.model');
 
 // *************** IMPORT HELPER FUNCTION *************** 
 const TestHelper = require('./test.helper');
@@ -94,7 +95,7 @@ async function CreateTest(_, { createTestInput }, context) {
 
         // *************** Ensure parent block to the subject exists and is active
         const parentBlock = await BlockModel.findOne({ _id: parentSubject.block, block_status: { $ne: 'DELETED' } }).select({ evaluation_type: 1 }).lean();
-        if (!parentBlock || parentBlock.block_status !== 'ACTIVE') {
+        if (!parentBlock) {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
 
