@@ -75,7 +75,14 @@ async function GetOneTask(_, { id }) {
 }
 
 // *************** MUTATION ***************
-
+/**
+ * GraphQL resolver to create a new task and associate it with a parent test.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {object} args.createTaskInput - An object containing the details for the new task.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
+ * @returns {Promise<object>} - A promise that resolves to the newly created task object.
+ */
 async function CreateTask(_, { createTaskInput }, context) {
     try {
         const userId = (context && context.user && context.user._id);
@@ -119,7 +126,15 @@ async function CreateTask(_, { createTaskInput }, context) {
     }
 }
 
-
+/**
+ * GraphQL resolver to update an existing task with partial data.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.id - The unique identifier of the task to update.
+ * @param {object} args.updateTaskInput - An object containing the fields to be updated.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
+ * @returns {Promise<object>} - A promise that resolves to the updated task object.
+ */
 async function UpdateTask(_, { id, updateTaskInput }, context) {
     try {
         const userId = (context && context.user && context.user._id);
@@ -150,7 +165,14 @@ async function UpdateTask(_, { id, updateTaskInput }, context) {
     }
 }
 
-
+/**
+ * GraphQL resolver to soft-delete a task and remove its reference from the parent test.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.id - The unique identifier of the task to delete.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
+ * @returns {Promise<object>} - A promise that resolves to the task object as it was before being soft-deleted.
+ */
 async function DeleteTask(_, { id }, context) {
     try {
         const userId = (context && context.user && context.user._id);
@@ -192,7 +214,17 @@ async function DeleteTask(_, { id }, context) {
     }
 }
 
-
+/**
+ * GraphQL resolver for the 'Assign Corrector' workflow.
+ * Completes an existing task, creates a new 'ENTER_MARKS' task, and sends an email notification.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.task_id - The ID of the 'ASSIGN_CORRECTOR' task.
+ * @param {string} args.corrector_id - The ID of the user being assigned as the corrector.
+ * @param {Date|string} args.enter_marks_due_date - The due date for the new 'ENTER_MARKS' task.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
+ * @returns {Promise<object>} - A promise that resolves to the newly created 'ENTER_MARKS' task object.
+ */
 async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date }, context) {
     try {
         const userId = (context && context.user && context.user._id);
@@ -287,7 +319,17 @@ async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date 
     }
 }
 
-
+/**
+ * GraphQL resolver for the 'Enter Marks' workflow.
+ * Completes an 'ENTER_MARKS' task, creates a student test result, and creates a new 'VALIDATE_MARKS' task.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.task_id - The ID of the 'ENTER_MARKS' task to be completed.
+ * @param {object} args.enterMarksInput - An input object containing the test, student, and marks data.
+ * @param {Date|string} args.validate_marks_due_date - The due date for the subsequent 'VALIDATE_MARKS' task.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
+ * @returns {Promise<object>} - A promise that resolves to an object containing the new student test result and the new validation task.
+ */
 async function EnterMarks(_, { task_id, enterMarksInput, validate_marks_due_date }, context) {
     try {
         const userId = (context && context.user && context.user._id);
@@ -373,7 +415,16 @@ async function EnterMarks(_, { task_id, enterMarksInput, validate_marks_due_date
     }
 }
 
-
+/**
+ * GraphQL resolver for the 'Validate Marks' workflow.
+ * Completes an existing task and validates the associated student test result.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {string} args.task_id - The ID of the 'VALIDATE_MARKS' task.
+ * @param {string} args.student_test_result_id - The ID of the student test result to validate.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
+ * @returns {Promise<object>} - A promise that resolves to an object containing the validated student test result and the completed task.
+ */
 async function ValidateMarks(_, { task_id, student_test_result_id }, context) {
     try {
         const userId = (context && context.user && context.user._id);
