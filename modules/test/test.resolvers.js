@@ -241,7 +241,7 @@ async function UpdateTest(_, { id, updateTestInput }, context) {
         const updateTestPayload = TestHelper.GetUpdateTestPayload({ testInput: updateTestInput, userId, evaluationType: parentBlock.evaluation_type });
 
         // *************** Update the test in the database
-        const updatedTest = await TestModel.findOneAndUpdate({ _id: id }, updateTestPayload, { new: true }).lean();
+        const updatedTest = await TestModel.findOneAndUpdate({ _id: id }, { $set: updateTestPayload }, { new: true }).lean();
         if (!updatedTest) {
             throw new ApolloError('Failed to update test', 'UPDATE_TEST_FAILED');
         }
