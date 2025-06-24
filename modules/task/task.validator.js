@@ -83,7 +83,7 @@ function ValidateUpdateTaskInput({ taskId, taskInput }) {
     const validTaskType = ['ASSIGN_CORRECTOR', 'ENTER_MARKS', 'VALIDATE_MARKS'];
     const validTaskStatus = ['PENDING', 'IN_PROGRESS'];
 
-    if (!taskId || taskId.trim() === '' || !mongoose.Types.ObjectId.isValid(taskId)) {
+    if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
         throw new ApolloError(`Invalid task ID: ${taskId}`, "BAD_USER_INPUT");
     }
     if (!user || user.trim() === '' || !mongoose.Types.ObjectId.isValid(user)) {
@@ -115,11 +115,11 @@ function ValidateUpdateTaskInput({ taskId, taskInput }) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateAssignCorrectorInput({ taskId, correctorId, enterMarksDueDate }) {
-    if (!taskId || taskId.trim() === '' || !mongoose.Types.ObjectId.isValid(taskId)) {
+    if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
         throw new ApolloError('A valid task_id is required.', "BAD_USER_INPUT");
     }
 
-    if (!correctorId || correctorId.trim() === '' || !mongoose.Types.ObjectId.isValid(correctorId)) {
+    if (!correctorId || !mongoose.Types.ObjectId.isValid(correctorId)) {
         throw new ApolloError('A valid corrector_id is required.', "BAD_USER_INPUT");
     }
 
@@ -181,10 +181,10 @@ function ValidateEnterMarksInput({ enterMarksInput, parentTest }) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateValidateMarksInput({ taskId, studentTestResultId }) {
-    if (!taskId || taskId.trim() === '' || !mongoose.Types.ObjectId.isValid(taskId)) {
+    if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
         throw new ApolloError(`Invalid task ID: ${taskId}`, "BAD_USER_INPUT");
     }
-    if (!studentTestResultId || studentTestResultId.trim() === '' || !mongoose.Types.ObjectId.isValid(studentTestResultId)) {
+    if (!studentTestResultId || !mongoose.Types.ObjectId.isValid(studentTestResultId)) {
         throw new ApolloError(`Invalid student test result ID: ${studentTestResultId}`, "BAD_USER_INPUT");
     }
 }
