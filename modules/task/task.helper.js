@@ -143,7 +143,7 @@ async function GetDeleteTaskPayload({ taskId, userId }) {
  */
 async function GetTask(taskId) {
     try {
-        const task = await TaskModel.findById(taskId);
+        const task = await TaskModel.findOne({ _id: taskId, task_status: { $ne: 'DELETED' } });
         if (!task) {
             throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
         }

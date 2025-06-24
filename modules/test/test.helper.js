@@ -201,7 +201,7 @@ async function GetDeleteTestPayload({ testId, userId }) {
  */
 async function GetTest(testId) {
     try {
-        const test = await TestModel.findById(testId);
+        const test = await TestModel.findOne({ _id: testId, test_status: { $ne: 'DELETED' } });
         if (!test) {
             throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
         }

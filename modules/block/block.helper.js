@@ -176,7 +176,7 @@ function BuildDeletePayload({ ids, statusKey, timestamp, userId }) {
  */
 async function GetBlock(blockId) {
     try {
-        const block = await BlockModel.findById(blockId);
+        const block = await BlockModel.findOne({ _id: blockId, block_status: { $ne: 'DELETED' } });
         if (!block) {
             throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
         }

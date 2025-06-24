@@ -75,7 +75,7 @@ async function GetDeleteStudentTestResultPayload({ studentTestResultId, userId }
  */
 async function GetStudentTestResult(studentTestResultId) {
     try {
-        const studentTestResult = await StudentTestResultModel.findById(studentTestResultId);
+        const studentTestResult = await StudentTestResultModel.findOne({ _id: studentTestResultId, student_test_result_status: { $ne: 'DELETED' } });
         if (!studentTestResult) {
             throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
         }

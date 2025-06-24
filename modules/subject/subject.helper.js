@@ -153,7 +153,7 @@ async function GetDeleteSubjectPayload({ subjectId, userId }) {
  */
 async function GetSubject(subjectId) {
     try {
-        const subject = await SubjectModel.findById(subjectId);
+        const subject = await SubjectModel.findOne({ _id: subjectId, subject_status: { $ne: 'DELETED' } });
         if (!subject) {
             throw new ApolloError('Subject not found', 'SUBJECT_NOT_FOUND');
         }
