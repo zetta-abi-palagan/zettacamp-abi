@@ -75,20 +75,16 @@ async function GetOneTask(_, { id }) {
 }
 
 // *************** MUTATION ***************
-/**
- * GraphQL resolver to create a new task.
- * @param {object} _ - The parent object, which is not used in this resolver.
- * @param {object} args - The arguments for the mutation.
- * @param {object} args.createTaskInput - An object containing the details for the new task.
- * @returns {Promise<object>} - A promise that resolves to the newly created task object.
- */
-async function CreateTask(_, { createTaskInput }) {
+
+async function CreateTask(_, { createTaskInput }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateInputTypeObject(createTaskInput);
-        TaskValidator.ValidateCreateTaskInput(createTaskInput);
+        TaskValidator.ValidateTaskInput(createTaskInput);
 
         // *************** Check if test exists and is not deleted
         const testCheck = await TestModel.findOne({ _id: createTaskInput.test, test_status: { $ne: 'DELETED' } }).lean();
@@ -123,27 +119,23 @@ async function CreateTask(_, { createTaskInput }) {
     }
 }
 
-/**
- * GraphQL resolver to update an existing task.
- * @param {object} _ - The parent object, which is not used in this resolver.
- * @param {object} args - The arguments for the mutation.
- * @param {string} args.id - The unique identifier of the task to update.
- * @param {object} args.updateTaskInput - An object containing the fields to be updated.
- * @returns {Promise<object>} - A promise that resolves to the updated task object.
- */
-async function UpdateTask(_, { id, updateTaskInput }) {
-    try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
 
+async function UpdateTask(_, { id, updateTaskInput }, context) {
+    try {
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
+
+        CommonValidator.ValidateObjectId(id);
         CommonValidator.ValidateInputTypeObject(updateTaskInput);
-        TaskValidator.ValidateUpdateTaskInput({ taskId: id, taskInput: updateTaskInput });
+        TaskValidator.ValidateTaskInput({ taskId: id, taskInput: updateTaskInput });
 
         // *************** Prepare update payload and update task
-        const updateTaskPayload = TaskHelper.GetUpdateTaskPayload({ taskInput: updateTaskInput, userId, taskId: id });
+        const updateTaskPayload = TaskHelper.GetUpdateTaskPayload({ taskInput: updateTaskInput, userId });
 
         // *************** Update task in database
-        const updatedTask = await TaskModel.findOneAndUpdate({ _id: id }, updateTaskPayload, { new: true }).lean();
+        const updatedTask = await TaskModel.findByIdAndUpdate(id, { $set: updateTaskPayload }, { new: true }).lean();
         if (!updatedTask) {
             throw new ApolloError('Task failed to update.', 'UPDATE_TASK_FAILED');
         }
@@ -158,17 +150,13 @@ async function UpdateTask(_, { id, updateTaskInput }) {
     }
 }
 
-/**
- * GraphQL resolver to soft-delete a task and remove its reference from the parent test.
- * @param {object} _ - The parent object, which is not used in this resolver.
- * @param {object} args - The arguments for the mutation.
- * @param {string} args.id - The unique identifier of the task to delete.
- * @returns {Promise<object>} - A promise that resolves to the task object as it was before being soft-deleted.
- */
-async function DeleteTask(_, { id }) {
+
+async function DeleteTask(_, { id }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateObjectId(id);
 
@@ -204,37 +192,30 @@ async function DeleteTask(_, { id }) {
     }
 }
 
-/**
- * GraphQL resolver for the 'Assign Corrector' workflow.
- * Completes an existing task, creates a new 'ENTER_MARKS' task, and sends an email notification.
- * @param {object} _ - The parent object, which is not used in this resolver.
- * @param {object} args - The arguments for the mutation.
- * @param {string} args.task_id - The ID of the 'ASSIGN_CORRECTOR' task.
- * @param {string} args.corrector_id - The ID of the user being assigned as the corrector.
- * @param {Date|string} args.enter_marks_due_date - The due date for the new 'ENTER_MARKS' task.
- * @returns {Promise<object>} - A promise that resolves to the newly created 'ENTER_MARKS' task object.
- */
-async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date }) {
+
+async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         TaskValidator.ValidateAssignCorrectorInput({ taskId: task_id, correctorId: corrector_id, enterMarksDueDate: enter_marks_due_date });
 
         // *************** Find the assign corrector task and ensure it is pending
-        const assignCorrectorTask = await TaskModel.findOne({ _id: task_id, task_type: 'ASSIGN_CORRECTOR', task_status: 'PENDING' }).lean();
+        const assignCorrectorTask = await TaskModel.findOne({ _id: task_id, task_type: 'ASSIGN_CORRECTOR', task_status: 'PENDING' }).select({ test: 1 }).lean();
         if (!assignCorrectorTask) {
             throw new ApolloError('Assign corrector task not found.', 'BAD_REQUEST');
         }
 
         // *************** Ensure the corrector exists and is active
-        const corrector = await UserModel.findOne({ _id: corrector_id, role: 'CORRECTOR', user_status: 'ACTIVE' }).lean();
+        const corrector = await UserModel.findOne({ _id: corrector_id, role: 'CORRECTOR', user_status: 'ACTIVE' }).select({ _id: 1, email: 1 }).lean();
         if (!corrector) {
             throw new ApolloError('The specified user is not a valid, active corrector.', 'BAD_REQUEST');
         }
 
         // *************** Fetch the related test
-        const test = await TestModel.findById(assignCorrectorTask.test).lean();
+        const test = await TestModel.findById(assignCorrectorTask.test).select({ subject: 1, name: 1, description: 1 }).lean();
         if (!test) {
             throw new ApolloError('Related test not found.', 'NOT_FOUND');
         }
@@ -245,7 +226,7 @@ async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date 
         }
 
         // *************** Get all active students
-        const students = await StudentModel.find({ student_status: 'ACTIVE' })
+        const students = await StudentModel.find({ student_status: 'ACTIVE' }).select({ first_name: 1, last_name: 1 }).lean();
         if (!students) {
             throw new ApolloError('Students not found', 'NOT_FOUND');
         }
@@ -253,7 +234,7 @@ async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date 
         // *************** Mark the assign corrector task as completed
         const taskCompletionPayload = TaskHelper.GetTaskCompletionPayload(userId);
 
-        const completeAssignCorrectorTask = await TaskModel.updateOne({ _id: task_id, task_type: 'ASSIGN_CORRECTOR', task_status: 'PENDING' }, taskCompletionPayload);
+        const completeAssignCorrectorTask = await TaskModel.updateOne({ _id: task_id, task_type: 'ASSIGN_CORRECTOR', task_status: 'PENDING' }, { $set: updateTaskPayload });
         if (!completeAssignCorrectorTask.nModified) {
             throw new ApolloError('Assign corrector task completion failed', 'TASK_COMPLETION_FAILED');
         }
@@ -283,7 +264,7 @@ async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date 
         }
 
         // *************** Send notification email to the corrector (replace with corrector.email in production)
-        const emailRecipient = 'palaganabimanyu@gmail.com'
+        const emailRecipient = corrector.email;
 
         const emailContent = TaskHelper.GetAssignCorrectorEmail({ test, subject, students });
 
@@ -306,38 +287,32 @@ async function AssignCorrector(_, { task_id, corrector_id, enter_marks_due_date 
     }
 }
 
-/**
- * GraphQL resolver for the 'Enter Marks' workflow.
- * Completes an existing task, creates a student test result, and creates a new 'VALIDATE_MARKS' task.
- * @param {object} _ - The parent object, which is not used in this resolver.
- * @param {object} args - The arguments for the mutation.
- * @param {string} args.task_id - The ID of the 'ENTER_MARKS' task to be completed.
- * @param {object} args.enterMarksInput - An input object containing the test, student, and marks data.
- * @param {Date|string} args.validate_marks_due_date - The due date for the subsequent 'VALIDATE_MARKS' task.
- * @returns {Promise<object>} - A promise that resolves to an object containing the new student test result and the new validation task.
- */
-async function EnterMarks(_, { task_id, enterMarksInput, validate_marks_due_date }) {
-    try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
 
+async function EnterMarks(_, { task_id, enterMarksInput, validate_marks_due_date }, context) {
+    try {
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
+
+        CommonValidator.ValidateInputTypeObject(enterMarksInput);
         CommonValidator.ValidateObjectId(task_id);
 
         // *************** Find the enter marks task and ensure it is pending
-        const enterMarksTask = await TaskModel.findOne({ _id: task_id, task_type: 'ENTER_MARKS', task_status: 'PENDING' }).lean();
+        const enterMarksTask = await TaskModel.findOne({ _id: task_id, task_type: 'ENTER_MARKS', task_status: 'PENDING' }).select({ _id: 1 }).lean();
         if (!enterMarksTask) {
             throw new ApolloError('Enter Marks task not found or is not pending.', 'BAD_REQUEST');
         }
 
         // *************** Fetch the related test
-        const parentTest = await TestModel.findById(enterMarksInput.test).lean();
+        const parentTest = await TestModel.findById(enterMarksInput.test).select({ notations: 1, name: 1 }).lean();
         if (!parentTest) {
             throw new ApolloError('Related test not found.', 'NOT_FOUND');
         }
 
-        TaskValidator.ValidateEnterMarksInput({ enterMarksInput, parentTest });
+        TaskValidator.ValidateEnterMarksInput({ enterMarksInput, notations: parentTest.notations });
 
-        const studentTestResultPayload = TaskHelper.GetStudentTestResultPayload({ enterMarksInput, userId, parentTest });
+        const studentTestResultPayload = TaskHelper.GetStudentTestResultPayload({ enterMarksInput, userId, notations: parentTest.notations });
 
         // *************** Create student test result
         const studentTestResult = await StudentTestResultModel.create(studentTestResultPayload);
@@ -347,16 +322,20 @@ async function EnterMarks(_, { task_id, enterMarksInput, validate_marks_due_date
 
         // *************** Mark the enter marks task as completed
         const taskCompletionPayload = TaskHelper.GetTaskCompletionPayload(userId);
-        const completeEnterMarksTask = await TaskModel.updateOne({ _id: task_id, task_type: 'ENTER_MARKS', task_status: 'PENDING' }, taskCompletionPayload);
+        const completeEnterMarksTask = await TaskModel.updateOne({ _id: task_id, task_type: 'ENTER_MARKS', task_status: 'PENDING' }, { $set: taskCompletionPayload });
         if (!completeEnterMarksTask.nModified) {
             throw new ApolloError('Failed to complete enter marks task', 'TASK_COMPLETION_FAILED');
         }
 
-        // *************** Prepare and create validate marks task
-        const academicDirectorId = '6846e5769e5502fce150eb67';
+        // *************** Get the academic director ID
+        const academicDirector = await UserModel.findOne({ role: 'ACADEMIC_DIRECTOR', user_status: 'ACTIVE' }).select({ _id: 1 }).lean();
+        if (!academicDirector) {
+            throw new ApolloError('Academic director not found', 'NOT_FOUND')
+        }
+
         const validateMarksTaskData = {
             test: enterMarksInput.test,
-            user: academicDirectorId,
+            user: academicDirector._id,
             title: 'Validate Marks',
             description: 'Academic Director should validate mark entry for test: ' + parentTest.name,
             task_type: 'VALIDATE_MARKS',
@@ -394,24 +373,18 @@ async function EnterMarks(_, { task_id, enterMarksInput, validate_marks_due_date
     }
 }
 
-/**
- * GraphQL resolver for the 'Validate Marks' workflow.
- * Completes an existing task and validates the associated student test result.
- * @param {object} _ - The parent object, which is not used in this resolver.
- * @param {object} args - The arguments for the mutation.
- * @param {string} args.task_id - The ID of the 'VALIDATE_MARKS' task.
- * @param {string} args.student_test_result_id - The ID of the student test result to validate.
- * @returns {Promise<object>} - A promise that resolves to an object containing the validated student test result and the completed task.
- */
-async function ValidateMarks(_, { task_id, student_test_result_id }) {
+
+async function ValidateMarks(_, { task_id, student_test_result_id }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         TaskValidator.ValidateValidateMarksInput({ taskId: task_id, studentTestResultId: student_test_result_id });
 
         // *************** Find the validate marks task and ensure it is pending
-        const validateMarksTask = await TaskModel.findOne({ _id: task_id, task_type: 'VALIDATE_MARKS', task_status: 'PENDING' }).lean();
+        const validateMarksTask = await TaskModel.findOne({ _id: task_id, task_type: 'VALIDATE_MARKS', task_status: 'PENDING' }).select({ _id: 1 }).lean();
         if (!validateMarksTask) {
             throw new ApolloError('Validate Marks task not found or is not pending.', 'BAD_REQUEST');
         }
@@ -426,7 +399,11 @@ async function ValidateMarks(_, { task_id, student_test_result_id }) {
         const validationPayload = TaskHelper.GetStudentTestResultValidationPayload(userId);
 
         // *************** Mark the validate marks task as completed
-        const completedTask = await TaskModel.findOneAndUpdate({ _id: task_id, task_type: 'VALIDATE_MARKS', task_status: 'PENDING' }, taskCompletionPayload, { new: true }).lean();
+        const completedTask = await TaskModel.findOneAndUpdate(
+            { _id: task_id, task_type: 'VALIDATE_MARKS', task_status: 'PENDING' },
+            { $set: taskCompletionPayload },
+            { new: true }
+        ).lean();
         if (!completedTask) {
             throw new ApolloError('Failed to complete validate marks task', 'TASK_COMPLETION_FAILED');
         }
@@ -507,9 +484,9 @@ async function CreatedByLoader(task, _, context) {
     try {
         TaskValidator.ValidateUserLoaderInput(task, context, 'created_by');
 
-        const created_by = await context.dataLoaders.UserLoader.load(task.created_by);
+        const createdBy = await context.dataLoaders.UserLoader.load(task.created_by);
 
-        return created_by;
+        return createdBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message
@@ -529,9 +506,9 @@ async function UpdatedByLoader(task, _, context) {
     try {
         TaskValidator.ValidateUserLoaderInput(task, context, 'updated_by');
 
-        const updated_by = await context.dataLoaders.UserLoader.load(task.updated_by);
+        const updatedBy = await context.dataLoaders.UserLoader.load(task.updated_by);
 
-        return updated_by;
+        return updatedBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message
@@ -551,9 +528,9 @@ async function DeletedByLoader(task, _, context) {
     try {
         TaskValidator.ValidateUserLoaderInput(task, context, 'deleted_by');
 
-        const deleted_by = await context.dataLoaders.UserLoader.load(task.deleted_by);
+        const deletedBy = await context.dataLoaders.UserLoader.load(task.deleted_by);
 
-        return deleted_by;
+        return deletedBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message

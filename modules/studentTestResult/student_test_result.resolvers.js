@@ -76,12 +76,16 @@ async function GetOneStudentTestResult(_, { id }) {
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the student test result to update.
  * @param {object} args.updateStudentTestResultInput - An object containing the new marks data.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
  * @returns {Promise<object>} - A promise that resolves to the updated student test result object.
  */
-async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }) {
+
+async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateObjectId(id);
         CommonValidator.ValidateInputTypeObject(updateStudentTestResultInput);
@@ -89,24 +93,28 @@ async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }) 
         const marks = updateStudentTestResultInput.marks;
 
         // *************** Check the to be updated student test result
-        const studentTestResult = await StudentTestResultModel.findOne({ _id: id, student_test_result_status: { $ne: 'DELETED' } }).lean();
+        const studentTestResult = await StudentTestResultModel.findOne({ _id: id, student_test_result_status: { $ne: 'DELETED' } }).select({ test: 1 }).lean();
         if (!studentTestResult) {
             throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
         }
 
         // *************** Check the parent test of the student test result
-        const parentTest = await TestModel.findOne({ _id: studentTestResult.test }).lean();
+        const parentTest = await TestModel.findById(studentTestResult.test).select({ notations: 1 }).lean();
         if (!parentTest) {
             throw new ApolloError('Related test for this result could not be found.', 'NOT_FOUND');
         }
 
-        StudentTestResultValidator.ValidateUpdateStudentTestResultInput({ marks, test: parentTest });
+        StudentTestResultValidator.ValidateUpdateStudentTestResultInput({ marks, notations: parentTest.notations });
 
         // *************** Prepare the payload for updating the student test result
-        const updateStudentTestResultPayload = StudentTestResultHelper.GetUpdateStudentTestResultPayload({ marks, userId, test: parentTest });
+        const updateStudentTestResultPayload = StudentTestResultHelper.GetUpdateStudentTestResultPayload({ marks, userId, notations: parentTest.notations });
 
         // *************** Update the student test result
-        const updatedStudentTestResult = await StudentTestResultModel.findOneAndUpdate({ _id: id }, updateStudentTestResultPayload, { new: true }).lean();
+        const updatedStudentTestResult = await StudentTestResultModel.findOneAndUpdate(
+            { _id: id, student_test_result_status: { $ne: 'DELETED' } },
+            { $set: updateStudentTestResultInput },
+            { new: true }
+        ).lean();
         if (!updatedStudentTestResult) {
             throw new ApolloError('Failed to update student test result', 'STUDENT_TEST_RESULT_UPDATE_FAILED');
         }
@@ -126,12 +134,15 @@ async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }) 
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the student test result to delete.
- * @returns {Promise<object>} - A promise that resolves to the soft-deleted student test result object.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
+ * @returns {Promise<object>} - A promise that resolves to the student test result object as it was before being soft-deleted.
  */
-async function DeleteStudentTestResult(_, { id }) {
+async function DeleteStudentTestResult(_, { id }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateObjectId(id);
 
@@ -223,9 +234,9 @@ async function CreatedByLoader(studentTestResult, _, context) {
     try {
         StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'created_by');
 
-        const created_by = await context.dataLoaders.UserLoader.load(studentTestResult.created_by);
+        const createdBy = await context.dataLoaders.UserLoader.load(studentTestResult.created_by);
 
-        return created_by;
+        return createdBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message
@@ -245,9 +256,9 @@ async function UpdatedByLoader(studentTestResult, _, context) {
     try {
         StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'updated_by');
 
-        const updated_by = await context.dataLoaders.UserLoader.load(studentTestResult.updated_by);
+        const updatedBy = await context.dataLoaders.UserLoader.load(studentTestResult.updated_by);
 
-        return updated_by;
+        return updatedBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message
@@ -267,9 +278,9 @@ async function DeletedByLoader(studentTestResult, _, context) {
     try {
         StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'deleted_by');
 
-        const deleted_by = await context.dataLoaders.UserLoader.load(studentTestResult.deleted_by);
+        const deletedBy = await context.dataLoaders.UserLoader.load(studentTestResult.deleted_by);
 
-        return deleted_by;
+        return deletedBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message

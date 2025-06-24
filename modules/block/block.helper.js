@@ -27,7 +27,7 @@ const BlockValidator = require('./block.validator');
 function GetCreateBlockPayload({ createBlockInput, userId }) {
     CommonValidator.ValidateInputTypeObject(createBlockInput);
     CommonValidator.ValidateObjectId(userId);
-    BlockValidator.ValidateBlockInput(createBlockInput);
+    BlockValidator.ValidateBlockInput({ blockInput: createBlockInput });
 
     const {
         name,
@@ -69,7 +69,7 @@ function GetCreateBlockPayload({ createBlockInput, userId }) {
 function GetUpdateBlockPayload({ updateBlockInput, userId }) {
     CommonValidator.ValidateInputTypeObject(updateBlockInput);
     CommonValidator.ValidateObjectId(userId);
-    BlockValidator.ValidateBlockInput(updateBlockInput);
+    BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, isUpdate: true });
 
     const {
         name,
@@ -84,13 +84,13 @@ function GetUpdateBlockPayload({ updateBlockInput, userId }) {
     return {
         name,
         description,
-        evaluation_type: evaluation_type.toUpperCase(),
-        block_type: block_type.toUpperCase(),
+        evaluation_type: evaluation_type ? evaluation_type.toUpperCase() : undefined,
+        block_type: block_type ? block_type.toUpperCase() : undefined,
         connected_block,
         is_counted_in_final_transcript,
-        block_status: block_status.toUpperCase(),
+        block_status: block_status ? block_status.toUpperCase() : undefined,
         updated_by: userId
-    }
+    };
 }
 
 /**
@@ -101,40 +101,51 @@ function GetUpdateBlockPayload({ updateBlockInput, userId }) {
  * @returns {Promise<object>} A promise that resolves to a structured payload for all required delete operations.
  */
 async function GetDeleteBlockPayload({ blockId, userId }) {
-    CommonValidator.ValidateObjectId(blockId);
-    CommonValidator.ValidateObjectId(userId);
+    try {
+        CommonValidator.ValidateObjectId(blockId);
+        CommonValidator.ValidateObjectId(userId);
 
-    const deletionTimestamp = Date.now();
-    const block = await GetBlock(blockId);
-    const subjectIds = block.subjects || [];
+        const deletionTimestamp = Date.now();
+        const block = await GetBlock(blockId);
+        const subjectIds = block.subjects || [];
 
-    const deleteBlockPayload = {
-        block: BuildDeletePayload({ ids: [blockId], statusKey: 'block_status', timestamp: deletionTimestamp, userId }),
-        subjects: null,
-        tests: null,
-        tasks: null,
-        studentTestResults: null
-    };
+        const deleteBlockPayload = {
+            block: BuildDeletePayload({
+                ids: [blockId],
+                statusKey: 'block_status',
+                timestamp: deletionTimestamp,
+                userId
+            }),
+            subjects: null,
+            tests: null,
+            tasks: null,
+            studentTestResults: null
+        };
 
-    if (!subjectIds.length) return deleteBlockPayload;
+        if (!subjectIds.length) return deleteBlockPayload;
 
-    const { subjectPayload, testIds } = await HandleDeleteSubjects({ subjectIds, userId, timestamp: deletionTimestamp });
-    deleteBlockPayload.subjects = subjectPayload;
+        const { subjectPayload, testIds } = await HandleDeleteSubjects({ subjectIds, userId, timestamp: deletionTimestamp });
+        deleteBlockPayload.subjects = subjectPayload;
 
-    if (!testIds.length) return deleteBlockPayload;
+        if (!testIds.length) return deleteBlockPayload;
 
-    const { testPayload, taskIds, studentResultIds } = await HandleDeleteTests({ testIds, userId, timestamp: deletionTimestamp });
-    deleteBlockPayload.tests = testPayload;
+        const { testPayload, taskIds, studentResultIds } = await HandleDeleteTests({ testIds, userId, timestamp: deletionTimestamp });
+        deleteBlockPayload.tests = testPayload;
 
-    if (taskIds.length) {
-        deleteBlockPayload.tasks = HandleDeleteTasks({ taskIds, userId, timestamp: deletionTimestamp });
+        if (taskIds.length) {
+            deleteBlockPayload.tasks = HandleDeleteTasks({ taskIds, userId, timestamp: deletionTimestamp });
+        }
+
+        if (studentResultIds.length) {
+            deleteBlockPayload.studentTestResults = HandleDeleteStudentTestResults({ resultIds: studentResultIds, userId, timestamp: deletionTimestamp });
+        }
+
+        return deleteBlockPayload;
+    } catch (error) {
+        throw new ApolloError(`Failed in GetDeleteBlockPayload: ${error.message}`, 'DELETE_BLOCK_PAYLOAD_FAILED', {
+            error: error.message
+        });
     }
-
-    if (studentResultIds.length) {
-        deleteBlockPayload.studentTestResults = HandleDeleteStudentTestResults({ resultIds: studentResultIds, userId, timestamp: deletionTimestamp });
-    }
-
-    return deleteBlockPayload;
 }
 
 /**
@@ -164,11 +175,17 @@ function BuildDeletePayload({ ids, statusKey, timestamp, userId }) {
  * @returns {Promise<object>} A promise that resolves to the found block document.
  */
 async function GetBlock(blockId) {
-    const block = await BlockModel.findById(blockId);
-    if (!block) {
-        throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
+    try {
+        const block = await BlockModel.findById(blockId);
+        if (!block) {
+            throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
+        }
+        return block;
+    } catch (error) {
+        throw new ApolloError(`Failed to get block: ${error.message}`, 'GET_BLOCK_FAILED', {
+            error: error.message,
+        });
     }
-    return block;
 }
 
 /**
@@ -180,19 +197,30 @@ async function GetBlock(blockId) {
  * @returns {Promise<object>} A promise that resolves to an object containing the subject delete payload and an array of test IDs.
  */
 async function HandleDeleteSubjects({ subjectIds, userId, timestamp }) {
-    CommonValidator.ValidateObjectIdArray(subjectIds, 'INVALID_SUBJECT_ID');
+    try {
+        CommonValidator.ValidateObjectIdArray(subjectIds, 'INVALID_SUBJECT_ID');
 
-    const subjects = await SubjectModel.find({ _id: { $in: subjectIds } });
-    const testIds = [].concat(...subjects.map(subject => subject.tests || []));
+        const subjects = await SubjectModel.find({ _id: { $in: subjectIds } });
 
-    const subjectPayload = BuildDeletePayload({
-        ids: subjectIds,
-        statusKey: 'subject_status',
-        timestamp,
-        userId
-    });
+        if (!subjects.length) {
+            throw new ApolloError('No matching subjects found', 'SUBJECTS_NOT_FOUND');
+        }
 
-    return { subjectPayload, testIds };
+        const testIds = [].concat(...subjects.map(subject => subject.tests || []));
+
+        const subjectPayload = BuildDeletePayload({
+            ids: subjectIds,
+            statusKey: 'subject_status',
+            timestamp,
+            userId
+        });
+
+        return { subjectPayload, testIds };
+    } catch (error) {
+        throw new ApolloError(`Failed to handle delete subjects: ${error.message}`, 'HANDLE_DELETE_SUBJECTS_FAILED', {
+            error: error.message,
+        });
+    }
 }
 
 /**
@@ -204,20 +232,31 @@ async function HandleDeleteSubjects({ subjectIds, userId, timestamp }) {
  * @returns {Promise<object>} A promise that resolves to an object containing the test delete payload, an array of task IDs, and an array of student result IDs.
  */
 async function HandleDeleteTests({ testIds, userId, timestamp }) {
-    CommonValidator.ValidateObjectIdArray(testIds, 'INVALID_TEST_ID');
+    try {
+        CommonValidator.ValidateObjectIdArray(testIds, 'INVALID_TEST_ID');
 
-    const tests = await TestModel.find({ _id: { $in: testIds } });
-    const taskIds = [].concat(...tests.map(test => test.tasks || []));
-    const studentResultIds = [].concat(...tests.map(test => test.student_test_results || []));
+        const tests = await TestModel.find({ _id: { $in: testIds } });
 
-    const testPayload = BuildDeletePayload({
-        ids: testIds,
-        statusKey: 'test_status',
-        timestamp,
-        userId
-    });
+        if (!tests.length) {
+            throw new ApolloError('No matching tests found', 'TESTS_NOT_FOUND');
+        }
 
-    return { testPayload, taskIds, studentResultIds };
+        const taskIds = [].concat(...tests.map(test => test.tasks || []));
+        const studentResultIds = [].concat(...tests.map(test => test.student_test_results || []));
+
+        const testPayload = BuildDeletePayload({
+            ids: testIds,
+            statusKey: 'test_status',
+            timestamp,
+            userId
+        });
+
+        return { testPayload, taskIds, studentResultIds };
+    } catch (error) {
+        throw new ApolloError(`Failed to handle delete tests: ${error.message}`, 'HANDLE_DELETE_TESTS_FAILED', {
+            error: error.message,
+        });
+    }
 }
 
 /**

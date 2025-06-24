@@ -63,7 +63,7 @@ function GetCreateTestPayload({ testInput, userId, evaluationType }) {
 function GetUpdateTestPayload({ testInput, userId, evaluationType }) {
     CommonValidator.ValidateInputTypeObject(testInput);
     CommonValidator.ValidateObjectId(userId);
-    TestValidator.ValidateTestInput({ testInput, evaluationType });
+    TestValidator.ValidateTestInput({ testInput, evaluationType, isUpdate: true });
 
     const {
         name,
@@ -81,14 +81,14 @@ function GetUpdateTestPayload({ testInput, userId, evaluationType }) {
     return {
         name,
         description,
-        test_type: test_type.toUpperCase(),
-        result_visibility: result_visibility.toUpperCase(),
+        test_type: test_type ? test_type.toUpperCase() : undefined,
+        result_visibility: result_visibility ? result_visibility.toUpperCase() : undefined,
         weight,
-        correction_type: correction_type.toUpperCase(),
+        correction_type: correction_type ? correction_type.toUpperCase() : undefined,
         notations,
         is_retake,
         connected_test,
-        test_status: test_status.toUpperCase(),
+        test_status: test_status ? test_status.toUpperCase() : undefined,
         updated_by: userId
     };
 }
@@ -114,20 +114,18 @@ function GetPublishTestPayload({ userId, testDueDate }) {
 /**
  * Creates the payload for a new 'ASSIGN_CORRECTOR' task.
  * @param {object} args - The arguments for the task payload.
- * @param {object} args.publishedTest - The test document that was just published.
+ * @param {object} args.testId - The ID of the just published test.
  * @param {Date|string} args.assignCorrectorDueDate - The due date for the new task.
  * @param {string} args.userId - The ID of the user who initiated the publish action.
  * @returns {object} A data payload for creating the new task.
  */
-function GetAssignCorrectorTaskPayload({ publishedTest, assignCorrectorDueDate, userId }) {
-    CommonValidator.ValidateInputTypeObject(publishedTest);
+function GetAssignCorrectorTaskPayload({ testId, assignCorrectorDueDate, userId, academicDirectorId }) {
+    CommonValidator.ValidateObjectId(testId)
     CommonValidator.ValidateObjectId(userId);
-
-    // Dummy ID for academic director, should eventually come from a config or role-based lookup
-    const academicDirectorId = '6846e5769e5502fce150eb67';
+    CommonValidator.ValidateObjectId(academicDirectorId);
 
     return {
-        test: publishedTest.id,
+        test: testId,
         user: academicDirectorId,
         title: 'Assign Corrector',
         description: 'Academic Director should assign corrector for student test',
@@ -147,36 +145,53 @@ function GetAssignCorrectorTaskPayload({ publishedTest, assignCorrectorDueDate, 
  * @returns {Promise<object>} A promise that resolves to a structured payload for all required delete and update operations.
  */
 async function GetDeleteTestPayload({ testId, userId }) {
-    CommonValidator.ValidateObjectId(testId);
-    CommonValidator.ValidateObjectId(userId);
+    try {
+        CommonValidator.ValidateObjectId(testId);
+        CommonValidator.ValidateObjectId(userId);
 
-    const deletionTimestamp = Date.now();
-    const test = await GetTest(testId);
+        const deletionTimestamp = Date.now();
+        const test = await GetTest(testId);
 
-    const taskIds = test.tasks || [];
-    const studentResultIds = test.student_test_results || [];
+        const taskIds = test.tasks || [];
+        const studentResultIds = test.student_test_results || [];
 
-    const deleteTestPayload = {
-        test: BuildDeletePayload({
-            ids: [testId],
-            statusKey: 'test_status',
-            timestamp: deletionTimestamp,
-            userId
-        }),
-        subject: BuildPullTestFromSubjectPayload({ subjectId: test.subject, testId }),
-        tasks: null,
-        studentTestResults: null
-    };
+        const deleteTestPayload = {
+            test: BuildDeletePayload({
+                ids: [testId],
+                statusKey: 'test_status',
+                timestamp: deletionTimestamp,
+                userId
+            }),
+            subject: BuildPullTestFromSubjectPayload({
+                subjectId: test.subject,
+                testId
+            }),
+            tasks: null,
+            studentTestResults: null
+        };
 
-    if (taskIds.length) {
-        deleteTestPayload.tasks = HandleDeleteTasks({ taskIds, userId, timestamp: deletionTimestamp });
+        if (taskIds.length) {
+            deleteTestPayload.tasks = HandleDeleteTasks({
+                taskIds,
+                userId,
+                timestamp: deletionTimestamp
+            });
+        }
+
+        if (studentResultIds.length) {
+            deleteTestPayload.studentTestResults = HandleDeleteStudentTestResults({
+                resultIds: studentResultIds,
+                userId,
+                timestamp: deletionTimestamp
+            });
+        }
+
+        return deleteTestPayload;
+    } catch (error) {
+        throw new ApolloError(`Failed to build delete test payload: ${error.message}`, 'GET_DELETE_TEST_PAYLOAD_FAILED', {
+            error: error.message
+        });
     }
-
-    if (studentResultIds.length) {
-        deleteTestPayload.studentTestResults = HandleDeleteStudentTestResults({ resultIds: studentResultIds, userId, timestamp: deletionTimestamp });
-    }
-
-    return deleteTestPayload;
 }
 
 /**
@@ -185,11 +200,17 @@ async function GetDeleteTestPayload({ testId, userId }) {
  * @returns {Promise<object>} A promise that resolves to the found test document.
  */
 async function GetTest(testId) {
-    const test = await TestModel.findById(testId);
-    if (!test) {
-        throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
+    try {
+        const test = await TestModel.findById(testId);
+        if (!test) {
+            throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
+        }
+        return test;
+    } catch (error) {
+        throw new ApolloError(`Failed to get test: ${error.message}`, 'GET_TEST_FAILED', {
+            error: error.message
+        });
     }
-    return test;
 }
 
 /**

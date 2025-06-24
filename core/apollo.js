@@ -26,7 +26,10 @@ async function SetupApolloServer(app, port) {
         resolvers,
         context: () => {
             return {
-                dataLoaders: CreateLoaders()
+                dataLoaders: CreateLoaders(),
+                user: {
+                    _id: '6846e5769e5502fce150eb67'
+                },
             }
         }
     });

@@ -18,11 +18,11 @@ module.exports = gql`
     }
 
     input UpdateSubjectInput {
-        name: String!
-        description: String!
-        coefficient: Float!
+        name: String
+        description: String
+        coefficient: Float
         connected_blocks: [ID!]
-        subject_status: SubjectStatus!
+        subject_status: SubjectStatus
     }
 
     type Subject {

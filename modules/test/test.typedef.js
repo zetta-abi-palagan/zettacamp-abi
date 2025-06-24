@@ -52,16 +52,16 @@ module.exports = gql`
     }
 
     input UpdateTestInput {
-        name: String!
-        description: String!
-        test_type: TestType!
-        result_visibility: ResultVisibility!
-        weight: Float!
-        correction_type: CorrectionType!
-        notations: [NotationInput!]!
-        is_retake: Boolean!
+        name: String
+        description: String
+        test_type: TestType
+        result_visibility: ResultVisibility
+        weight: Float
+        correction_type: CorrectionType
+        notations: [NotationInput!]
+        is_retake: Boolean
         connected_test: ID
-        test_status: TestStatus!
+        test_status: TestStatus
     }
 
     type Notation {

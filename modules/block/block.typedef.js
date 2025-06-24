@@ -35,13 +35,13 @@ module.exports = gql`
     }
 
     input UpdateBlockInput {
-        name: String!
-        description: String!
-        evaluation_type: EvaluationType!
-        block_type: BlockType!
+        name: String
+        description: String
+        evaluation_type: EvaluationType
+        block_type: BlockType
         connected_block: ID
-        is_counted_in_final_transcript: Boolean!
-        block_status: BlockStatus!
+        is_counted_in_final_transcript: Boolean
+        block_status: BlockStatus
     }
 
     type Block {

@@ -53,7 +53,7 @@ async function GetOneBlock(_, { id }) {
     try {
         CommonValidator.ValidateObjectId(id)
 
-        const block = await BlockModel.findOne({ _id: id }).lean();
+        const block = await BlockModel.findById(id).lean();
         if (!block) {
             throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
         }
@@ -74,15 +74,18 @@ async function GetOneBlock(_, { id }) {
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {object} args.createBlockInput - An object containing the details for the new block.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
  * @returns {Promise<object>} - A promise that resolves to the newly created block object.
  */
-async function CreateBlock(_, { createBlockInput }) {
+async function CreateBlock(_, { createBlockInput }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateInputTypeObject(createBlockInput);
-        BlockValidator.ValidateBlockInput(createBlockInput);
+        BlockValidator.ValidateBlockInput({ blockInput: createBlockInput });
 
         // *************** Prepare payload and create the block
         const createBlockPayload = BlockHelper.GetCreateBlockPayload({ createBlockInput, userId });
@@ -103,27 +106,33 @@ async function CreateBlock(_, { createBlockInput }) {
 }
 
 /**
- * GraphQL resolver to update an existing block.
+ * GraphQL resolver to update an existing block with partial data.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the block to update.
- * @param {object} args.updateBlockInput - An object containing the new details for the block.
+ * @param {object} args.updateBlockInput - An object containing the fields to be updated.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
  * @returns {Promise<object>} - A promise that resolves to the updated block object.
  */
-async function UpdateBlock(_, { id, updateBlockInput }) {
+async function UpdateBlock(_, { id, updateBlockInput }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateObjectId(id);
         CommonValidator.ValidateInputTypeObject(updateBlockInput);
-        BlockValidator.ValidateBlockInput(updateBlockInput);
+        BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, isUpdate: true });
 
-        // *************** Get the payload for updating a block
         const updateBlockPayload = BlockHelper.GetUpdateBlockPayload({ updateBlockInput, userId });
 
-        // *************** Update the block in the database
-        const updatedBlock = await BlockModel.findOneAndUpdate({ _id: id }, updateBlockPayload, { new: true }).lean();
+        const updatedBlock = await BlockModel.findOneAndUpdate(
+            { _id: id },
+            { $set: updateBlockPayload },
+            { new: true }
+        ).lean();
+
         if (!updatedBlock) {
             throw new ApolloError('Block update failed', 'BLOCK_UPDATE_FAILED');
         }
@@ -139,16 +148,20 @@ async function UpdateBlock(_, { id, updateBlockInput }) {
 }
 
 /**
- * GraphQL resolver to perform a deep, cascading soft delete on a block and all its descendants.
+ * GraphQL resolver to perform a deep, cascading soft delete on a block and all its descendants
+ * (subjects, tests, tasks, and student test results).
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the block to delete.
- * @returns {Promise<object>} - A promise that resolves to the soft-deleted block object.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
+ * @returns {Promise<object>} - A promise that resolves to the block object as it was before being soft-deleted.
  */
-async function DeleteBlock(_, { id }) {
+async function DeleteBlock(_, { id }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateObjectId(id);
 
@@ -263,9 +276,9 @@ async function CreatedByLoader(block, _, context) {
     try {
         BlockValidator.ValidateUserLoaderInput(block, context, 'created_by');
 
-        const created_by = await context.dataLoaders.UserLoader.load(block.created_by);
+        const createdBy = await context.dataLoaders.UserLoader.load(block.created_by);
 
-        return created_by;
+        return createdBy;
     } catch (error) {
         throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
             error: error.message
@@ -285,9 +298,9 @@ async function UpdatedByLoader(block, _, context) {
     try {
         BlockValidator.ValidateUserLoaderInput(block, context, 'updated_by');
 
-        const updated_by = await context.dataLoaders.UserLoader.load(block.updated_by);
+        const updatedBy = await context.dataLoaders.UserLoader.load(block.updated_by);
 
-        return updated_by;
+        return updatedBy;
     } catch (error) {
         throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
             error: error.message
@@ -307,9 +320,9 @@ async function DeletedByLoader(block, _, context) {
     try {
         BlockValidator.ValidateUserLoaderInput(block, context, 'deleted_by');
 
-        const deleted_by = await context.dataLoaders.UserLoader.load(block.deleted_by);
+        const deletedBy = await context.dataLoaders.UserLoader.load(block.deleted_by);
 
-        return deleted_by;
+        return deletedBy;
     } catch (error) {
         throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
             error: error.message

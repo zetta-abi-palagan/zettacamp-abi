@@ -24,64 +24,101 @@ function ValidateBlockStatusFilter(block_status) {
 }
 
 /**
- * Validates the input object for creating or updating a block.
- * @param {object} blockInput - An object containing the block's properties to be validated.
- * @param {string} blockInput.name - The name of the block.
- * @param {string} blockInput.description - The description of the block.
- * @param {string} blockInput.evaluation_type - The evaluation method (e.g., 'COMPETENCY', 'SCORE').
- * @param {string} blockInput.block_type - The type of block (e.g., 'REGULAR', 'RETAKE').
- * @param {string} [blockInput.connected_block] - Optional. The ID of a related block, required if block_type is 'RETAKE'.
- * @param {boolean} blockInput.is_counted_in_final_transcript - Flag indicating if the block affects the final transcript.
- * @param {string} [blockInput.block_status] - Optional. The status of the block (e.g., 'ACTIVE').
+ * Validates the input object for creating or updating a block using a rule-based approach.
+ * This function accommodates partial updates by only validating fields that are present.
+ * @param {object} args - The arguments for the validation.
+ * @param {object} args.blockInput - An object containing the block's properties to be validated.
+ * @param {string} [args.blockInput.name] - The name of the block.
+ * @param {string} [args.blockInput.description] - The description of the block.
+ * @param {string} [args.blockInput.evaluation_type] - The evaluation method (e.g., 'COMPETENCY').
+ * @param {string} [args.blockInput.block_type] - The type of block (e.g., 'REGULAR').
+ * @param {string} [args.blockInput.connected_block] - Optional. The ID of a related block.
+ * @param {boolean} [args.blockInput.is_counted_in_final_transcript] - Flag for final transcript inclusion.
+ * @param {string} [args.blockInput.block_status] - Optional. The status of the block (e.g., 'ACTIVE').
+ * @param {boolean} [args.isUpdate=false] - Optional flag to indicate if this is an update operation, which allows for partial data.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateBlockInput(blockInput) {
-    const { name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status } = blockInput;
+function ValidateBlockInput({ blockInput, isUpdate = false }) {
     const validEvaluationType = ['COMPETENCY', 'SCORE'];
     const validBlockType = ['REGULAR', 'COMPETENCY', 'SOFT_SKILL', 'ACADEMIC_RECOMMENDATION', 'SPECIALIZATION', 'TRANSVERSAL', 'RETAKE'];
     const validStatus = ['ACTIVE', 'INACTIVE'];
     const competencyBlockTypes = ['COMPETENCY', 'SOFT_SKILL', 'ACADEMIC_RECOMMENDATION', 'RETAKE'];
     const scoreBlockTypes = ['REGULAR', 'TRANSVERSAL', 'SPECIALIZATION', 'RETAKE'];
 
-    if (!name || typeof name !== 'string' || name.trim() === '') {
-        throw new ApolloError('Name is required.', 'BAD_USER_INPUT', { field: 'name' });
+    const validationRules = [
+        {
+            field: 'name',
+            required: true,
+            validate: (val) => typeof val === 'string' && val.trim() !== '',
+            message: 'Name is required.',
+        },
+        {
+            field: 'description',
+            required: true,
+            validate: (val) => typeof val === 'string' && val.trim() !== '',
+            message: 'Description is required.',
+        },
+        {
+            field: 'evaluation_type',
+            required: true,
+            validate: (val) => typeof val === 'string' && validEvaluationType.includes(val.toUpperCase()),
+            message: `Evaluation type must be one of: ${validEvaluationType.join(', ')}.`,
+        },
+        {
+            field: 'block_type',
+            required: true,
+            validate: (val) => typeof val === 'string' && validBlockType.includes(val.toUpperCase()),
+            message: `Block type must be one of: ${validBlockType.join(', ')}.`,
+        },
+        {
+            field: 'block_status',
+            required: false, // Not required on create, only validates if present
+            validate: (val) => typeof val === 'string' && validStatus.includes(val.toUpperCase()),
+            message: `Block status must be one of: ${validStatus.join(', ')}.`,
+        },
+        {
+            field: 'is_counted_in_final_transcript',
+            required: true,
+            validate: (val) => typeof val === 'boolean',
+            message: 'is_counted_in_final_transcript must be a boolean.',
+        },
+        {
+            field: 'connected_block',
+            required: false, // Optional field
+            validate: (val) => mongoose.Types.ObjectId.isValid(val),
+            message: (val) => `Invalid connected_block ID: ${val}`, // Dynamic message
+        },
+    ];
+
+    for (const rule of validationRules) {
+        const value = blockInput[rule.field];
+
+        if ((!isUpdate && rule.required) || value !== undefined) {
+            if (!rule.validate(value)) {
+                const message = typeof rule.message === 'function' ? rule.message(value) : rule.message;
+                throw new ApolloError(message, 'BAD_USER_INPUT', { field: rule.field });
+            }
+        }
     }
 
-    if (!description || typeof description !== 'string' || description.trim() === '') {
-        throw new ApolloError('Description is required.', 'BAD_USER_INPUT', { field: 'description' });
+    const { evaluation_type, block_type, connected_block } = blockInput;
+
+    if (evaluation_type && block_type) {
+        const evalUpper = evaluation_type.toUpperCase();
+        const typeUpper = block_type.toUpperCase();
+
+        const isCompetencyMismatch = evalUpper === 'COMPETENCY' && !competencyBlockTypes.includes(typeUpper);
+        const isScoreMismatch = evalUpper === 'SCORE' && !scoreBlockTypes.includes(typeUpper);
+
+        if (isCompetencyMismatch || isScoreMismatch) {
+            throw new ApolloError(
+                `Invalid combination: ${evalUpper} evaluation cannot be used with ${typeUpper} block type.`,
+                'LOGIC_SANITY_ERROR'
+            );
+        }
     }
 
-    if (!evaluation_type || !validEvaluationType.includes(evaluation_type.toUpperCase())) {
-        throw new ApolloError(`Evaluation type must be one of: ${validEvaluationType.join(', ')}.`, 'BAD_USER_INPUT', { field: 'evaluation_type' });
-    }
-
-    if (!block_type || !validBlockType.includes(block_type.toUpperCase())) {
-        throw new ApolloError(`Block type must be one of: ${validBlockType.join(', ')}.`, 'BAD_USER_INPUT', { field: 'block_type' });
-    }
-
-    if (block_status && !validStatus.includes(block_status.toUpperCase())) {
-        throw new ApolloError(`Block status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', { field: 'block_status' });
-    }
-
-    if (typeof is_counted_in_final_transcript !== 'boolean') {
-        throw new ApolloError('is_counted_in_final_transcript must be a boolean.', 'BAD_USER_INPUT', { field: 'is_counted_in_final_transcript' });
-    }
-
-    if (connected_block && !mongoose.Types.ObjectId.isValid(connected_block)) {
-        throw new ApolloError(`Invalid connected_block ID: ${connected_block}`, "BAD_USER_INPUT", { field: 'connected_block' });
-    }
-
-    if (
-        (evaluation_type.toUpperCase() === 'COMPETENCY' && !competencyBlockTypes.includes(block_type.toUpperCase())) ||
-        (evaluation_type.toUpperCase() === 'SCORE' && !scoreBlockTypes.includes(block_type.toUpperCase()))
-    ) {
-        throw new ApolloError(
-            `Invalid combination: ${evaluation_type.toUpperCase()} evaluation cannot be used with ${block_type.toUpperCase()} block type.`,
-            'LOGIC_SANITY_ERROR'
-        );
-    }
-
-    if (connected_block && block_type.toUpperCase() !== 'RETAKE') {
+    if (connected_block && block_type && block_type.toUpperCase() !== 'RETAKE') {
         throw new ApolloError('Block type must be RETAKE to have a connected block.', 'BAD_USER_INPUT', { field: 'connected_block' });
     }
 }

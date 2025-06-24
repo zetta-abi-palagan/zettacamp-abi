@@ -35,74 +35,82 @@ function ValidateTaskFilter({ taskStatus, testId, userId }) {
 }
 
 /**
- * Validates the input object for creating a new task.
- * @param {object} taskInput - The object containing the new task's properties.
- * @param {string} taskInput.test - The ID of the related test.
- * @param {string} taskInput.user - The ID of the assigned user.
- * @param {string} taskInput.title - The title of the task.
- * @param {string} taskInput.description - The description of the task.
- * @param {string} taskInput.task_type - The type of the task.
- * @param {Date|string} [taskInput.due_date] - Optional. The due date for the task.
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateCreateTaskInput(taskInput) {
-    const { test, user, title, description, task_type, due_date } = taskInput;
-    const validTaskType = ['ASSIGN_CORRECTOR', 'ENTER_MARKS', 'VALIDATE_MARKS'];
-
-    if (!mongoose.Types.ObjectId.isValid(test)) { throw new ApolloError('A valid test ID is required.', "BAD_USER_INPUT"); }
-    if (!mongoose.Types.ObjectId.isValid(user)) { throw new ApolloError('A valid user ID is required.', "BAD_USER_INPUT"); }
-    if (!title || typeof title !== 'string' || title.trim() === '') {
-        throw new ApolloError('Title is required.', 'BAD_USER_INPUT', { field: 'title' });
-    }
-    if (!description || typeof description !== 'string' || description.trim() === '') {
-        throw new ApolloError('Description is required.', 'BAD_USER_INPUT', { field: 'description' });
-    }
-    if (!task_type || !validTaskType.includes(task_type.toUpperCase())) {
-        throw new ApolloError(`Task type must be one of: ${validTaskType.join(', ')}.`, 'BAD_USER_INPUT', { field: 'task_type' });
-    }
-    if (due_date && isNaN(new Date(due_date).getTime())) {
-        throw new ApolloError('A valid date format is required for due_date.', 'BAD_USER_INPUT', { field: 'due_date' });
-    }
-}
-
-/**
- * Validates the inputs for updating an existing task.
+ * Validates the input object for creating or updating a task using a rule-based approach.
  * @param {object} args - The arguments for the validation.
- * @param {string} args.taskId - The unique identifier of the task to update.
- * @param {object} args.taskInput - The object containing the task's properties to update.
- * @param {string} args.taskInput.user - The ID of the assigned user.
- * @param {string} args.taskInput.title - The title of the task.
- * @param {string} args.taskInput.description - The description of the task.
- * @param {string} args.taskInput.task_type - The type of the task.
- * @param {string} args.taskInput.task_status - The status of the task.
+ * @param {object} args.taskInput - An object containing the task's properties to be validated.
+ * @param {string} [args.taskInput.test] - The ID of the related test (required on create).
+ * @param {string} [args.taskInput.user] - The ID of the assigned user.
+ * @param {string} [args.taskInput.title] - The title of the task.
+ * @param {string} [args.taskInput.description] - The description of the task.
+ * @param {string} [args.taskInput.task_type] - The type of the task.
+ * @param {string} [args.taskInput.task_status] - The status of the task (required on update).
  * @param {Date|string} [args.taskInput.due_date] - Optional. The due date for the task.
+ * @param {boolean} [args.isUpdate=false] - Optional flag to indicate if this is an update operation, which allows for partial data and different validation rules.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateUpdateTaskInput({ taskId, taskInput }) {
-    const { user, title, description, task_type, task_status, due_date } = taskInput;
+function ValidateTaskInput({ taskInput, isUpdate = false }) {
     const validTaskType = ['ASSIGN_CORRECTOR', 'ENTER_MARKS', 'VALIDATE_MARKS'];
     const validTaskStatus = ['PENDING', 'IN_PROGRESS'];
 
-    if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
-        throw new ApolloError(`Invalid task ID: ${taskId}`, "BAD_USER_INPUT");
+    if (isUpdate) {
+        const { task_status } = taskInput;
+        if (!task_status || typeof task_status == 'string' || !validTaskStatus.includes(task_status.toUpperCase())) {
+            throw new ApolloError(`Task status must be one of: ${validTaskStatus.join(', ')}.`, 'BAD_USER_INPUT', { field: 'task_status' });
+        }
     }
-    if (!user || user.trim() === '' || !mongoose.Types.ObjectId.isValid(user)) {
-        throw new ApolloError('A valid user ID is required.', "BAD_USER_INPUT");
-    }
-    if (!title || typeof title !== 'string' || title.trim() === '') {
-        throw new ApolloError('Title is required.', 'BAD_USER_INPUT', { field: 'title' });
-    }
-    if (!description || typeof description !== 'string' || description.trim() === '') {
-        throw new ApolloError('Description is required.', 'BAD_USER_INPUT', { field: 'description' });
-    }
-    if (!task_type || !validTaskType.includes(task_type.toUpperCase())) {
-        throw new ApolloError(`Task type must be one of: ${validTaskType.join(', ')}.`, 'BAD_USER_INPUT', { field: 'task_type' });
-    }
-    if (!task_status || !validTaskStatus.includes(task_status.toUpperCase())) {
-        throw new ApolloError(`Task status must be one of: ${validTaskStatus.join(', ')}.`, 'BAD_USER_INPUT', { field: 'task_status' });
-    }
-    if (due_date && isNaN(new Date(due_date).getTime())) {
-        throw new ApolloError('A valid date format is required for due_date.', 'BAD_USER_INPUT', { field: 'due_date' });
+
+    const validationRules = [
+        {
+            field: 'test',
+            required: true,
+            skipOnUpdate: true,
+            validate: (val) => mongoose.Types.ObjectId.isValid(val),
+            message: 'A valid test ID is required.',
+        },
+        {
+            field: 'user',
+            required: true,
+            validate: (val) => mongoose.Types.ObjectId.isValid(val),
+            message: 'A valid user ID is required.',
+        },
+        {
+            field: 'title',
+            required: true,
+            validate: (val) => typeof val === 'string' && val.trim() !== '',
+            message: 'Title is required.',
+        },
+        {
+            field: 'description',
+            required: true,
+            validate: (val) => typeof val === 'string' && val.trim() !== '',
+            message: 'Description is required.',
+        },
+        {
+            field: 'task_type',
+            required: true,
+            validate: (val) => typeof val === 'string' && validTaskType.includes(val.toUpperCase()),
+            message: `Task type must be one of: ${validTaskType.join(', ')}.`,
+        },
+        {
+            field: 'due_date',
+            required: false,
+            validate: (val) => !isNaN(new Date(val).getTime()),
+            message: 'A valid date format is required for due_date.',
+        }
+    ];
+
+    for (const rule of validationRules) {
+        if (isUpdate && rule.skipOnUpdate) {
+            continue;
+        }
+
+        const value = taskInput[rule.field];
+
+        if ((!isUpdate && rule.required) || value !== undefined) {
+            if (!rule.validate(value)) {
+                throw new ApolloError(rule.message, 'BAD_USER_INPUT', { field: rule.field });
+            }
+        }
     }
 }
 
@@ -135,10 +143,10 @@ function ValidateAssignCorrectorInput({ taskId, correctorId, enterMarksDueDate }
  * @param {string} args.enterMarksInput.test - The ID of the test.
  * @param {string} args.enterMarksInput.student - The ID of the student.
  * @param {Array<object>} args.enterMarksInput.marks - The array of marks to be validated.
- * @param {object} args.parentTest - The full test document, used to validate notations and max points.
+ * @param {Array<object>} args.notations - An array of notation objects from the parent test, used to validate the marks.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateEnterMarksInput({ enterMarksInput, parentTest }) {
+function ValidateEnterMarksInput({ enterMarksInput, notations }) {
     const { test, student, marks } = enterMarksInput;
     if (!test || test.trim() === '' || !mongoose.Types.ObjectId.isValid(test)) {
         throw new ApolloError('Invalid test ID.', "BAD_USER_INPUT");
@@ -152,7 +160,7 @@ function ValidateEnterMarksInput({ enterMarksInput, parentTest }) {
     }
 
     const notationMap = new Map();
-    for (const notation of parentTest.notations) {
+    for (const notation of notations) {
         notationMap.set(notation.notation_text, notation.max_points);
     }
 
@@ -249,8 +257,7 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
 // *************** EXPORT MODULE ***************
 module.exports = {
     ValidateTaskFilter,
-    ValidateCreateTaskInput,
-    ValidateUpdateTaskInput,
+    ValidateTaskInput,
     ValidateAssignCorrectorInput,
     ValidateEnterMarksInput,
     ValidateValidateMarksInput,

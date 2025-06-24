@@ -69,28 +69,31 @@ async function GetOneTest(_, { id }) {
 
 // *************** MUTATION ***************
 /**
- * GraphQL resolver to create a new test.
+ * GraphQL resolver to create a new test and associate it with a parent subject.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {object} args.createTestInput - An object containing the details for the new test.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
  * @returns {Promise<object>} - A promise that resolves to the newly created test object.
  */
-async function CreateTest(_, { createTestInput }) {
+async function CreateTest(_, { createTestInput }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateInputTypeObject(createTestInput);
         CommonValidator.ValidateObjectId(createTestInput.subject);
 
         // *************** Ensure parent subject exists and is active
-        const parentSubject = await SubjectModel.findOne({ _id: createTestInput.subject, subject_status: { $ne: 'DELETED' } }).lean();
+        const parentSubject = await SubjectModel.findOne({ _id: createTestInput.subject, subject_status: { $ne: 'DELETED' } }).select({ block: 1 }).lean();
         if (!parentSubject) {
             throw new ApolloError('Parent subject not found.', 'NOT_FOUND');
         }
 
         // *************** Ensure parent block to the subject exists and is active
-        const parentBlock = await BlockModel.findById(parentSubject.block).lean();
+        const parentBlock = await BlockModel.findOne({ _id: parentSubject.block, block_status: { $ne: 'DELETED' } }).select({ evaluation_type: 1 }).lean();
         if (!parentBlock || parentBlock.block_status !== 'ACTIVE') {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
@@ -131,12 +134,15 @@ async function CreateTest(_, { createTestInput }) {
  * @param {string} args.id - The unique identifier of the test to publish.
  * @param {Date|string} args.assign_corrector_due_date - The deadline for assigning a corrector.
  * @param {Date|string} args.test_due_date - The deadline for completing the test.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
  * @returns {Promise<object>} - A promise that resolves to an object containing the published test and the new task.
  */
-async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }) {
+async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateObjectId(id);
         TestValidator.ValidatePublishTestInput({ assignCorrectorDueDate: assign_corrector_due_date, testDueDate: test_due_date });
@@ -145,13 +151,23 @@ async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }) 
         const publishTestPayload = TestHelper.GetPublishTestPayload({ userId, testDueDate: test_due_date });
 
         // *************** Update test status and due date
-        const publishedTest = await TestModel.findOneAndUpdate({ _id: id, test_status: { $ne: 'DELETED' } }, publishTestPayload, { new: true }).lean();
+        const publishedTest = await TestModel.findOneAndUpdate(
+            { _id: id, test_status: { $ne: 'DELETED' } },
+            { $set: publishTestPayload },
+            { new: true }
+        ).lean();
         if (!publishedTest) {
             throw new ApolloError('Test not found', 'NOT_FOUND');
         }
 
+        // *************** Get the academic director ID
+        const academicDirector = await UserModel.findOne({ role: 'ACADEMIC_DIRECTOR', user_status: 'ACTIVE' }).select({ _id: 1 }).lean();
+        if (!academicDirector) {
+            throw new ApolloError('Academic director not found', 'NOT_FOUND')
+        }
+
         // *************** Prepare payload for assign corrector task
-        const assignCorrectorTaskPayload = TestHelper.GetAssignCorrectorTaskPayload({ publishedTest, assignCorrectorDueDate: assign_corrector_due_date, userId });
+        const assignCorrectorTaskPayload = TestHelper.GetAssignCorrectorTaskPayload({ testId: publishedTest._id, assignCorrectorDueDate: assign_corrector_due_date, userId, academicDirectorId: academicDirector._id });
 
         // *************** Create assign corrector task
         const assignCorrectorTask = await TaskModel.create(assignCorrectorTaskPayload);
@@ -182,17 +198,20 @@ async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }) 
 }
 
 /**
- * GraphQL resolver to update an existing test.
+ * GraphQL resolver to update an existing test with partial data.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the test to update.
- * @param {object} args.updateTestInput - An object containing the new details for the test.
+ * @param {object} args.updateTestInput - An object containing the fields to be updated.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
  * @returns {Promise<object>} - A promise that resolves to the updated test object.
  */
-async function UpdateTest(_, { id, updateTestInput }) {
+async function UpdateTest(_, { id, updateTestInput }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateObjectId(id);
         CommonValidator.ValidateObjectId(updateTestInput.subject);
@@ -204,18 +223,18 @@ async function UpdateTest(_, { id, updateTestInput }) {
         }
 
         // *************** Ensure parent subject exists and is active
-        const parentSubject = await SubjectModel.findOne({ _id: updateTestInput.subject, subject_status: { $ne: 'DELETED' } }).lean();
+        const parentSubject = await SubjectModel.findOne({ _id: updateTestInput.subject, subject_status: { $ne: 'DELETED' } }).select({ block: 1 }).lean();
         if (!parentSubject) {
             throw new ApolloError('Parent subject not found.', 'NOT_FOUND');
         }
 
         // *************** Ensure parent block to the subject exists and is active
-        const parentBlock = await BlockModel.findById({ _id: parentSubject.block, block_status: { $ne: 'DELETED' } }).lean();
+        const parentBlock = await BlockModel.findById({ _id: parentSubject.block, block_status: { $ne: 'DELETED' } }).select({ evaluation_type: 1 }).lean();
         if (!block || block.block_status !== 'ACTIVE') {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
 
-        TestValidator.ValidateTestInput({ testInput: updateTestInput, evaluationType: parentBlock.evaluation_type });
+        TestValidator.ValidateTestInput({ testInput: updateTestInput, evaluationType: parentBlock.evaluation_type, isUpdate: true });
 
         // *************** Prepare payload and update test
         const updateTestPayload = TestHelper.GetUpdateTestPayload({ testInput: updateTestInput, userId, evaluationType: parentBlock.evaluation_type });
@@ -241,12 +260,15 @@ async function UpdateTest(_, { id, updateTestInput }) {
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the test to delete.
- * @returns {Promise<object>} - A promise that resolves to the soft-deleted test object.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
+ * @returns {Promise<object>} - A promise that resolves to the test object as it was before being soft-deleted.
  */
-async function DeleteTest(_, { id }) {
+async function DeleteTest(_, { id }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateObjectId(id);
 
@@ -340,9 +362,9 @@ async function StudentTestResultLoader(test, _, context) {
     try {
         TestValidator.ValidateStudentTestResultLoaderInput(test, context);
 
-        const student_test_results = await context.dataLoaders.StudentTestResultLoader.loadMany(test.student_test_results);
+        const studentTestResults = await context.dataLoaders.StudentTestResultLoader.loadMany(test.student_test_results);
 
-        return student_test_results;
+        return studentTestResults;
     } catch (error) {
         throw new ApolloError(`Failed to fetch student test results`, 'STUDENT_TEST_RESULTS_FETCH_FAILED', {
             error: error.message
@@ -384,9 +406,9 @@ async function CreatedByLoader(test, _, context) {
     try {
         TestValidator.ValidateUserLoaderInput(test, context, 'created_by');
 
-        const created_by = await context.dataLoaders.UserLoader.load(test.created_by);
+        const createdBy = await context.dataLoaders.UserLoader.load(test.created_by);
 
-        return created_by;
+        return createdBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message
@@ -406,9 +428,9 @@ async function UpdatedByLoader(test, _, context) {
     try {
         TestValidator.ValidateUserLoaderInput(test, context, 'updated_by');
 
-        const updated_by = await context.dataLoaders.UserLoader.load(test.updated_by);
+        const updatedBy = await context.dataLoaders.UserLoader.load(test.updated_by);
 
-        return updated_by;
+        return updatedBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message
@@ -428,9 +450,9 @@ async function PublishedByLoader(test, _, context) {
     try {
         TestValidator.ValidateUserLoaderInput(test, context, 'published_by');
 
-        const updated_by = await context.dataLoaders.UserLoader.load(test.published_by);
+        const publishedBy = await context.dataLoaders.UserLoader.load(test.published_by);
 
-        return updated_by;
+        return publishedBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message
@@ -450,9 +472,9 @@ async function DeletedByLoader(test, _, context) {
     try {
         TestValidator.ValidateUserLoaderInput(test, context, 'deleted_by');
 
-        const deleted_by = await context.dataLoaders.UserLoader.load(test.deleted_by);
+        const deletedBy = await context.dataLoaders.UserLoader.load(test.deleted_by);
 
-        return deleted_by;
+        return deletedBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message

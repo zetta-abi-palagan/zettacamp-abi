@@ -24,69 +24,105 @@ function ValidateTestStatusFilter(test_status) {
 }
 
 /**
- * Validates the input object for creating or updating a test.
+ * Validates the input object for creating or updating a test using a rule-based approach.
  * @param {object} args - The arguments for the validation.
  * @param {object} args.testInput - An object containing the test's properties to be validated.
- * @param {string} args.testInput.name - The name of the test.
- * @param {string} args.testInput.description - The description of the test.
- * @param {string} args.testInput.test_type - The type of the test.
- * @param {string} args.testInput.result_visibility - The visibility setting for the test results.
- * @param {number} args.testInput.weight - The weight of the test, must be between 0 and 1.
- * @param {string} args.testInput.correction_type - The correction method for the test.
- * @param {Array<object>} args.testInput.notations - The notation system used for the test.
- * @param {boolean} args.testInput.is_retake - Flag indicating if this is a retake test.
+ * @param {string} [args.testInput.name] - The name of the test.
+ * @param {string} [args.testInput.description] - The description of the test.
+ * @param {string} [args.testInput.test_type] - The type of the test.
+ * @param {string} [args.testInput.result_visibility] - The visibility setting for the test results.
+ * @param {number} [args.testInput.weight] - The weight of the test, must be between 0 and 1.
+ * @param {string} [args.testInput.correction_type] - The correction method for the test.
+ * @param {Array<object>} [args.testInput.notations] - The notation system used for the test.
+ * @param {boolean} [args.testInput.is_retake] - Flag indicating if this is a retake test.
  * @param {string} [args.testInput.connected_test] - Optional. The ID of the original test, required if is_retake is true.
  * @param {string} [args.testInput.test_status] - Optional. The status of the test.
  * @param {string} args.evaluationType - The evaluation type of the parent block.
+ * @param {boolean} [args.isUpdate=false] - Optional flag to indicate if this is an update operation, which allows for partial data.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateTestInput({ testInput, evaluationType }) {
-    const { name, description, test_type, result_visibility, weight, correction_type, notations, is_retake, connected_test, test_status } = testInput;
+function ValidateTestInput({ testInput, evaluationType, isUpdate = false }) {
     const validTestType = ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN'];
     const validResultVisibility = ['NEVER', 'AFTER_CORRECTION', 'AFTER_JURY_DECISION_FOR_FINAL_TRANSCRIPT'];
     const validCorrectionType = ['ADMTC', 'CERTIFIER', 'CROSS_CORRECTION', 'PREPARATION_CENTER'];
     const validStatus = ['ACTIVE', 'INACTIVE'];
 
-    if (!name || typeof name !== 'string' || name.trim() === '') {
-        throw new ApolloError('Name is required.', 'BAD_USER_INPUT', { field: 'name' });
-    }
+    const validationRules = [
+        {
+            field: 'name',
+            required: true,
+            validate: (val) => typeof val === 'string' && val.trim() !== '',
+            message: 'Name is required.',
+        },
+        {
+            field: 'description',
+            required: true,
+            validate: (val) => typeof val === 'string' && val.trim() !== '',
+            message: 'Description is required.',
+        },
+        {
+            field: 'test_type',
+            required: true,
+            validate: (val) => typeof val === 'string' && validTestType.includes(val.toUpperCase()),
+            message: `Test type must be one of: ${validTestType.join(', ')}.`,
+        },
+        {
+            field: 'result_visibility',
+            required: true,
+            validate: (val) => typeof val === 'string' && validResultVisibility.includes(val.toUpperCase()),
+            message: `Result visibility must be one of: ${validResultVisibility.join(', ')}.`,
+        },
+        {
+            field: 'weight',
+            required: true,
+            validate: (val) => typeof val === 'number' && !isNaN(val) && val >= 0 && val <= 1,
+            message: 'Weight is required and must be a number between 0 and 1.',
+        },
+        {
+            field: 'correction_type',
+            required: true,
+            validate: (val) => typeof val === 'string' && validCorrectionType.includes(val.toUpperCase()),
+            message: `Correction type must be one of: ${validCorrectionType.join(', ')}.`,
+        },
+        {
+            field: 'is_retake',
+            required: true,
+            validate: (val) => typeof val === 'boolean',
+            message: 'is_retake must be a boolean.',
+        },
+        {
+            field: 'test_status',
+            required: false,
+            validate: (val) => typeof val === 'string' && validStatus.includes(val.toUpperCase()),
+            message: `Test status must be one of: ${validStatus.join(', ')}.`,
+        },
+    ];
 
-    if (!description || typeof description !== 'string' || description.trim() === '') {
-        throw new ApolloError('Description is required.', 'BAD_USER_INPUT', { field: 'description' });
-    }
-
-    if (!test_type || typeof test_type !== 'string' || !validTestType.includes(test_type.toUpperCase())) {
-        throw new ApolloError(`Test type must be one of: ${validTestType.join(', ')}.`, 'BAD_USER_INPUT', { field: 'test_type' });
-    }
-
-    if (!result_visibility || typeof result_visibility !== 'string' || !validResultVisibility.includes(result_visibility.toUpperCase())) {
-        throw new ApolloError(`Result visibility must be one of: ${validResultVisibility.join(', ')}.`, 'BAD_USER_INPUT', { field: 'result_visibility' });
-    }
-
-    if (typeof weight !== 'number' || isNaN(weight) || weight < 0 || weight > 1) {
-        throw new ApolloError('Weight is required and must be a number between 0 and 1.', 'BAD_USER_INPUT', { field: 'weight' });
-    }
-
-    if (!correction_type || typeof correction_type !== 'string' || !validCorrectionType.includes(correction_type.toUpperCase())) {
-        throw new ApolloError(`Correction type must be one of: ${validCorrectionType.join(', ')}.`, 'BAD_USER_INPUT', { field: 'correction_type' });
-    }
-
-    if (!Array.isArray(notations) || !notations.length) {
-        throw new ApolloError('Notations must be a non-empty array.', 'BAD_USER_INPUT', { field: 'notations' });
-    }
-
-    for (const [index, notation] of notations.entries()) {
-        const { notation_text, max_points } = notation;
-        if (!notation_text || typeof notation_text !== 'string' || notation_text.trim() === '') {
-            throw new ApolloError(`Notation at index ${index} must have non-empty text.`, 'BAD_USER_INPUT', { field: `notations[${index}].notation_text` });
+    for (const rule of validationRules) {
+        const value = testInput[rule.field];
+        if ((!isUpdate && rule.required) || value !== undefined) {
+            if (!rule.validate(value)) {
+                throw new ApolloError(rule.message, 'BAD_USER_INPUT', { field: rule.field });
+            }
         }
-        if (typeof max_points !== 'number' || isNaN(max_points) || max_points < 0) {
-            throw new ApolloError(`Notation at index ${index} must have a valid max_points (number ≥ 0).`, 'BAD_USER_INPUT', { field: `notations[${index}].max_points` });
-        }
     }
 
-    if (typeof is_retake !== 'boolean') {
-        throw new ApolloError('is_retake must be a boolean.', 'BAD_USER_INPUT', { field: 'is_retake' });
+    const { notations, is_retake, connected_test, test_type } = testInput;
+
+    if ((!isUpdate) || notations !== undefined) {
+        if (!Array.isArray(notations) || !notations.length) {
+            throw new ApolloError('Notations must be a non-empty array.', 'BAD_USER_INPUT', { field: 'notations' });
+        }
+
+        for (const [index, notation] of notations.entries()) {
+            const { notation_text, max_points } = notation;
+            if (!notation_text || typeof notation_text !== 'string' || notation_text.trim() === '') {
+                throw new ApolloError(`Notation at index ${index} must have non-empty text.`, 'BAD_USER_INPUT', { field: `notations[${index}].notation_text` });
+            }
+            if (typeof max_points !== 'number' || isNaN(max_points) || max_points < 0) {
+                throw new ApolloError(`Notation at index ${index} must have a valid max_points (number ≥ 0).`, 'BAD_USER_INPUT', { field: `notations[${index}].max_points` });
+            }
+        }
     }
 
     if (is_retake) {
@@ -98,19 +134,17 @@ function ValidateTestInput({ testInput, evaluationType }) {
         }
     }
 
-    if (test_status && !validStatus.includes(test_status.toUpperCase())) {
-        throw new ApolloError(`Test status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', { field: 'test_status' });
-    }
+    if (test_type) {
+        const competencyTestTypes = ['ORAL', 'WRITTEN', 'MEMOIRE_WRITTEN', 'FREE_CONTINUOUS_CONTROL', 'MENTOR_EVALUATION'];
+        const scoreTestTypes = ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN'];
 
-    const competencyTestTypes = ['ORAL', 'WRITTEN', 'MEMOIRE_WRITTEN', 'FREE_CONTINUOUS_CONTROL', 'MENTOR_EVALUATION'];
-    const scoreTestTypes = ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN'];
-    const upperTestType = test_type.toUpperCase();
+        const upperTestType = test_type.toUpperCase();
+        const isCompetencyMismatch = evaluationType === 'COMPETENCY' && !competencyTestTypes.includes(upperTestType);
+        const isScoreMismatch = evaluationType === 'SCORE' && !scoreTestTypes.includes(upperTestType);
 
-    if (
-        (evaluationType === 'COMPETENCY' && !competencyTestTypes.includes(upperTestType)) ||
-        (evaluationType === 'SCORE' && !scoreTestTypes.includes(upperTestType))
-    ) {
-        throw new ApolloError(`Test type '${upperTestType}' is not allowed for block with evaluation_type '${evaluationType}'.`, 'BAD_USER_INPUT', { field: 'test_type' });
+        if (isCompetencyMismatch || isScoreMismatch) {
+            throw new ApolloError(`Test type '${upperTestType}' is not allowed for block with evaluation_type '${evaluationType}'.`, 'BAD_USER_INPUT', { field: 'test_type' });
+        }
     }
 }
 

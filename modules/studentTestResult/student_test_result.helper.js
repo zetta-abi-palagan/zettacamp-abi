@@ -16,10 +16,10 @@ const StudentTestResultValidator = require('./student_test_result.validator');
  * @param {object} args.test - The parent test document, used for validation.
  * @returns {object} A processed data payload including the calculated average mark.
  */
-function GetUpdateStudentTestResultPayload({ marks, userId, test }) {
+function GetUpdateStudentTestResultPayload({ marks, userId, notations }) {
     CommonValidator.ValidateInputTypeObject(marks);
     CommonValidator.ValidateObjectId(userId);
-    StudentTestResultValidator.ValidateUpdateStudentTestResultInput({ marks, test });
+    StudentTestResultValidator.ValidateUpdateStudentTestResultInput({ marks, notations });
 
     let totalMarks = 0;
     for (const item of marks) {
@@ -42,24 +42,30 @@ function GetUpdateStudentTestResultPayload({ marks, userId, test }) {
  * @returns {Promise<object>} A promise that resolves to a structured payload for the delete and update operations.
  */
 async function GetDeleteStudentTestResultPayload({ studentTestResultId, userId }) {
-    CommonValidator.ValidateObjectId(studentTestResultId);
-    CommonValidator.ValidateObjectId(userId);
+    try {
+        CommonValidator.ValidateObjectId(studentTestResultId);
+        CommonValidator.ValidateObjectId(userId);
 
-    const deletionTimestamp = Date.now();
-    const studentTestResult = await GetStudentTestResult(studentTestResultId);
-    const testId = studentTestResult.test;
+        const deletionTimestamp = Date.now();
+        const studentTestResult = await GetStudentTestResult(studentTestResultId);
+        const testId = studentTestResult.test;
 
-    const deletePayload = {
-        studentTestResult: BuildDeletePayload({
-            ids: [studentTestResultId],
-            statusKey: 'student_test_result_status',
-            timestamp: deletionTimestamp,
-            userId
-        }),
-        test: BuildPullResultFromTestPayload(testId, studentTestResultId)
-    };
+        const deletePayload = {
+            studentTestResult: BuildDeletePayload({
+                ids: [studentTestResultId],
+                statusKey: 'student_test_result_status',
+                timestamp: deletionTimestamp,
+                userId
+            }),
+            test: BuildPullResultFromTestPayload(testId, studentTestResultId)
+        };
 
-    return deletePayload;
+        return deletePayload;
+    } catch (error) {
+        throw new ApolloError(`Failed to build delete student test result payload: ${error.message}`, 'GET_DELETE_STUDENT_TEST_RESULT_PAYLOAD_FAILED', {
+            error: error.message
+        });
+    }
 }
 
 /**
@@ -68,12 +74,18 @@ async function GetDeleteStudentTestResultPayload({ studentTestResultId, userId }
  * @returns {Promise<object>} A promise that resolves to the found student test result document.
  */
 async function GetStudentTestResult(studentTestResultId) {
-    const studentTestResult = await StudentTestResultModel.findById(studentTestResultId);
-    if (!studentTestResult) {
-        throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
-    }
+    try {
+        const studentTestResult = await StudentTestResultModel.findById(studentTestResultId);
+        if (!studentTestResult) {
+            throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
+        }
 
-    return studentTestResult;
+        return studentTestResult;
+    } catch (error) {
+        throw new ApolloError(`Failed to get student test result: ${error.message}`, 'GET_STUDENT_TEST_RESULT_FAILED', {
+            error: error.message
+        });
+    }
 }
 
 /**

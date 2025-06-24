@@ -24,42 +24,60 @@ function ValidateSubjectStatusFilter(subject_status) {
 }
 
 /**
- * Validates the input object for creating or updating a subject.
+ * Validates the input object for creating or updating a subject using a rule-based approach.
  * @param {object} args - The arguments for the validation.
  * @param {object} args.subjectInput - An object containing the subject's properties to be validated.
- * @param {string} args.subjectInput.name - The name of the subject.
- * @param {string} args.subjectInput.description - The description of the subject.
- * @param {number} args.subjectInput.coefficient - The coefficient value for the subject.
+ * @param {string} [args.subjectInput.name] - The name of the subject.
+ * @param {string} [args.subjectInput.description] - The description of the subject.
+ * @param {number} [args.subjectInput.coefficient] - The coefficient value for the subject.
  * @param {string} [args.subjectInput.subject_status] - Optional. The status of the subject (e.g., 'ACTIVE').
  * @param {Array<string>} [args.subjectInput.connected_blocks] - Optional. An array of block IDs to connect.
  * @param {boolean} args.isTransversal - A flag indicating if the subject belongs to a transversal block.
+ * @param {boolean} [args.isUpdate=false] - Optional flag to indicate if this is an update operation, which allows for partial data.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateSubjectInput({ subjectInput, isTransversal }) {
-    const { name, description, coefficient, subject_status, connected_blocks } = subjectInput;
+function ValidateSubjectInput({ subjectInput, isTransversal, isUpdate = false }) {
     const validStatus = ['ACTIVE', 'INACTIVE'];
 
-    if (!name || typeof name !== 'string' || name.trim() === '') {
-        throw new ApolloError('Name is required.', 'BAD_USER_INPUT', { field: 'name' });
+    const validationRules = [
+        {
+            field: 'name',
+            required: true,
+            validate: (val) => typeof val === 'string' && val.trim() !== '',
+            message: 'Name is required.',
+        },
+        {
+            field: 'description',
+            required: true,
+            validate: (val) => typeof val === 'string' && val.trim() !== '',
+            message: 'Description is required.',
+        },
+        {
+            field: 'coefficient',
+            required: true,
+            validate: (val) => typeof val === 'number' && !isNaN(val) && val >= 0,
+            message: 'Coefficient is required and must be a number >= 0.',
+        },
+        {
+            field: 'subject_status',
+            required: true,
+            validate: (val) => typeof val === 'string' && validStatus.includes(val.toUpperCase()),
+            message: `Subject status must be one of: ${validStatus.join(', ')}`,
+        },
+    ];
+
+    for (const rule of validationRules) {
+        const value = subjectInput[rule.field];
+
+        if ((!isUpdate && rule.required) || value !== undefined) {
+            if (!rule.validate(value)) {
+                throw new ApolloError(rule.message, 'BAD_USER_INPUT', { field: rule.field });
+            }
+        }
     }
 
-    if (!description || typeof description !== 'string' || description.trim() === '') {
-        throw new ApolloError('Description is required.', 'BAD_USER_INPUT', { field: 'description' });
-    }
-
-    if (typeof coefficient !== 'number' || isNaN(coefficient) || coefficient < 0) {
-        throw new ApolloError('Coefficient is required and must be a number >= 0.', 'BAD_USER_INPUT', { field: 'coefficient' });
-    }
-
-    if (subject_status && !validStatus.includes(subject_status.toUpperCase())) {
-        throw new ApolloError(`Subject status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', { field: 'subject_status' });
-    }
-
-    if (typeof isTransversal !== 'boolean') {
-        throw new ApolloError('isTransversal must be a boolean.', 'BAD_USER_INPUT', { field: 'isTransversal' });
-    }
-
-    if (connected_blocks) {
+    const { connected_blocks } = subjectInput;
+    if (connected_blocks !== undefined) {
         if (!Array.isArray(connected_blocks)) {
             throw new ApolloError('Connected blocks must be an array.', 'BAD_USER_INPUT', { field: 'connected_blocks' });
         }
@@ -69,10 +87,14 @@ function ValidateSubjectInput({ subjectInput, isTransversal }) {
                 throw new ApolloError(`Invalid connected block ID: ${blockId}`, 'BAD_USER_INPUT', { field: 'connected_blocks' });
             }
         }
+
+        if (!isTransversal) {
+            throw new ApolloError('Connected blocks can only be assigned to a subject within a transversal block.', 'BAD_USER_INPUT', { field: 'connected_blocks' });
+        }
     }
 
-    if (connected_blocks && !isTransversal) {
-        throw new ApolloError('Connected blocks can only be assigned to a subject within a transversal block.', 'BAD_USER_INPUT', { field: 'connected_blocks' });
+    if (typeof isTransversal !== 'boolean') {
+        throw new ApolloError('isTransversal must be a boolean.', 'BAD_USER_INPUT', { field: 'isTransversal' });
     }
 }
 

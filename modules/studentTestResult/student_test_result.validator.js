@@ -34,20 +34,14 @@ function ValidateStudentTestResultFilter({ studentTestResult, testId, studentId 
     }
 }
 
-/**
- * Validates the inputs for updating a student's test result against the test's rules.
- * @param {object} args - The arguments for the validation.
- * @param {Array<object>} args.marks - A non-empty array of mark objects to be validated.
- * @param {object} args.test - The test document, used to validate notations and max points.
- * @returns {void} - This function does not return a value but throws an error if validation fails.
- */
-function ValidateUpdateStudentTestResultInput({ marks, test }) {
+
+function ValidateUpdateStudentTestResultInput({ marks, notations }) {
     if (!Array.isArray(marks) || !marks.length) {
         throw new ApolloError('Marks must be a non-empty array.', 'BAD_USER_INPUT', { field: 'marks' });
     }
 
     const notationMap = new Map();
-    for (const notation of test.notations) {
+    for (const notation of notations) {
         notationMap.set(notation.notation_text, notation.max_points);
     }
 

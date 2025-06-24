@@ -52,7 +52,7 @@ async function GetOneSubject(_, { id }) {
     try {
         CommonValidator.ValidateObjectId(id);
 
-        const subject = await SubjectModel.findOne({ _id: id }).lean();
+        const subject = await SubjectModel.findById(id).lean();
         if (!subject) {
             throw new ApolloError('Subject not found', 'NOT_FOUND');
         }
@@ -69,22 +69,25 @@ async function GetOneSubject(_, { id }) {
 
 // *************** MUTATION ***************
 /**
- * GraphQL resolver to create a new subject.
+ * GraphQL resolver to create a new subject and associate it with a parent block.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {object} args.createSubjectInput - An object containing the details for the new subject.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
  * @returns {Promise<object>} - A promise that resolves to the newly created subject object.
  */
-async function CreateSubject(_, { createSubjectInput }) {
+async function CreateSubject(_, { createSubjectInput }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateInputTypeObject(createSubjectInput);
         CommonValidator.ValidateObjectId(createSubjectInput.block);
 
         // *************** Ensure parent block exists and is active
-        const parentBlock = await BlockModel.findOne({ _id: createSubjectInput.block, block_status: { $ne: 'DELETED' } }).lean();
+        const parentBlock = await BlockModel.findOne({ _id: createSubjectInput.block, block_status: { $ne: 'DELETED' } }).select({ block_type: 1 }).lean();
         if (!parentBlock) {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
@@ -122,32 +125,39 @@ async function CreateSubject(_, { createSubjectInput }) {
 }
 
 /**
- * GraphQL resolver to update an existing subject.
+ * GraphQL resolver to update an existing subject with partial data.
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the subject to update.
- * @param {object} args.updateSubjectInput - An object containing the new details for the subject.
+ * @param {object} args.updateSubjectInput - An object containing the fields to be updated.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
  * @returns {Promise<object>} - A promise that resolves to the updated subject object.
  */
-async function UpdateSubject(_, { id, updateSubjectInput }) {
+async function UpdateSubject(_, { id, updateSubjectInput }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateObjectId(id);
         CommonValidator.ValidateInputTypeObject(updateSubjectInput);
 
         // *************** Find the subject to ensure it exists and get its is_transversal property
-        const subject = await SubjectModel.findById(id).lean();
+        const subject = await SubjectModel.findById(id).select({ is_transversal: 1 }).lean();
         if (!subject) {
             throw new ApolloError('Subject not found', 'NOT_FOUND');
         }
-        SubjectValidator.ValidateSubjectInput(updateSubjectInput, subject.is_transversal);
+        SubjectValidator.ValidateSubjectInput({ subjectInput: updateSubjectInput, isTransversal: subject.is_transversal, isUpdate: true });
 
         // *************** Prepare the payload and update the subject
         const updateSubjectPayload = SubjectHelper.GetUpdateSubjectPayload({ updateSubjectInput, userId, isTransversal: subject.is_transversal });
 
-        const updatedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, updateSubjectPayload, { new: true }).lean();
+        const updatedSubject = await SubjectModel.findOneAndUpdate(
+            { _id: id },
+            { $set: updateSubjectPayload },
+            { new: true }
+        ).lean();
         if (!updatedSubject) {
             throw new ApolloError('Subject update failed', 'UPDATE_SUBJECT_FAILED');
         }
@@ -168,12 +178,15 @@ async function UpdateSubject(_, { id, updateSubjectInput }) {
  * @param {object} _ - The parent object, which is not used in this resolver.
  * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the subject to delete.
+ * @param {object} context - The GraphQL context, used here to get the user ID.
  * @returns {Promise<object>} - A promise that resolves to the subject object as it was before being soft-deleted.
  */
-async function DeleteSubject(_, { id }) {
+async function DeleteSubject(_, { id }, context) {
     try {
-        // *************** Dummy user ID (replace with real one later)
-        const userId = '6846e5769e5502fce150eb67';
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
+        }
 
         CommonValidator.ValidateObjectId(id);
 
@@ -284,9 +297,9 @@ async function ConnectedBlocksLoader(subject, _, context) {
     try {
         SubjectValidator.ValidateConnectedBlocksLoaderInput(subject, context);
 
-        const connected_blocks = await context.dataLoaders.BlockLoader.loadMany(subject.connected_blocks);
+        const connectedBlocks = await context.dataLoaders.BlockLoader.loadMany(subject.connected_blocks);
 
-        return connected_blocks;
+        return connectedBlocks;
     } catch (error) {
         console.error("Error fetching connected_blocks:", error);
 
@@ -332,9 +345,9 @@ async function CreatedByLoader(subject, _, context) {
     try {
         SubjectValidator.ValidateUserLoaderInput(subject, context, 'created_by');
 
-        const created_by = await context.dataLoaders.UserLoader.load(subject.created_by);
+        const createdBy = await context.dataLoaders.UserLoader.load(subject.created_by);
 
-        return created_by;
+        return createdBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message
@@ -354,9 +367,9 @@ async function UpdatedByLoader(subject, _, context) {
     try {
         SubjectValidator.ValidateUserLoaderInput(subject, context, 'updated_by');
 
-        const updated_by = await context.dataLoaders.UserLoader.load(subject.updated_by);
+        const updatedBy = await context.dataLoaders.UserLoader.load(subject.updated_by);
 
-        return updated_by;
+        return updatedBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message
@@ -376,9 +389,9 @@ async function DeletedByLoader(subject, _, context) {
     try {
         SubjectValidator.ValidateUserLoaderInput(subject, context, 'deleted_by');
 
-        const deleted_by = await context.dataLoaders.UserLoader.load(subject.deleted_by);
+        const deletedBy = await context.dataLoaders.UserLoader.load(subject.deleted_by);
 
-        return deleted_by;
+        return deletedBy;
     } catch (error) {
         throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
             error: error.message

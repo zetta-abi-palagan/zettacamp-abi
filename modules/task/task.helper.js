@@ -20,7 +20,7 @@ const TaskValidator = require('./task.validator');
 function GetCreateTaskPayload({ taskInput, userId }) {
     CommonValidator.ValidateInputTypeObject(taskInput);
     CommonValidator.ValidateObjectId(userId);
-    TaskValidator.ValidateCreateTaskInput(taskInput);
+    TaskValidator.ValidateTaskInput(taskInput);
 
     const {
         test,
@@ -49,13 +49,12 @@ function GetCreateTaskPayload({ taskInput, userId }) {
  * @param {object} args - The arguments for creating the payload.
  * @param {object} args.taskInput - The raw input object containing the task's properties to update.
  * @param {string} args.userId - The ID of the user updating the task.
- * @param {string} args.taskId - The ID of the task being updated.
  * @returns {object} A processed data payload suitable for a database update operation.
  */
-function GetUpdateTaskPayload({ taskInput, userId, taskId }) {
+function GetUpdateTaskPayload({ taskInput, userId }) {
     CommonValidator.ValidateInputTypeObject(taskInput);
     CommonValidator.ValidateObjectId(userId);
-    TaskValidator.ValidateUpdateTaskInput({ taskInput, taskId });
+    TaskValidator.ValidateTaskInput({ taskInput });
 
     const {
         user,
@@ -70,8 +69,8 @@ function GetUpdateTaskPayload({ taskInput, userId, taskId }) {
         user: user,
         title: title,
         description: description,
-        task_type: task_type.toUpperCase(),
-        task_status: task_status.toUpperCase(),
+        task_type: task_type ? task_type.toUpperCase() : undefined,
+        task_status: task_status ? task_status.toUpperCase() : undefined,
         due_date: due_date,
         updated_by: userId
     };
@@ -110,17 +109,51 @@ async function GetDeleteTaskPayload({ taskId, userId }) {
  * @param {string} taskId - The ID of the task to fetch.
  * @returns {Promise<object>} A promise that resolves to the found task document.
  */
+async function GetDeleteTaskPayload({ taskId, userId }) {
+    try {
+        CommonValidator.ValidateObjectId(taskId);
+        CommonValidator.ValidateObjectId(userId);
+
+        const deletionTimestamp = Date.now();
+        const task = await GetTask(taskId);
+        const testId = task.test;
+
+        const deleteTaskPayload = {
+            task: BuildDeletePayload({
+                ids: [taskId],
+                statusKey: 'task_status',
+                timestamp: deletionTimestamp,
+                userId
+            }),
+            test: BuildPullTaskFromTestPayload(testId, taskId)
+        };
+
+        return deleteTaskPayload;
+    } catch (error) {
+        throw new ApolloError(`Failed to build delete task payload: ${error.message}`, 'GET_DELETE_TASK_PAYLOAD_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Fetches a single task document by its ID.
+ * @param {string} taskId - The ID of the task to fetch.
+ * @returns {Promise<object>} A promise that resolves to the found task document.
+ */
 async function GetTask(taskId) {
-    const task = await TaskModel.findById(taskId);
-    if (!task) {
-        throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
-    }
+    try {
+        const task = await TaskModel.findById(taskId);
+        if (!task) {
+            throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
+        }
 
-    if (!mongoose.Types.ObjectId.isValid(task.test)) {
-        throw new ApolloError('Invalid test ID in task', 'INVALID_TEST_ID');
+        return task;
+    } catch (error) {
+        throw new ApolloError(`Failed to get task: ${error.message}`, 'GET_TASK_FAILED', {
+            error: error.message
+        });
     }
-
-    return task;
 }
 
 /**
@@ -163,6 +196,8 @@ function BuildPullTaskFromTestPayload(testId, taskId) {
  * @returns {object} A data payload for the update operation.
  */
 function GetTaskCompletionPayload(userId) {
+    CommonValidator.ValidateObjectId(userId);
+    
     return {
         task_status: 'COMPLETED',
         completed_by: userId,
@@ -212,6 +247,7 @@ function GetStudentTestResultPayload({ enterMarksInput, userId, parentTest }) {
  * @returns {object} A data payload for the update operation.
  */
 function GetStudentTestResultValidationPayload(userId) {
+    CommonValidator.ValidateObjectId(userId)
     return {
         student_test_result_status: 'VALIDATED',
         marks_validated_date: Date.now(),
@@ -228,8 +264,9 @@ function GetStudentTestResultValidationPayload(userId) {
  * @returns {object} An object containing the email 'subject' and 'html' content.
  */
 function GetAssignCorrectorEmail({ test, subject, students }) {
-    const studentNames = students.map(function (s) {
-        return s.first_name + ' ' + s.last_name;
+    CommonValidator.ValidateObjectIdArray(students, 'INVALID_STUDENT_ID')
+    const studentNames = students.map(function (student) {
+        return student.first_name + ' ' + student.last_name;
     });
 
     const subjectMsg = 'You have been assigned as a Test Corrector!';
