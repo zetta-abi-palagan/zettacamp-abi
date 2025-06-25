@@ -17,8 +17,7 @@ function SubjectLoader() {
     return new DataLoader(async (subjectIds) => {
         try {
             const subjects = await SubjectModel.find({
-                _id: { $in: subjectIds },
-                subject_status: { $ne: 'DELETED' },
+                _id: { $in: subjectIds }
             }).lean();
 
             const subjectsById = new Map(subjects.map(subject => [String(subject._id), subject]));

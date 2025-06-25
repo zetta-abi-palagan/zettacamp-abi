@@ -6,6 +6,9 @@ const sgMail = require('@sendgrid/mail');
 const TaskModel = require('./task.model');
 const { SENDGRID_API_KEY, SENDGRID_SENDER_EMAIL } = require('../../core/config');
 
+// *************** IMPORT UTILITES ***************
+const CommonHelper = require('../../shared/helper/index')
+
 // *************** IMPORT VALIDATOR ***************
 const CommonValidator = require('../../shared/validator/index');
 const TaskValidator = require('./task.validator');
@@ -77,34 +80,6 @@ function GetUpdateTaskPayload({ taskInput, userId }) {
 }
 
 /**
- * Generates a payload for soft-deleting a task and removing its reference from the parent test.
- * @param {object} args - The arguments for getting the delete payload.
- * @param {string} args.taskId - The unique identifier of the task to be deleted.
- * @param {string} args.userId - The ID of the user performing the deletion.
- * @returns {Promise<object>} A promise that resolves to a structured payload for the delete and update operations.
- */
-async function GetDeleteTaskPayload({ taskId, userId }) {
-    CommonValidator.ValidateObjectId(taskId);
-    CommonValidator.ValidateObjectId(userId);
-
-    const deletionTimestamp = Date.now();
-    const task = await GetTask(taskId);
-    const testId = task.test;
-
-    const deleteTaskPayload = {
-        task: BuildDeletePayload({
-            ids: [taskId],
-            statusKey: 'task_status',
-            timestamp: deletionTimestamp,
-            userId
-        }),
-        test: BuildPullTaskFromTestPayload(testId, taskId)
-    };
-
-    return deleteTaskPayload;
-}
-
-/**
  * Fetches a single task document by its ID and validates its contents.
  * @param {string} taskId - The ID of the task to fetch.
  * @returns {Promise<object>} A promise that resolves to the found task document.
@@ -115,11 +90,16 @@ async function GetDeleteTaskPayload({ taskId, userId }) {
         CommonValidator.ValidateObjectId(userId);
 
         const deletionTimestamp = Date.now();
-        const task = await GetTask(taskId);
+
+        const task = await TaskModel.findOne({ _id: taskId, task_status: { $ne: 'DELETED' } });
+        if (!task) {
+            throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
+        }
+
         const testId = task.test;
 
         const deleteTaskPayload = {
-            task: BuildDeletePayload({
+            task: CommonHelper.BuildDeletePayload({
                 ids: [taskId],
                 statusKey: 'task_status',
                 timestamp: deletionTimestamp,
@@ -134,47 +114,6 @@ async function GetDeleteTaskPayload({ taskId, userId }) {
             error: error.message
         });
     }
-}
-
-/**
- * Fetches a single task document by its ID.
- * @param {string} taskId - The ID of the task to fetch.
- * @returns {Promise<object>} A promise that resolves to the found task document.
- */
-async function GetTask(taskId) {
-    try {
-        const task = await TaskModel.findOne({ _id: taskId, task_status: { $ne: 'DELETED' } });
-        if (!task) {
-            throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
-        }
-
-        return task;
-    } catch (error) {
-        throw new ApolloError(`Failed to get task: ${error.message}`, 'GET_TASK_FAILED', {
-            error: error.message
-        });
-    }
-}
-
-/**
- * A generic utility to build a standard soft-delete payload object.
- * @param {object} args - The arguments for building the payload.
- * @param {Array<string>} args.ids - An array of document IDs to target.
- * @param {string} args.statusKey - The name of the status field to be updated.
- * @param {number} args.timestamp - The timestamp of the deletion.
- * @param {string} args.userId - The ID of the user performing the deletion.
- * @returns {object} An object containing 'filter' and 'update' properties for a database operation.
- */
-function BuildDeletePayload({ ids, statusKey, timestamp, userId }) {
-    return {
-        filter: { _id: { $in: ids } },
-        update: {
-            [statusKey]: 'DELETED',
-            updated_by: userId,
-            deleted_by: userId,
-            deleted_at: timestamp
-        }
-    };
 }
 
 /**

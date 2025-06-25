@@ -4,6 +4,9 @@ const { ApolloError } = require('apollo-server');
 // *************** IMPORT MODULE *************** 
 const TestModel = require('./test.model');
 
+// *************** IMPORT UTILITES ***************
+const CommonHelper = require('../../shared/helper/index')
+
 // *************** IMPORT VALIDATOR ***************
 const CommonValidator = require('../../shared/validator/index');
 const TestValidator = require('./test.validator');
@@ -150,13 +153,17 @@ async function GetDeleteTestPayload({ testId, userId }) {
         CommonValidator.ValidateObjectId(userId);
 
         const deletionTimestamp = Date.now();
-        const test = await GetTest(testId);
+
+        const test = await TestModel.findOne({ _id: testId, test_status: { $ne: 'DELETED' } });
+        if (!test) {
+            throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
+        }
 
         const taskIds = test.tasks || [];
         const studentResultIds = test.student_test_results || [];
 
         const deleteTestPayload = {
-            test: BuildDeletePayload({
+            test: CommonHelper.BuildDeletePayload({
                 ids: [testId],
                 statusKey: 'test_status',
                 timestamp: deletionTimestamp,
@@ -171,7 +178,7 @@ async function GetDeleteTestPayload({ testId, userId }) {
         };
 
         if (taskIds.length) {
-            deleteTestPayload.tasks = HandleDeleteTasks({
+            deleteTestPayload.tasks = CommonHelper.HandleDeleteTasks({
                 taskIds,
                 userId,
                 timestamp: deletionTimestamp
@@ -179,7 +186,7 @@ async function GetDeleteTestPayload({ testId, userId }) {
         }
 
         if (studentResultIds.length) {
-            deleteTestPayload.studentTestResults = HandleDeleteStudentTestResults({
+            deleteTestPayload.studentTestResults = CommonHelper.HandleDeleteStudentTestResults({
                 resultIds: studentResultIds,
                 userId,
                 timestamp: deletionTimestamp
@@ -195,46 +202,6 @@ async function GetDeleteTestPayload({ testId, userId }) {
 }
 
 /**
- * Fetches a single test document by its ID.
- * @param {string} testId - The ID of the test to fetch.
- * @returns {Promise<object>} A promise that resolves to the found test document.
- */
-async function GetTest(testId) {
-    try {
-        const test = await TestModel.findOne({ _id: testId, test_status: { $ne: 'DELETED' } });
-        if (!test) {
-            throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
-        }
-        return test;
-    } catch (error) {
-        throw new ApolloError(`Failed to get test: ${error.message}`, 'GET_TEST_FAILED', {
-            error: error.message
-        });
-    }
-}
-
-/**
- * A generic utility to build a standard soft-delete payload object.
- * @param {object} args - The arguments for building the payload.
- * @param {Array<string>} args.ids - An array of document IDs to target.
- * @param {string} args.statusKey - The name of the status field to be updated.
- * @param {number} args.timestamp - The timestamp of the deletion.
- * @param {string} args.userId - The ID of the user performing the deletion.
- * @returns {object} An object containing 'filter' and 'update' properties for a database operation.
- */
-function BuildDeletePayload({ ids, statusKey, timestamp, userId }) {
-    return {
-        filter: { _id: { $in: ids } },
-        update: {
-            [statusKey]: 'DELETED',
-            updated_by: userId,
-            deleted_by: userId,
-            deleted_at: timestamp
-        }
-    };
-}
-
-/**
  * Builds a payload for removing a test's ID from a subject's 'tests' array.
  * @param {object} args - The arguments for building the payload.
  * @param {string} args.subjectId - The ID of the subject to update.
@@ -246,44 +213,6 @@ function BuildPullTestFromSubjectPayload({ subjectId, testId }) {
         filter: { _id: subjectId },
         update: { $pull: { tests: testId } }
     };
-}
-
-/**
- * Handles the processing of task IDs for deletion and creates the corresponding payload.
- * @param {object} args - The arguments for handling task deletion.
- * @param {Array<string>} args.taskIds - An array of task IDs to process.
- * @param {string} args.userId - The ID of the user performing the deletion.
- * @param {number} args.timestamp - The timestamp of the deletion.
- * @returns {object} An object containing the 'filter' and 'update' payload for tasks.
- */
-function HandleDeleteTasks({ taskIds, userId, timestamp }) {
-    CommonValidator.ValidateObjectIdArray(taskIds, 'INVALID_TASK_ID');
-
-    return BuildDeletePayload({
-        ids: taskIds,
-        statusKey: 'task_status',
-        timestamp,
-        userId
-    });
-}
-
-/**
- * Handles the processing of student test result IDs for deletion and creates the corresponding payload.
- * @param {object} args - The arguments for handling student test result deletion.
- * @param {Array<string>} args.resultIds - An array of student test result IDs to process.
- * @param {string} args.userId - The ID of the user performing the deletion.
- * @param {number} args.timestamp - The timestamp of the deletion.
- * @returns {object} An object containing the 'filter' and 'update' payload for student test results.
- */
-function HandleDeleteStudentTestResults({ resultIds, userId, timestamp }) {
-    CommonValidator.ValidateObjectIdArray(resultIds, 'INVALID_STUDENT_RESULT_ID');
-
-    return BuildDeletePayload({
-        ids: resultIds,
-        statusKey: 'result_status',
-        timestamp,
-        userId
-    });
 }
 
 // *************** EXPORT MODULE ***************

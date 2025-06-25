@@ -17,8 +17,7 @@ function TestLoader() {
     return new DataLoader(async (testIds) => {
         try {
             const tests = await TestModel.find({
-                _id: { $in: testIds },
-                test_status: { $ne: 'DELETED' },
+                _id: { $in: testIds }
             }).lean();
 
             const testsById = new Map(tests.map(test => [String(test._id), test]));

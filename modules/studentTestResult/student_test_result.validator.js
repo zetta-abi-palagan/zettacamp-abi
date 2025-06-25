@@ -13,7 +13,7 @@ const { ApolloError } = require('apollo-server');
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateStudentTestResultFilter({ studentTestResult, testId, studentId }) {
-    const validStatus = ['PENDING', 'VALIDATED', 'DELETED'];
+    const validStatus = ['PENDING', 'VALIDATED'];
 
     if (!studentTestResult) {
         return;

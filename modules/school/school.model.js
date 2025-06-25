@@ -90,7 +90,7 @@ const schoolSchema = mongoose.Schema({
     }
 });
 
-const SchoolModel = mongoose.model('School', schoolSchema);
+const SchoolModel = mongoose.model('school', schoolSchema);
 
 // *************** EXPORT MODULE ***************
 module.exports = SchoolModel;

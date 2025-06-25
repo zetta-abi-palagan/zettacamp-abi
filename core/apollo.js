@@ -28,6 +28,7 @@ async function SetupApolloServer(app, port) {
             return {
                 dataLoaders: CreateLoaders(),
                 user: {
+                    // *************** Using dummy user ID for now, will change later with authenticated user
                     _id: '6846e5769e5502fce150eb67'
                 },
             }

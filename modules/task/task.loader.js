@@ -17,8 +17,7 @@ function TaskLoader() {
     return new DataLoader(async (taskIds) => {
         try {
             const tasks = await TaskModel.find({
-                _id: { $in: taskIds },
-                task_status: { $ne: 'DELETED' },
+                _id: { $in: taskIds }
             }).lean();
 
             const tasksById = new Map(tasks.map(task => [String(task._id), task]));

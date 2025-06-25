@@ -13,7 +13,7 @@ const { ApolloError } = require('apollo-server');
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateTaskFilter({ taskStatus, testId, userId }) {
-    const validStatus = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'DELETED'];
+    const validStatus = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
 
     if (!taskStatus) {
         return;

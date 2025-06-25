@@ -10,7 +10,7 @@ const { ApolloError } = require('apollo-server');
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateBlockStatusFilter(block_status) {
-    const validStatus = ['ACTIVE', 'INACTIVE', 'DELETED'];
+    const validStatus = ['ACTIVE', 'INACTIVE'];
 
     if (!block_status) {
         return;
