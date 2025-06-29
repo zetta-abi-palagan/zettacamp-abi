@@ -53,27 +53,27 @@ const schoolSchema = mongoose.Schema({
     // List of student IDs associated with the school
     students: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Student"
+        ref: "student"
     }],
 
     // ID of the user who created this school record
     created_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who last updated this school record
     updated_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
 
     // ID of the user who deleted this school (if applicable)
     deleted_by: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
     },
 
     // Timestamp when the school was marked as deleted
@@ -90,5 +90,7 @@ const schoolSchema = mongoose.Schema({
     }
 });
 
+const SchoolModel = mongoose.model('school', schoolSchema);
+
 // *************** EXPORT MODULE ***************
-module.exports = mongoose.model('School', schoolSchema);
+module.exports = SchoolModel;

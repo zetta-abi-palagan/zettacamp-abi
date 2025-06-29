@@ -10,7 +10,7 @@ module.exports = gql`
     }
 
     type School {
-        id: ID!
+        _id: ID!
         commercial_name: String!
         legal_name: String!
         address: String!

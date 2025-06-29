@@ -64,7 +64,7 @@ async function CreateUser(_, { input }) {
         user_status
     } = input;
 
-    const validRoles = ['ADMIN', 'USER'];
+    const validRoles = ['ADMIN', 'USER', 'ACADEMIC_DIRECTOR', 'CORRECTOR'];
     const validStatus = ['ACTIVE', 'INACTIVE'];
 
     if (!first_name || validator.isEmpty(first_name, { ignore_whitespace: true })) {
@@ -160,7 +160,7 @@ async function UpdateUser(_, { id, input }) {
         user_status
     } = input;
 
-    const validRoles = ['ADMIN', 'USER'];
+    const validRoles = ['ADMIN', 'USER', 'ACADEMIC_DIRECTOR', 'CORRECTOR'];
     const validStatus = ['ACTIVE', 'INACTIVE'];
 
     const isValidObjectId = mongoose.Types.ObjectId.isValid(id);

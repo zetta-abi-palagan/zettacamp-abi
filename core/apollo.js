@@ -1,4 +1,4 @@
-// *************** IMPORT LIBRARY ***************
+// *************** IMPORT CORE ***************
 const { ApolloServer } = require('apollo-server-express');
 
 // *************** IMPORT MODULE ***************
@@ -26,7 +26,11 @@ async function SetupApolloServer(app, port) {
         resolvers,
         context: () => {
             return {
-                dataLoaders: CreateLoaders()
+                dataLoaders: CreateLoaders(),
+                user: {
+                    // *************** Using dummy user ID for now, will change later with authenticated user
+                    _id: '6846e5769e5502fce150eb67'
+                },
             }
         }
     });

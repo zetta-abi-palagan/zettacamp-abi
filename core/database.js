@@ -1,4 +1,4 @@
-// *************** IMPORT LIBRARY ***************
+// *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
 // *************** IMPORT MODULE ***************
@@ -30,4 +30,5 @@ async function ConnectDB() {
     }
 }
 
+// *************** EXPORT MODULE ***************
 module.exports = ConnectDB;
