@@ -25,7 +25,6 @@ function ValidateBlockStatusFilter(block_status) {
 
 /**
  * Validates the input object for creating or updating a block using a rule-based approach.
- * This function accommodates partial updates by only validating fields that are present.
  * @param {object} args - The arguments for the validation.
  * @param {object} args.blockInput - An object containing the block's properties to be validated.
  * @param {string} [args.blockInput.name] - The name of the block.
@@ -35,6 +34,7 @@ function ValidateBlockStatusFilter(block_status) {
  * @param {string} [args.blockInput.connected_block] - Optional. The ID of a related block.
  * @param {boolean} [args.blockInput.is_counted_in_final_transcript] - Flag for final transcript inclusion.
  * @param {string} [args.blockInput.block_status] - Optional. The status of the block (e.g., 'ACTIVE').
+ * @param {object} [args.blockInput.block_passing_criteria] - Optional. The criteria for passing the block.
  * @param {boolean} [args.isUpdate=false] - Optional flag to indicate if this is an update operation, which allows for partial data.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
@@ -72,7 +72,7 @@ function ValidateBlockInput({ blockInput, isUpdate = false }) {
         },
         {
             field: 'block_status',
-            required: false, // Not required on create, only validates if present
+            required: false,
             validate: (val) => typeof val === 'string' && validStatus.includes(val.toUpperCase()),
             message: `Block status must be one of: ${validStatus.join(', ')}.`,
         },
@@ -84,15 +84,14 @@ function ValidateBlockInput({ blockInput, isUpdate = false }) {
         },
         {
             field: 'connected_block',
-            required: false, // Optional field
+            required: false,
             validate: (val) => mongoose.Types.ObjectId.isValid(val),
-            message: (val) => `Invalid connected_block ID: ${val}`, // Dynamic message
+            message: (val) => `Invalid connected_block ID: ${val}`,
         },
     ];
 
     for (const rule of validationRules) {
         const value = blockInput[rule.field];
-
         if ((!isUpdate && rule.required) || value !== undefined) {
             if (!rule.validate(value)) {
                 const message = typeof rule.message === 'function' ? rule.message(value) : rule.message;
@@ -120,6 +119,89 @@ function ValidateBlockInput({ blockInput, isUpdate = false }) {
 
     if (connected_block && block_type && block_type.toUpperCase() !== 'RETAKE') {
         throw new ApolloError('Block type must be RETAKE to have a connected block.', 'BAD_USER_INPUT', { field: 'connected_block' });
+    }
+
+    if (blockInput.block_passing_criteria) {
+        validateBlockPassingCriteria({ criteria: blockInput.block_passing_criteria });
+    }
+}
+
+/**
+ * Recursively validates a nested structure defining the passing criteria for a block.
+ * A criteria object can be a logical group of other criteria or a single rule.
+ * @param {object} args - The arguments for the validation.
+ * @param {object} args.criteria - The criteria object or sub-object to validate.
+ * @param {string} [args.path='block_passing_criteria'] - The dot-notation path to the current criteria object, used for clear error messages.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function validateBlockPassingCriteria({ criteria, path = 'block_passing_criteria' }) {
+    const validCriteriaType = ['MARK', 'AVERAGE'];
+    const validComparisonOperator = ['GTE', 'LTE', 'GT', 'LT', 'E'];
+    const validLogicalOperator = ['AND', 'OR'];
+
+    const isGroup = Array.isArray(criteria.conditions);
+
+    if (isGroup) {
+        if (
+            typeof criteria.logical_operator !== 'string' ||
+            !validLogicalOperator.includes(criteria.logical_operator.toUpperCase())
+        ) {
+            throw new ApolloError(
+                `Field '${path}.logical_operator' must be a string and one of: ${validLogicalOperator.join(', ')}.`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        if (!criteria.conditions.length) {
+            throw new ApolloError(
+                `Field '${path}.conditions' must be a non-empty array.`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        for (let i = 0; i < criteria.conditions.length; i++) {
+            validateBlockPassingCriteria({ criteria: criteria.conditions[i], path: `${path}.conditions[${i}]` });
+        }
+    } else {
+        if (
+            typeof criteria.criteria_type !== 'string' ||
+            !validCriteriaType.includes(criteria.criteria_type.toUpperCase())
+        ) {
+            throw new ApolloError(
+                `Field '${path}.criteria_type' must be a string and one of: ${validCriteriaType.join(', ')}.`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        if (criteria.criteria_type.toUpperCase() === 'MARK') {
+            if (
+                !criteria.subject ||
+                typeof criteria.subject !== 'string' ||
+                !mongoose.Types.ObjectId.isValid(criteria.subject)
+            ) {
+                throw new ApolloError(
+                    `Field '${path}.subject' must be a valid ObjectId string when 'criteria_type' is 'MARK'.`,
+                    'BAD_USER_INPUT'
+                );
+            }
+        }
+
+        if (
+            typeof criteria.comparison_operator !== 'string' ||
+            !validComparisonOperator.includes(criteria.comparison_operator.toUpperCase())
+        ) {
+            throw new ApolloError(
+                `Field '${path}.comparison_operator' must be a string and one of: ${validComparisonOperator.join(', ')}.`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        if (typeof criteria.mark !== 'number' || criteria.mark < 0) {
+            throw new ApolloError(
+                `Field '${path}.mark' must be a number ≥ 0.`,
+                'BAD_USER_INPUT'
+            );
+        }
     }
 }
 

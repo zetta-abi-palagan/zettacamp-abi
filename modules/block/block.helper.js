@@ -79,7 +79,8 @@ function GetUpdateBlockPayload({ updateBlockInput, userId }) {
         block_type,
         connected_block,
         is_counted_in_final_transcript,
-        block_status
+        block_status,
+        block_passing_criteria
     } = updateBlockInput;
 
     return {
@@ -90,6 +91,7 @@ function GetUpdateBlockPayload({ updateBlockInput, userId }) {
         connected_block,
         is_counted_in_final_transcript,
         block_status: block_status ? block_status.toUpperCase() : undefined,
+        block_passing_criteria,
         updated_by: userId
     };
 }

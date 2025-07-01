@@ -1,6 +1,42 @@
 // *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
+const blockPassingCriteriaSchema = mongoose.Schema({
+    // Logical operator for the criteria: ‘AND’ or ‘OR’
+    logical_operator: {
+        type: String,
+        enum: ['AND', 'OR']
+    },
+
+    // Type of the criteria: ‘MARK’ or ‘AVERAGE’
+    criteria_type: {
+        type: String,
+        enum: ['MARK', 'AVERAGE']
+    },
+
+    // Reference to subject that is part of the condition to pass the block
+    subject: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "subject"
+    },
+
+    // The comparison operator used in the criteria: 'GTE', 'LTE', 'GT', 'LT', 'E'
+    comparison_operator: {
+        type: String,
+        enum: ['GTE', 'LTE', 'GT', 'LT', 'E']
+    },
+
+    // The average of total subject marks, or the mark of one subject (depends on criteria_type)
+    mark: {
+        type: Number
+    }
+}, { _id: false });
+
+blockPassingCriteriaSchema.add({
+    // An array of conditions, each being a criteria or a nested group using AND/OR logic
+    conditions: [blockPassingCriteriaSchema]
+});
+
 const blockSchema = mongoose.Schema({
     // Block’s name
     name: {
@@ -51,6 +87,11 @@ const blockSchema = mongoose.Schema({
         type: String,
         enum: ['ACTIVE', 'INACTIVE', 'DELETED'],
         required: true
+    },
+
+    // Rules for passing the block using logical conditions on subject performance
+    block_passing_criteria: {
+        type: blockPassingCriteriaSchema
     },
 
     // ID of the user who created this block record
