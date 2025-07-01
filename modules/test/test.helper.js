@@ -78,7 +78,8 @@ function GetUpdateTestPayload({ testInput, userId, evaluationType }) {
         notations,
         is_retake,
         connected_test,
-        test_status
+        test_status,
+        test_passing_criteria,
     } = testInput;
 
     return {
@@ -92,6 +93,7 @@ function GetUpdateTestPayload({ testInput, userId, evaluationType }) {
         is_retake,
         connected_test,
         test_status: test_status ? test_status.toUpperCase() : undefined,
+        test_passing_criteria,
         updated_by: userId
     };
 }

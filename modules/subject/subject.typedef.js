@@ -68,7 +68,7 @@ module.exports = gql`
         connected_blocks: [Block!]!
         tests: [Test!]!
         subject_status: SubjectStatus!
-        subject_passing_criteria: SubjectPassingCriteria!
+        subject_passing_criteria: SubjectPassingCriteria
         created_by: User!
         created_at: String!
         updated_by: User!

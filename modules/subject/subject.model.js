@@ -26,7 +26,7 @@ const subjectPassingCriteriaSchema = mongoose.Schema({
         enum: ['GTE', 'LTE', 'GT', 'LT', 'E']
     },
 
-    // The average of total subject marks, or the mark of one subject (depends on criteria_type)
+    // The average of total test marks, or the mark of one test (depends on criteria_type)
     mark: {
         type: Number
     }

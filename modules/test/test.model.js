@@ -1,6 +1,42 @@
 // *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
+const testPassingCriteriaSchema = mongoose.Schema({
+    // Logical operator for the criteria: ‘AND’ or ‘OR’
+    logical_operator: {
+        type: String,
+        enum: ['AND', 'OR']
+    },
+
+    // Type of the criteria: ‘MARK’ or ‘AVERAGE’
+    criteria_type: {
+        type: String,
+        enum: ['MARK', 'AVERAGE']
+    },
+
+    // Reference to notation_text in notations field in test
+    notation_text: {
+        type: String,
+
+    },
+
+    // The comparison operator used in the criteria: 'GTE', 'LTE', 'GT', 'LT', 'E'
+    comparison_operator: {
+        type: String,
+        enum: ['GTE', 'LTE', 'GT', 'LT', 'E']
+    },
+
+    // The average of total notation marks, or the mark of one notation (depends on criteria_type)
+    mark: {
+        type: Number
+    }
+}, { _id: false });
+
+testPassingCriteriaSchema.add({
+    // An array of conditions, each being a criteria or a nested group using AND/OR logic
+    conditions: [testPassingCriteriaSchema]
+});
+
 const testSchema = mongoose.Schema({
     // ID of the subject the test belongs to
     subject: {
@@ -81,6 +117,11 @@ const testSchema = mongoose.Schema({
         type: String,
         enum: ['ACTIVE', 'INACTIVE', 'DELETED'],
         required: true
+    },
+
+    // Rules for passing the test using logical conditions on notation performance
+    test_passing_criteria: {
+        type: testPassingCriteriaSchema
     },
 
     // Published status of the test

@@ -87,7 +87,7 @@ module.exports = gql`
         is_counted_in_final_transcript: Boolean!
         subjects: [Subject!]!
         block_status: BlockStatus!
-        block_passing_criteria: BlockPassingCriteria!
+        block_passing_criteria: BlockPassingCriteria
         created_by: User!
         created_at: String!
         updated_by: User!

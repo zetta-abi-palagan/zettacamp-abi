@@ -37,11 +37,13 @@ function ValidateTestStatusFilter(test_status) {
  * @param {boolean} [args.testInput.is_retake] - Flag indicating if this is a retake test.
  * @param {string} [args.testInput.connected_test] - Optional. The ID of the original test, required if is_retake is true.
  * @param {string} [args.testInput.test_status] - Optional. The status of the test.
+ * @param {object} [args.testInput.test_passing_criteria] - Optional. The criteria for passing the test.
  * @param {string} args.evaluationType - The evaluation type of the parent block.
+ * @param {Array<object>} [args.notations] - Optional. The existing notations from the test document, used for validating passing criteria on update.
  * @param {boolean} [args.isUpdate=false] - Optional flag to indicate if this is an update operation, which allows for partial data.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateTestInput({ testInput, evaluationType, isUpdate = false }) {
+function ValidateTestInput({ testInput, evaluationType, notations, isUpdate = false }) {
     const validTestType = ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN'];
     const validResultVisibility = ['NEVER', 'AFTER_CORRECTION', 'AFTER_JURY_DECISION_FOR_FINAL_TRANSCRIPT'];
     const validCorrectionType = ['ADMTC', 'CERTIFIER', 'CROSS_CORRECTION', 'PREPARATION_CENTER'];
@@ -144,6 +146,111 @@ function ValidateTestInput({ testInput, evaluationType, isUpdate = false }) {
 
         if (isCompetencyMismatch || isScoreMismatch) {
             throw new ApolloError(`Test type '${upperTestType}' is not allowed for block with evaluation_type '${evaluationType}'.`, 'BAD_USER_INPUT', { field: 'test_type' });
+        }
+    }
+
+    if (test_passing_criteria) {
+        const notationsSource = testInput.notations || notations;
+
+        if (!notationsSource || !Array.isArray(notationsSource) || notationsSource.length === 0) {
+            throw new ApolloError("Cannot validate 'test_passing_criteria' because no notations are available for this test.", 'BAD_USER_INPUT');
+        }
+        
+        const validNotationTexts = new Set(notationsSource.map(n => n.notation_text));
+
+        validateTestPassingCriteria({
+            criteria: test_passing_criteria,
+            validNotationTexts: validNotationTexts
+        });
+    }
+}
+
+/**
+ * Recursively validates a nested structure defining the passing criteria for a test.
+ * A criteria object can be a logical group of other criteria or a single rule.
+ * @param {object} args - The arguments for the validation.
+ * @param {object} args.criteria - The criteria object or sub-object to validate.
+ * @param {Set<string>} args.validNotationTexts - A Set of valid notation texts for the test.
+ * @param {string} [args.path='test_passing_criteria'] - The dot-notation path to the current criteria object, used for clear error messages.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function validateTestPassingCriteria({ criteria, validNotationTexts, path = 'test_passing_criteria' }) {
+    const validCriteriaType = ['MARK', 'AVERAGE'];
+    const validComparisonOperator = ['GTE', 'LTE', 'GT', 'LT', 'E'];
+    const validLogicalOperator = ['AND', 'OR'];
+
+    const isGroup = Array.isArray(criteria.conditions);
+
+    if (isGroup) {
+        if (
+            typeof criteria.logical_operator !== 'string' ||
+            !validLogicalOperator.includes(criteria.logical_operator.toUpperCase())
+        ) {
+            throw new ApolloError(
+                `Field '${path}.logical_operator' must be a string and one of: ${validLogicalOperator.join(', ')}`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        if (!criteria.conditions.length) {
+            throw new ApolloError(
+                `Field '${path}.conditions' must be a non-empty array.`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        for (let i = 0; i < criteria.conditions.length; i++) {
+            validateTestPassingCriteria({
+                criteria: criteria.conditions[i],
+                validNotationTexts,
+                path: `${path}.conditions[${i}]`
+            });
+        }
+    } else {
+        if (
+            typeof criteria.criteria_type !== 'string' ||
+            !validCriteriaType.includes(criteria.criteria_type.toUpperCase())
+        ) {
+            throw new ApolloError(
+                `Field '${path}.criteria_type' must be a string and one of: ${validCriteriaType.join(', ')}`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        if (
+            typeof criteria.comparison_operator !== 'string' ||
+            !validComparisonOperator.includes(criteria.comparison_operator.toUpperCase())
+        ) {
+            throw new ApolloError(
+                `Field '${path}.comparison_operator' must be a string and one of: ${validComparisonOperator.join(', ')}`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        if (typeof criteria.mark !== 'number' || criteria.mark < 0) {
+            throw new ApolloError(
+                `Field '${path}.mark' must be a number ≥ 0.`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        if (criteria.criteria_type.toUpperCase() === 'MARK') {
+            if (
+                typeof criteria.notation_text !== 'string' ||
+                criteria.notation_text.trim() === ''
+            ) {
+                throw new ApolloError(
+                    `Field '${path}.notation_text' is required and must be a non-empty string when 'criteria_type' is 'MARK'.`,
+                    'BAD_USER_INPUT'
+                );
+            }
+
+            if (!validNotationTexts.has(criteria.notation_text)) {
+                throw new ApolloError(
+                    `Value "${criteria.notation_text}" for '${path}.notation_text' does not match any defined notations for this test.`,
+                    'BAD_USER_INPUT'
+                );
+            }
         }
     }
 }

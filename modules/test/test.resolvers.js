@@ -235,7 +235,7 @@ async function UpdateTest(_, { id, updateTestInput }, context) {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
 
-        TestValidator.ValidateTestInput({ testInput: updateTestInput, evaluationType: parentBlock.evaluation_type, isUpdate: true });
+        TestValidator.ValidateTestInput({ testInput: updateTestInput, evaluationType: parentBlock.evaluation_type, notations: test.notations, isUpdate: true });
 
         // *************** Prepare payload and update test
         const updateTestPayload = TestHelper.GetUpdateTestPayload({ testInput: updateTestInput, userId, evaluationType: parentBlock.evaluation_type });

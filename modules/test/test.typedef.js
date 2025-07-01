@@ -32,6 +32,24 @@ module.exports = gql`
         DELETED
     }
 
+    enum CriteriaType {
+        MARK
+        AVERAGE
+    }
+
+    enum ComparisonOperator {
+        GTE
+        LTE
+        GT
+        LT
+        E
+    }
+
+    enum LogicalOperator {
+        AND
+        OR
+    }
+
     input NotationInput {
         notation_text: String!
         max_points: Float!
@@ -62,6 +80,21 @@ module.exports = gql`
         is_retake: Boolean
         connected_test: ID
         test_status: TestStatus
+        test_passing_criteria: TestPassingCriteriaInput
+    }
+
+    input TestPassingCriteriaInput {
+        logical_operator: LogicalOperator!
+        conditions: [TestPassingConditionInput!]!
+    }
+
+    input TestPassingConditionInput {
+        criteria_type: CriteriaType
+        notation_text: String
+        comparison_operator: ComparisonOperator
+        mark: Float
+        logical_operator: LogicalOperator
+        conditions: [TestPassingConditionInput!]
     }
 
     type Notation {
@@ -80,6 +113,7 @@ module.exports = gql`
         correction_type: CorrectionType!
         notations: [Notation!]!
         test_status: TestStatus!
+        test_passing_criteria: TestPassingCriteria
         is_published: Boolean!
         published_date: String
         published_by: User
@@ -92,6 +126,20 @@ module.exports = gql`
         updated_at: String!
         deleted_by: User
         deleted_at: String
+    }
+
+    type TestPassingCriteria {
+        logical_operator: LogicalOperator
+        conditions: [TestPassingCondition!]
+    }
+
+    type TestPassingCondition {
+        criteria_type: CriteriaType
+        notation_text: String
+        comparison_operator: ComparisonOperator
+        mark: Float
+        logical_operator: LogicalOperator
+        conditions: [TestPassingCondition!]
     }
 
     type PublishTestPayload {
