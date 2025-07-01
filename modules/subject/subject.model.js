@@ -20,7 +20,7 @@ const subjectPassingCriteriaSchema = mongoose.Schema({
         ref: "test"
     },
 
-    // The comparison operator used in the criteria: 'GTE', 'LTE', 'GT', 'LT', 'E'
+    // The comparison operator used in the criteria: 'GTE' (>=), 'LTE' (<=), 'GT' (>), 'LT' (<), 'E' (==)
     comparison_operator: {
         type: String,
         enum: ['GTE', 'LTE', 'GT', 'LT', 'E']
