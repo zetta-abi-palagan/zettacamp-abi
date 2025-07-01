@@ -155,7 +155,7 @@ function ValidateTestInput({ testInput, evaluationType, notations, isUpdate = fa
         if (!notationsSource || !Array.isArray(notationsSource) || notationsSource.length === 0) {
             throw new ApolloError("Cannot validate 'test_passing_criteria' because no notations are available for this test.", 'BAD_USER_INPUT');
         }
-        
+
         const validNotationTexts = new Set(notationsSource.map(n => n.notation_text));
 
         validateTestPassingCriteria({
@@ -199,13 +199,13 @@ function validateTestPassingCriteria({ criteria, validNotationTexts, path = 'tes
             );
         }
 
-        for (let i = 0; i < criteria.conditions.length; i++) {
+        criteria.conditions.forEach((condition, index) => {
             validateTestPassingCriteria({
-                criteria: criteria.conditions[i],
+                criteria: condition,
                 validNotationTexts,
-                path: `${path}.conditions[${i}]`
+                path: `${path}.conditions[${index}]`
             });
-        }
+        });
     } else {
         if (
             typeof criteria.criteria_type !== 'string' ||

@@ -136,12 +136,12 @@ function validateSubjectPassingCriteria({ criteria, path = 'subject_passing_crit
             );
         }
 
-        for (let i = 0; i < criteria.conditions.length; i++) {
+        criteria.conditions.forEach((condition, index) => {
             validateSubjectPassingCriteria({
-                criteria: criteria.conditions[i],
-                path: `${path}.conditions[${i}]`
+                criteria: condition,
+                path: `${path}.conditions[${index}]`
             });
-        }
+        });
     } else {
         if (
             typeof criteria.criteria_type !== 'string' ||

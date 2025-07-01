@@ -159,9 +159,12 @@ function validateBlockPassingCriteria({ criteria, path = 'block_passing_criteria
             );
         }
 
-        for (let i = 0; i < criteria.conditions.length; i++) {
-            validateBlockPassingCriteria({ criteria: criteria.conditions[i], path: `${path}.conditions[${i}]` });
-        }
+        criteria.conditions.forEach((condition, index) => {
+            validateBlockPassingCriteria({
+                criteria: condition,
+                path: `${path}.conditions[${index}]`
+            });
+        });
     } else {
         if (
             typeof criteria.criteria_type !== 'string' ||

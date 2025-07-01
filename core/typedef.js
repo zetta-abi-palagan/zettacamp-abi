@@ -10,6 +10,7 @@ const subjectTypeDefs = require('../modules/subject/subject.typedef');
 const testTypeDefs = require('../modules/test/test.typedef');
 const studentTestResultTypeDefs = require('../modules/studentTestResult/student_test_result.typedef');
 const taskTypeDefs = require('../modules/task/task.typedef');
+const FinalTranscriptResultTypeDefs = require('../modules/finalTranscriptResult/final_transcript_result.typedef');
 
 // *************** EXPORT MODULE *************** 
-module.exports = mergeTypeDefs([userTypeDefs, studentTypeDefs, schoolTypeDefs, blockTypeDefs, subjectTypeDefs, testTypeDefs, studentTestResultTypeDefs, taskTypeDefs]);
+module.exports = mergeTypeDefs([userTypeDefs, studentTypeDefs, schoolTypeDefs, blockTypeDefs, subjectTypeDefs, testTypeDefs, studentTestResultTypeDefs, taskTypeDefs, FinalTranscriptResultTypeDefs]);
