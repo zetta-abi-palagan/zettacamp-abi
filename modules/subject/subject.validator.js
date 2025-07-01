@@ -30,8 +30,9 @@ function ValidateSubjectStatusFilter(subject_status) {
  * @param {string} [args.subjectInput.name] - The name of the subject.
  * @param {string} [args.subjectInput.description] - The description of the subject.
  * @param {number} [args.subjectInput.coefficient] - The coefficient value for the subject.
- * @param {string} [args.subjectInput.subject_status] - Optional. The status of the subject (e.g., 'ACTIVE').
+ * @param {string} [args.subjectInput.subject_status] - Optional. The status of the subject.
  * @param {Array<string>} [args.subjectInput.connected_blocks] - Optional. An array of block IDs to connect.
+ * @param {object} [args.subjectInput.subject_passing_criteria] - Optional. The criteria for passing the subject.
  * @param {boolean} args.isTransversal - A flag indicating if the subject belongs to a transversal block.
  * @param {boolean} [args.isUpdate=false] - Optional flag to indicate if this is an update operation, which allows for partial data.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
@@ -95,6 +96,91 @@ function ValidateSubjectInput({ subjectInput, isTransversal, isUpdate = false })
 
     if (typeof isTransversal !== 'boolean') {
         throw new ApolloError('isTransversal must be a boolean.', 'BAD_USER_INPUT', { field: 'isTransversal' });
+    }
+
+    if (subjectInput.subject_passing_criteria) {
+        validateSubjectPassingCriteria({ criteria: subjectInput.subject_passing_criteria });
+    }
+}
+
+/**
+ * Recursively validates a nested structure defining the passing criteria for a subject.
+ * A criteria object can be a logical group of other criteria or a single rule.
+ * @param {object} args - The arguments for the validation.
+ * @param {object} args.criteria - The criteria object or sub-object to validate.
+ * @param {string} [args.path='subject_passing_criteria'] - The dot-notation path to the current criteria object, used for clear error messages.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function validateSubjectPassingCriteria({ criteria, path = 'subject_passing_criteria' }) {
+    const validCriteriaType = ['MARK', 'AVERAGE'];
+    const validComparisonOperator = ['GTE', 'LTE', 'GT', 'LT', 'E'];
+    const validLogicalOperator = ['AND', 'OR'];
+
+    const isGroup = Array.isArray(criteria.conditions);
+
+    if (isGroup) {
+        if (
+            typeof criteria.logical_operator !== 'string' ||
+            !validLogicalOperator.includes(criteria.logical_operator.toUpperCase())
+        ) {
+            throw new ApolloError(
+                `Field '${path}.logical_operator' must be a string and one of: ${validLogicalOperator.join(', ')}`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        if (!criteria.conditions.length) {
+            throw new ApolloError(
+                `Field '${path}.conditions' must be a non-empty array.`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        for (let i = 0; i < criteria.conditions.length; i++) {
+            validateSubjectPassingCriteria({
+                criteria: criteria.conditions[i],
+                path: `${path}.conditions[${i}]`
+            });
+        }
+    } else {
+        if (
+            typeof criteria.criteria_type !== 'string' ||
+            !validCriteriaType.includes(criteria.criteria_type.toUpperCase())
+        ) {
+            throw new ApolloError(
+                `Field '${path}.criteria_type' must be a string and one of: ${validCriteriaType.join(', ')}`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        if (criteria.criteria_type.toUpperCase() === 'MARK') {
+            if (
+                typeof criteria.test !== 'string' ||
+                !mongoose.Types.ObjectId.isValid(criteria.test)
+            ) {
+                throw new ApolloError(
+                    `Field '${path}.test' is required and must be a valid ObjectId when 'criteria_type' is 'MARK'.`,
+                    'BAD_USER_INPUT'
+                );
+            }
+        }
+
+        if (
+            typeof criteria.comparison_operator !== 'string' ||
+            !validComparisonOperator.includes(criteria.comparison_operator.toUpperCase())
+        ) {
+            throw new ApolloError(
+                `Field '${path}.comparison_operator' must be a string and one of: ${validComparisonOperator.join(', ')}`,
+                'BAD_USER_INPUT'
+            );
+        }
+
+        if (typeof criteria.mark !== 'number' || criteria.mark < 0) {
+            throw new ApolloError(
+                `Field '${path}.mark' must be a number ≥ 0.`,
+                'BAD_USER_INPUT'
+            );
+        }
     }
 }
 

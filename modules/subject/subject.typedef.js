@@ -9,6 +9,24 @@ module.exports = gql`
         DELETED
     }
 
+    enum CriteriaType {
+        MARK
+        AVERAGE
+    }
+
+    enum ComparisonOperator {
+        GTE
+        LTE
+        GT
+        LT
+        E
+    }
+
+    enum LogicalOperator {
+        AND
+        OR
+    }
+
     input CreateSubjectInput {
         block: ID!
         name: String!
@@ -23,6 +41,21 @@ module.exports = gql`
         coefficient: Float
         connected_blocks: [ID!]
         subject_status: SubjectStatus
+        subject_passing_criteria: SubjectPassingCriteriaInput
+    }
+
+    input SubjectPassingCriteriaInput {
+        logical_operator: LogicalOperator!
+        conditions: [SubjectPassingConditionInput!]!
+    }
+
+    input SubjectPassingConditionInput {
+        criteria_type: CriteriaType
+        test: ID
+        comparison_operator: ComparisonOperator
+        mark: Float
+        logical_operator: LogicalOperator
+        conditions: [SubjectPassingConditionInput!]
     }
 
     type Subject {
@@ -35,12 +68,27 @@ module.exports = gql`
         connected_blocks: [Block!]!
         tests: [Test!]!
         subject_status: SubjectStatus!
+        subject_passing_criteria: SubjectPassingCriteria!
         created_by: User!
         created_at: String!
         updated_by: User!
         updated_at: String!
         deleted_by: User
         deleted_at: String
+    }
+
+    type SubjectPassingCriteria {
+        logical_operator: LogicalOperator
+        conditions: [SubjectPassingCondition!]
+    }
+
+    type SubjectPassingCondition {
+        criteria_type: CriteriaType!
+        test: Test
+        comparison_operator: ComparisonOperator!
+        mark: Float!
+        logical_operator: LogicalOperator
+        conditions: [SubjectPassingCondition!]
     }
 
     type Query {

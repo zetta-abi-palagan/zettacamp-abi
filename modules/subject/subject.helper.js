@@ -72,7 +72,8 @@ function GetUpdateSubjectPayload({ subjectInput, userId, isTransversal }) {
         description,
         coefficient,
         connected_blocks,
-        subject_status
+        subject_status,
+        subject_passing_criteria
     } = subjectInput;
 
     return {
@@ -81,6 +82,7 @@ function GetUpdateSubjectPayload({ subjectInput, userId, isTransversal }) {
         coefficient,
         connected_blocks,
         subject_status: subject_status ? subject_status.toUpperCase() : undefined,
+        subject_passing_criteria,
         updated_by: userId
     };
 }
