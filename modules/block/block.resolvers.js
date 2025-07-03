@@ -132,6 +132,8 @@ async function UpdateBlock(_, { id, updateBlockInput }, context) {
             { new: true }
         ).lean();
 
+        console.log(updatedBlock);
+
         if (!updatedBlock) {
             throw new ApolloError('Block update failed', 'BLOCK_UPDATE_FAILED');
         }

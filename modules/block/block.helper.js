@@ -83,7 +83,7 @@ function GetUpdateBlockPayload({ updateBlockInput, userId }) {
         block_passing_criteria
     } = updateBlockInput;
 
-    return {
+    const payload = {
         name,
         description,
         evaluation_type: evaluation_type ? evaluation_type.toUpperCase() : undefined,
@@ -94,6 +94,14 @@ function GetUpdateBlockPayload({ updateBlockInput, userId }) {
         block_passing_criteria,
         updated_by: userId
     };
+
+    Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+            delete payload[key];
+        }
+    });
+
+    return payload;
 }
 
 /**
@@ -110,7 +118,7 @@ async function GetDeleteBlockPayload({ blockId, userId }) {
 
         const deletionTimestamp = Date.now();
 
-        const block = await BlockModel.findOne({ _id: blockId, block_status: {$ne: 'DELETED'} });
+        const block = await BlockModel.findOne({ _id: blockId, block_status: { $ne: 'DELETED' } });
         if (!block) {
             throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
         }

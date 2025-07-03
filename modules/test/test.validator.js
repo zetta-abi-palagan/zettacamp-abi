@@ -39,11 +39,11 @@ function ValidateTestStatusFilter(test_status) {
  * @param {string} [args.testInput.test_status] - Optional. The status of the test.
  * @param {object} [args.testInput.test_passing_criteria] - Optional. The criteria for passing the test.
  * @param {string} args.evaluationType - The evaluation type of the parent block.
- * @param {Array<object>} [args.notations] - Optional. The existing notations from the test document, used for validating passing criteria on update.
+ * @param {Array<object>} [args.existingNotations] - Optional. The existing notations from the test document, used for validating passing criteria on update.
  * @param {boolean} [args.isUpdate=false] - Optional flag to indicate if this is an update operation, which allows for partial data.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateTestInput({ testInput, evaluationType, notations, isUpdate = false }) {
+function ValidateTestInput({ testInput, evaluationType, existingNotations, isUpdate = false }) {
     const validTestType = ['FREE_CONTINUOUS_CONTROL', 'MEMMOIRE_ORAL_NON_JURY', 'MEMOIRE_ORAL', 'MEMOIRE_WRITTEN', 'MENTOR_EVALUATION', 'ORAL', 'WRITTEN'];
     const validResultVisibility = ['NEVER', 'AFTER_CORRECTION', 'AFTER_JURY_DECISION_FOR_FINAL_TRANSCRIPT'];
     const validCorrectionType = ['ADMTC', 'CERTIFIER', 'CROSS_CORRECTION', 'PREPARATION_CENTER'];
@@ -149,8 +149,8 @@ function ValidateTestInput({ testInput, evaluationType, notations, isUpdate = fa
         }
     }
 
-    if (test_passing_criteria) {
-        const notationsSource = testInput.notations || notations;
+    if (testInput.test_passing_criteria) {
+        const notationsSource = testInput.notations || existingNotations;
 
         if (!notationsSource || !Array.isArray(notationsSource) || notationsSource.length === 0) {
             throw new ApolloError("Cannot validate 'test_passing_criteria' because no notations are available for this test.", 'BAD_USER_INPUT');
@@ -159,7 +159,7 @@ function ValidateTestInput({ testInput, evaluationType, notations, isUpdate = fa
         const validNotationTexts = new Set(notationsSource.map(n => n.notation_text));
 
         validateTestPassingCriteria({
-            criteria: test_passing_criteria,
+            criteria: testInput.test_passing_criteria,
             validNotationTexts: validNotationTexts
         });
     }

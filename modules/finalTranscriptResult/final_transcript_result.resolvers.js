@@ -102,6 +102,72 @@ async function UpdatedByLoader(finalTranscriptResult, _, context) {
     }
 }
 
+/**
+ * Loads the block associated with a block result using a DataLoader.
+ * @param {object} parent - The parent object.
+ * @param {string} parent.block - The ID of the block to load.
+ * @param {object} _ - The arguments object, not used here.
+ * @param {object} context - The GraphQL context containing dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the block object.
+ */
+async function BlockLoader(parent, _, context) {
+    try {
+        FinalTranscriptResultValidator.ValidateBlockLoaderInput(parent, context);
+
+        const block = await context.dataLoaders.BlockLoader.load(parent.block);
+
+        return block;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch block`, 'BLOCK_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Loads the parent subject for a subject result using a DataLoader.
+ * @param {object} parent - The parent parent object.
+ * @param {string} parent.subject - The ID of the subject to load.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the subject object.
+ */
+async function SubjectLoader(parent, _, context) {
+    try {
+        FinalTranscriptResultValidator.ValidateSubjectLoaderInput(parent, context);
+
+        const subject = await context.dataLoaders.SubjectLoader.load(parent.subject);
+
+        return subject;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch subject`, 'SUBJECT_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Loads the test associated with a test result using a DataLoader.
+ * @param {object} parent - The parent object.
+ * @param {string} parent.test - The ID of the test to load.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the test object.
+ */
+async function TestLoader(parent, _, context) {
+    try {
+        FinalTranscriptResultValidator.ValidateTestLoaderInput(parent, context);
+
+        const test = await context.dataLoaders.TestLoader.load(parent.test);
+
+        return test;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch test`, 'TEST_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 // *************** EXPORT MODULE ***************
 module.exports = {
     Query: {
@@ -112,5 +178,17 @@ module.exports = {
         student: StudentLoader,
         created_by: CreatedByLoader,
         updated_by: UpdatedByLoader,
+    },
+
+    BlockResult: {
+        block: BlockLoader,
+    },
+
+    SubjectResult: {
+        subject: SubjectLoader,
+    },
+
+    TestResult: {
+        test: TestLoader,
     }
 }

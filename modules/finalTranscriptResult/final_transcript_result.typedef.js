@@ -41,6 +41,6 @@ module.exports = gql`
     }
 
     type Query {
-        GetFinalTranscriptResult(studentId: ID): FinalTranscriptResult
+        GetFinalTranscriptResult(studentId: ID!): FinalTranscriptResult
     }
 `

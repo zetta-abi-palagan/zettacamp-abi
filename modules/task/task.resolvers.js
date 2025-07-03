@@ -1,5 +1,7 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
+const { Worker } = require('worker_threads');
+const path = require('path');
 
 // *************** IMPORT MODULE *************** 
 const TaskModel = require('./task.model');
@@ -463,6 +465,16 @@ async function ValidateMarks(_, { task_id, student_test_result_id }, context) {
         if (!validatedStudentTestResult) {
             throw new ApolloError('Failed to validate student test result', 'VALIDATE_STUDENT_TEST_RESULT_FAILED');
         }
+
+
+        // *************** Start transcript generation in background worker
+        const worker = new Worker(path.resolve(__dirname, '../../jobs/worker/run_transcript_calculation.worker.js'), {
+            workerData: { studentId: String(validatedStudentTestResult.student), userId }
+        });
+
+        worker.on('message', function (msg) { console.log('Worker message:', msg); });
+        worker.on('error', function (err) { console.error('Worker uncaught error:', err); });
+        worker.on('exit', function (code) { if (code !== 0) console.error('Worker exited with code', code); });
 
         return {
             student_test_result: validatedStudentTestResult,

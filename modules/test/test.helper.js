@@ -63,10 +63,10 @@ function GetCreateTestPayload({ testInput, userId, evaluationType }) {
  * @param {string} args.evaluationType - The evaluation type of the parent block.
  * @returns {object} A processed data payload suitable for a database update operation.
  */
-function GetUpdateTestPayload({ testInput, userId, evaluationType }) {
+function GetUpdateTestPayload({ testInput, userId, evaluationType, existingNotations }) {
     CommonValidator.ValidateInputTypeObject(testInput);
     CommonValidator.ValidateObjectId(userId);
-    TestValidator.ValidateTestInput({ testInput, evaluationType, isUpdate: true });
+    TestValidator.ValidateTestInput({ testInput, evaluationType, existingNotations, isUpdate: true });
 
     const {
         name,
@@ -82,7 +82,7 @@ function GetUpdateTestPayload({ testInput, userId, evaluationType }) {
         test_passing_criteria,
     } = testInput;
 
-    return {
+    const payload = {
         name,
         description,
         test_type: test_type ? test_type.toUpperCase() : undefined,
@@ -96,6 +96,14 @@ function GetUpdateTestPayload({ testInput, userId, evaluationType }) {
         test_passing_criteria,
         updated_by: userId
     };
+
+    Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+            delete payload[key];
+        }
+    });
+
+    return payload;
 }
 
 /**

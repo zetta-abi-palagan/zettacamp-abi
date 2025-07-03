@@ -151,7 +151,7 @@ async function UpdateSubject(_, { id, updateSubjectInput }, context) {
         SubjectValidator.ValidateSubjectInput({ subjectInput: updateSubjectInput, isTransversal: subject.is_transversal, isUpdate: true });
 
         // *************** Prepare the payload and update the subject
-        const updateSubjectPayload = SubjectHelper.GetUpdateSubjectPayload({ updateSubjectInput, userId, isTransversal: subject.is_transversal });
+        const updateSubjectPayload = SubjectHelper.GetUpdateSubjectPayload({ subjectInput: updateSubjectInput, userId, isTransversal: subject.is_transversal });
 
         const updatedSubject = await SubjectModel.findOneAndUpdate(
             { _id: id },

@@ -83,10 +83,10 @@ module.exports = gql`
     }
 
     type SubjectPassingCondition {
-        criteria_type: CriteriaType!
+        criteria_type: CriteriaType
         test: Test
-        comparison_operator: ComparisonOperator!
-        mark: Float!
+        comparison_operator: ComparisonOperator
+        mark: Float
         logical_operator: LogicalOperator
         conditions: [SubjectPassingCondition!]
     }

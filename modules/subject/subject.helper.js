@@ -76,7 +76,7 @@ function GetUpdateSubjectPayload({ subjectInput, userId, isTransversal }) {
         subject_passing_criteria
     } = subjectInput;
 
-    return {
+    const payload = {
         name,
         description,
         coefficient,
@@ -85,6 +85,14 @@ function GetUpdateSubjectPayload({ subjectInput, userId, isTransversal }) {
         subject_passing_criteria,
         updated_by: userId
     };
+
+    Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+            delete payload[key];
+        }
+    });
+
+    return payload;
 }
 
 /**

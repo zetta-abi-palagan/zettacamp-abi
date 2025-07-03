@@ -68,7 +68,7 @@ function GetUpdateTaskPayload({ taskInput, userId }) {
         due_date
     } = taskInput;
 
-    return {
+    const payload = {
         user: user,
         title: title,
         description: description,
@@ -77,6 +77,14 @@ function GetUpdateTaskPayload({ taskInput, userId }) {
         due_date: due_date,
         updated_by: userId
     };
+
+    Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+            delete payload[key];
+        }
+    });
+
+    return payload;
 }
 
 /**

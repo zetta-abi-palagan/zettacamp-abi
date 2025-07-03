@@ -193,7 +193,7 @@ const testSchema = mongoose.Schema({
     }
 });
 
-const TestModel = mongoose.model('Test', testSchema);
+const TestModel = mongoose.model('test', testSchema);
 
 // *************** EXPORT MODULE ***************
 module.exports = TestModel;
