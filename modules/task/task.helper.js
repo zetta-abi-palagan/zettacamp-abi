@@ -69,20 +69,14 @@ function GetUpdateTaskPayload({ taskInput, userId }) {
     } = taskInput;
 
     const payload = {
-        user: user,
-        title: title,
-        description: description,
+        user: user ? user : undefined,
+        title: title ? title : undefined,
+        description: description ? description : undefined,
         task_type: task_type ? task_type.toUpperCase() : undefined,
         task_status: task_status ? task_status.toUpperCase() : undefined,
-        due_date: due_date,
-        updated_by: userId
+        due_date: due_date ? due_date : undefined,
+        updated_by: userId ? userId : undefined
     };
-
-    Object.keys(payload).forEach(key => {
-        if (payload[key] === undefined) {
-            delete payload[key];
-        }
-    });
 
     return payload;
 }

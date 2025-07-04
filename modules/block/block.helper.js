@@ -79,14 +79,14 @@ function GetUpdateBlockPayload({ updateBlockInput, subjects, userId }) {
     } = updateBlockInput;
 
     const payload = {
-        name,
-        description,
+        name: name ? name : undefined,
+        description: description ? description : undefined,
         evaluation_type: evaluation_type ? evaluation_type.toUpperCase() : undefined,
         block_type: block_type ? block_type.toUpperCase() : undefined,
-        connected_block,
-        is_counted_in_final_transcript,
+        connected_block: connected_block ? connected_block : undefined,
+        is_counted_in_final_transcript: is_counted_in_final_transcript ? is_counted_in_final_transcript : undefined,
         block_status: block_status ? block_status.toUpperCase() : undefined,
-        block_passing_criteria,
+        block_passing_criteria: block_passing_criteria ? block_passing_criteria : undefined,
         updated_by: userId
     };
 

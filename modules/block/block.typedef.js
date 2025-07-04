@@ -23,19 +23,6 @@ module.exports = gql`
         INACTIVE
         DELETED
     }
-
-    enum CriteriaType {
-        MARK
-        AVERAGE
-    }
-
-    enum ComparisonOperator {
-        GTE
-        LTE
-        GT
-        LT
-        E
-    }
     
     input CreateBlockInput {
         name: String!

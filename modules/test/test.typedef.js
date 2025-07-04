@@ -32,19 +32,6 @@ module.exports = gql`
         DELETED
     }
 
-    enum CriteriaType {
-        MARK
-        AVERAGE
-    }
-
-    enum ComparisonOperator {
-        GTE
-        LTE
-        GT
-        LT
-        E
-    }
-
     input NotationInput {
         notation_text: String!
         max_points: Float!

@@ -83,26 +83,20 @@ function GetUpdateTestPayload({ testInput, userId, evaluationType, existingNotat
     } = testInput;
 
     const payload = {
-        name,
-        description,
+        name: name ? name : undefined,
+        description: description ? description : undefined,
         test_type: test_type ? test_type.toUpperCase() : undefined,
         result_visibility: result_visibility ? result_visibility.toUpperCase() : undefined,
-        weight,
+        weight: weight ? weight : undefined,
         correction_type: correction_type ? correction_type.toUpperCase() : undefined,
-        notations,
-        is_retake,
-        connected_test,
+        notations: notations ? notations : undefined,
+        is_retake: is_retake ? is_retake : undefined,
+        connected_test: connected_test ? connected_test : undefined,
         test_status: test_status ? test_status.toUpperCase() : undefined,
-        test_passing_criteria,
-        updated_by: userId
+        test_passing_criteria: test_passing_criteria ? test_passing_criteria : undefined,
+        updated_by: userId ? userId : undefined
     };
-
-    Object.keys(payload).forEach(key => {
-        if (payload[key] === undefined) {
-            delete payload[key];
-        }
-    });
-
+    
     return payload;
 }
 

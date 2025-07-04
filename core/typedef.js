@@ -2,6 +2,7 @@
 const { mergeTypeDefs } = require('@graphql-tools/merge');
 
 // *************** IMPORT MODULE *************** 
+const commonTypeDefs = require('../shared/typedef/common.typedef')
 const userTypeDefs = require('../modules/user/user.typedef');
 const studentTypeDefs = require('../modules/student/student.typedef');
 const schoolTypeDefs = require('../modules/school/school.typedef');
@@ -13,4 +14,4 @@ const taskTypeDefs = require('../modules/task/task.typedef');
 const FinalTranscriptResultTypeDefs = require('../modules/finalTranscriptResult/final_transcript_result.typedef');
 
 // *************** EXPORT MODULE *************** 
-module.exports = mergeTypeDefs([userTypeDefs, studentTypeDefs, schoolTypeDefs, blockTypeDefs, subjectTypeDefs, testTypeDefs, studentTestResultTypeDefs, taskTypeDefs, FinalTranscriptResultTypeDefs]);
+module.exports = mergeTypeDefs([commonTypeDefs, userTypeDefs, studentTypeDefs, schoolTypeDefs, blockTypeDefs, subjectTypeDefs, testTypeDefs, studentTestResultTypeDefs, taskTypeDefs, FinalTranscriptResultTypeDefs]);

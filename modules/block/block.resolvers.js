@@ -124,12 +124,13 @@ async function UpdateBlock(_, { id, updateBlockInput }, context) {
         CommonValidator.ValidateInputTypeObject(updateBlockInput);
 
         const block = await BlockModel.findById(id).select({ subjects: 1 }).lean();
+        if (!block) {
+            throw new ApolloError('Block not found', 'NOT_FOUND');
+        }
 
         BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, subjects: block.subjects, isUpdate: true });
 
         const updateBlockPayload = BlockHelper.GetUpdateBlockPayload({ updateBlockInput, subjects: block.subjects, userId });
-
-
 
         const updatedBlock = await BlockModel.findOneAndUpdate(
             { _id: id },
@@ -333,28 +334,6 @@ async function DeletedByLoader(block, _, context) {
     }
 }
 
-/**
- * Loads a single subject document, typically intended for resolving a related field.
- * @param {object} parent - The parent object from the resolver.
- * @param {string} parent.deleted_by - The ID of the subject to load.
- * @param {object} _ - The arguments object, not used in this resolver.
- * @param {object} context - The GraphQL context containing the dataLoaders.
- * @returns {Promise<object>} - A promise that resolves to the subject object.
- */
-async function SingleSubjectLoader(parent, _, context) {
-    try {
-        BlockValidator.ValidateSingleSubjectLoaderInput(parent, context);
-
-        const deletedBy = await context.dataLoaders.SubjectLoader.load(parent.deleted_by);
-
-        return deletedBy;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch subject: ${error.message}`, 'SUBJECT_FETCH_FAILED', {
-            error: error.message
-        });
-    }
-}
-
 // *************** EXPORT MODULE ***************
 module.exports = {
     Query: {
@@ -373,9 +352,5 @@ module.exports = {
         created_by: CreatedByLoader,
         updated_by: UpdatedByLoader,
         deleted_by: DeletedByLoader
-    },
-
-    BlockPassingCondition: {
-        subject: SingleSubjectLoader,
     }
 }

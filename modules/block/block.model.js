@@ -1,43 +1,35 @@
 // *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
-const blockConditionSchema = mongoose.Schema({
-    // Type of the criteria: ‘MARK’ or ‘AVERAGE’
-    criteria_type: {
-        type: String,
-        enum: ['MARK', 'AVERAGE']
-    },
-
-    // Reference to subject that is part of the condition to pass the block
-    subject: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "subject"
-    },
-
-    // The comparison operator used in the criteria: 'GTE' (>=), 'LTE' (<=), 'GT' (>), 'LT' (<), 'E' (==)
-    comparison_operator: {
-        type: String,
-        enum: ['GTE', 'LTE', 'GT', 'LT', 'E']
-    },
-
-    // The average of total subject marks, or the mark of one subject (depends on criteria_type)
-    mark: {
-        type: Number
-    }
-}, { _id: false });
-
-const blockCriteriaGroupSchema = mongoose.Schema({
-    // An array of conditions, each object in condition will be checked by AND logical operator
-    conditions: {
-        type: [blockConditionSchema]
-    }
-}, { _id: false });
-
 const blockCriteriaGroupListSchema = mongoose.Schema({
     // An array of criteria groups, each group will be checked by OR logical operator
-    block_criteria_groups: {
-        type: [blockCriteriaGroupSchema]
-    }
+    block_criteria_groups: [{
+        // An array of conditions, each object in condition will be checked by AND logical operator
+        conditions: [{
+            // Type of the criteria: ‘MARK’ or ‘AVERAGE’
+            criteria_type: {
+                type: String,
+                enum: ['MARK', 'AVERAGE']
+            },
+
+            // Reference to subject that is part of the condition to pass the block
+            subject: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "subject"
+            },
+
+            // The comparison operator used in the criteria: 'GTE' (>=), 'LTE' (<=), 'GT' (>), 'LT' (<), 'E' (==)
+            comparison_operator: {
+                type: String,
+                enum: ['GTE', 'LTE', 'GT', 'LT', 'E']
+            },
+
+            // The average of total subject marks, or the mark of one subject (depends on criteria_type)
+            mark: {
+                type: Number
+            }
+        }]
+    }]
 }, { _id: false });
 
 const blockPassingCriteriaSchema = mongoose.Schema({

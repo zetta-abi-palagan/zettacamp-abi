@@ -1,42 +1,34 @@
 // *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
-const testConditionSchema = mongoose.Schema({
-    // Type of the criteria: ‘MARK’ or ‘AVERAGE’
-    criteria_type: {
-        type: String,
-        enum: ['MARK', 'AVERAGE']
-    },
-
-    // Reference to notation_text in notations field in test
-    notation_text: {
-        type: String,
-    },
-
-    // The comparison operator used in the criteria: 'GTE' (>=), 'LTE' (<=), 'GT' (>), 'LT' (<), 'E' (==)
-    comparison_operator: {
-        type: String,
-        enum: ['GTE', 'LTE', 'GT', 'LT', 'E']
-    },
-
-    // The average of total test marks, or the mark of one test (depends on criteria_type)
-    mark: {
-        type: Number
-    }
-}, { _id: false });
-
-const testCriteriaGroupSchema = mongoose.Schema({
-    // An array of conditions, each object in condition will be checked by AND logical operator
-    conditions: {
-        type: [testConditionSchema]
-    }
-}, { _id: false });
-
 const testCriteriaGroupListSchema = mongoose.Schema({
     // An array of criteria groups, each group will be checked by OR logical operator
-    test_criteria_groups: {
-        type: [testCriteriaGroupSchema]
-    }
+    test_criteria_groups: [{
+        // An array of conditions, each object in condition will be checked by AND logical operator
+        conditions: [{
+            // Type of the criteria: ‘MARK’ or ‘AVERAGE’
+            criteria_type: {
+                type: String,
+                enum: ['MARK', 'AVERAGE']
+            },
+
+            // Reference to notation_text in notations field in test
+            notation_text: {
+                type: String,
+            },
+
+            // The comparison operator used in the criteria: 'GTE' (>=), 'LTE' (<=), 'GT' (>), 'LT' (<), 'E' (==)
+            comparison_operator: {
+                type: String,
+                enum: ['GTE', 'LTE', 'GT', 'LT', 'E']
+            },
+
+            // The average of total test marks, or the mark of one test (depends on criteria_type)
+            mark: {
+                type: Number
+            }
+        }]
+    }]
 }, { _id: false });
 
 const testPassingCriteriaSchema = mongoose.Schema({

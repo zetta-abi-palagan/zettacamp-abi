@@ -73,20 +73,14 @@ function GetUpdateSubjectPayload({ subjectInput, userId, isTransversal, tests })
     } = subjectInput;
 
     const payload = {
-        name,
-        description,
-        coefficient,
-        connected_blocks,
+        name: name ? name : undefined,
+        description: description ? description : undefined,
+        coefficient: coefficient ? coefficient : undefined,
+        connected_blocks: connected_blocks ? connected_blocks : undefined,
         subject_status: subject_status ? subject_status.toUpperCase() : undefined,
-        subject_passing_criteria,
-        updated_by: userId
+        subject_passing_criteria: subject_passing_criteria ? subject_passing_criteria : undefined,
+        updated_by: userId ? userId : undefined
     };
-
-    Object.keys(payload).forEach(key => {
-        if (payload[key] === undefined) {
-            delete payload[key];
-        }
-    });
 
     return payload;
 }
