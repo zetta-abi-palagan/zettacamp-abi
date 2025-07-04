@@ -36,11 +36,6 @@ module.exports = gql`
         LT
         E
     }
-
-    enum LogicalOperator {
-        AND
-        OR
-    }
     
     input CreateBlockInput {
         name: String!
@@ -64,8 +59,16 @@ module.exports = gql`
     }
 
     input BlockPassingCriteriaInput {
-        logical_operator: LogicalOperator!
-        conditions: [BlockPassingConditionInput!]!
+        pass_criteria: BlockCriteriaGroupListInput
+        fail_criteria: BlockCriteriaGroupListInput
+    }
+
+    input BlockCriteriaGroupListInput {
+        block_criteria_groups: [BlockCriteriaGroupInput!]
+    }
+
+    input BlockCriteriaGroupInput {
+        conditions: [BlockPassingConditionInput!]
     }
 
     input BlockPassingConditionInput {
@@ -73,8 +76,6 @@ module.exports = gql`
         subject: ID
         comparison_operator: ComparisonOperator
         mark: Float
-        logical_operator: LogicalOperator
-        conditions: [BlockPassingConditionInput!]
     }
 
     type Block {
@@ -97,17 +98,23 @@ module.exports = gql`
     }
 
     type BlockPassingCriteria {
-        logical_operator: LogicalOperator
+        pass_criteria: BlockCriteriaGroupList
+        fail_criteria: BlockCriteriaGroupList
+    }
+
+    type BlockCriteriaGroupList {
+        block_criteria_groups: [BlockCriteriaGroup!]
+    }
+
+    type BlockCriteriaGroup {
         conditions: [BlockPassingCondition!]
     }
 
     type BlockPassingCondition {
         criteria_type: CriteriaType
-        subject: Subject
+        subject: ID
         comparison_operator: ComparisonOperator
         mark: Float
-        logical_operator: LogicalOperator
-        conditions: [BlockPassingCondition!]
     }
 
     type Query {

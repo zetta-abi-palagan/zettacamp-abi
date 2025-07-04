@@ -156,101 +156,139 @@ function ValidateTestInput({ testInput, evaluationType, existingNotations, isUpd
             throw new ApolloError("Cannot validate 'test_passing_criteria' because no notations are available for this test.", 'BAD_USER_INPUT');
         }
 
-        const validNotationTexts = new Set(notationsSource.map(n => n.notation_text));
-
-        validateTestPassingCriteria({
-            criteria: testInput.test_passing_criteria,
-            validNotationTexts: validNotationTexts
+        validateTestPassingCriteriaInput({
+            testPassingCriteria: testInput.test_passing_criteria,
+            notations: notationsSource
         });
     }
 }
 
 /**
- * Recursively validates a nested structure defining the passing criteria for a test.
- * A criteria object can be a logical group of other criteria or a single rule.
+ * Validates the top-level structure of a test's passing criteria object.
  * @param {object} args - The arguments for the validation.
- * @param {object} args.criteria - The criteria object or sub-object to validate.
- * @param {Set<string>} args.validNotationTexts - A Set of valid notation texts for the test.
- * @param {string} [args.path='test_passing_criteria'] - The dot-notation path to the current criteria object, used for clear error messages.
+ * @param {object} args.testPassingCriteria - The passing criteria object to validate.
+ * @param {Array<object>} args.notations - An array of the test's notation objects to validate against.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function validateTestPassingCriteria({ criteria, validNotationTexts, path = 'test_passing_criteria' }) {
-    const validCriteriaType = ['MARK', 'AVERAGE'];
-    const validComparisonOperator = ['GTE', 'LTE', 'GT', 'LT', 'E'];
-    const validLogicalOperator = ['AND', 'OR'];
+function validateTestPassingCriteriaInput({ testPassingCriteria, notations }) {
+    const { pass_criteria, fail_criteria } = testPassingCriteria;
 
-    const isGroup = Array.isArray(criteria.conditions);
+    if (!pass_criteria && !fail_criteria) {
+        throw new ApolloError(
+            "Field 'test_passing_criteria' must contain at least one of 'pass_criteria' or 'fail_criteria'.",
+            'BAD_USER_INPUT'
+        );
+    }
 
-    if (isGroup) {
-        if (
-            typeof criteria.logical_operator !== 'string' ||
-            !validLogicalOperator.includes(criteria.logical_operator.toUpperCase())
-        ) {
+    const availableNotationTexts = new Set(notations.map(n => n.notation_text));
+
+    if (pass_criteria) {
+        validateTestCriteriaGroups({
+            criteriaGroups: pass_criteria.test_criteria_groups,
+            availableNotationTexts: availableNotationTexts,
+            path: 'test_passing_criteria.pass_criteria.test_criteria_groups'
+        });
+    }
+
+    if (fail_criteria) {
+        validateTestCriteriaGroups({
+            criteriaGroups: fail_criteria.test_criteria_groups,
+            availableNotationTexts: availableNotationTexts,
+            path: 'test_passing_criteria.fail_criteria.test_criteria_groups'
+        });
+    }
+}
+
+/**
+ * Validates an array of criteria groups for a test's passing criteria.
+ * @param {object} args - The arguments for the validation.
+ * @param {Array<object>} args.criteriaGroups - The array of criteria groups to validate.
+ * @param {Set<string>} args.availableNotationTexts - A Set of notation text strings that are valid for this test.
+ * @param {string} args.path - The dot-notation path to the current groups array, used for error messages.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function validateTestCriteriaGroups({ criteriaGroups, availableNotationTexts, path }) {
+    if (!Array.isArray(criteriaGroups) || criteriaGroups.length === 0) {
+        throw new ApolloError(
+            `Field '${path}' must be a non-empty array of criteria groups.`,
+            'BAD_USER_INPUT'
+        );
+    }
+
+    criteriaGroups.forEach((group, groupIndex) => {
+        const groupPath = `${path}[${groupIndex}]`;
+        if (!Array.isArray(group.conditions) || group.conditions.length === 0) {
             throw new ApolloError(
-                `Field '${path}.logical_operator' must be a string and one of: ${validLogicalOperator.join(', ')}`,
+                `Field '${groupPath}.conditions' must be a non-empty array.`,
                 'BAD_USER_INPUT'
             );
         }
 
-        if (!criteria.conditions.length) {
-            throw new ApolloError(
-                `Field '${path}.conditions' must be a non-empty array.`,
-                'BAD_USER_INPUT'
-            );
-        }
-
-        criteria.conditions.forEach((condition, index) => {
-            validateTestPassingCriteria({
-                criteria: condition,
-                validNotationTexts,
-                path: `${path}.conditions[${index}]`
+        group.conditions.forEach((condition, condIndex) => {
+            const conditionPath = `${groupPath}.conditions[${condIndex}]`;
+            validateSingleNotationCondition({
+                condition,
+                availableNotationTexts,
+                path: conditionPath
             });
         });
-    } else {
+    });
+}
+
+/**
+ * Validates a single, atomic condition object within a test's criteria group.
+ * @param {object} args - The arguments for the validation.
+ * @param {object} args.condition - The single condition object to validate.
+ * @param {Set<string>} args.availableNotationTexts - A Set of valid notation texts to check against if criteria type is 'MARK'.
+ * @param {string} args.path - The dot-notation path to the current condition, used for error messages.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function validateSingleNotationCondition({ condition, availableNotationTexts, path }) {
+    const validCriteriaType = ['MARK', 'AVERAGE'];
+    const validComparisonOperator = ['GTE', 'LTE', 'GT', 'LT', 'E'];
+
+    if (
+        typeof condition.criteria_type !== 'string' ||
+        !validCriteriaType.includes(condition.criteria_type.toUpperCase())
+    ) {
+        throw new ApolloError(
+            `Field '${path}.criteria_type' is required and must be one of: ${validCriteriaType.join(', ')}.`,
+            'BAD_USER_INPUT'
+        );
+    }
+
+    if (
+        typeof condition.comparison_operator !== 'string' ||
+        !validComparisonOperator.includes(condition.comparison_operator.toUpperCase())
+    ) {
+        throw new ApolloError(
+            `Field '${path}.comparison_operator' is required and must be one of: ${validComparisonOperator.join(', ')}.`,
+            'BAD_USER_INPUT'
+        );
+    }
+
+    if (typeof condition.mark !== 'number' || condition.mark < 0) {
+        throw new ApolloError(
+            `Field '${path}.mark' is required and must be a number ≥ 0.`,
+            'BAD_USER_INPUT'
+        );
+    }
+
+    if (condition.criteria_type.toUpperCase() === 'MARK') {
         if (
-            typeof criteria.criteria_type !== 'string' ||
-            !validCriteriaType.includes(criteria.criteria_type.toUpperCase())
+            typeof condition.notation_text !== 'string' ||
+            condition.notation_text.trim() === ''
         ) {
             throw new ApolloError(
-                `Field '${path}.criteria_type' must be a string and one of: ${validCriteriaType.join(', ')}`,
+                `Field '${path}.notation_text' is required and must be a non-empty string when 'criteria_type' is 'MARK'.`,
                 'BAD_USER_INPUT'
             );
         }
-
-        if (
-            typeof criteria.comparison_operator !== 'string' ||
-            !validComparisonOperator.includes(criteria.comparison_operator.toUpperCase())
-        ) {
+        if (!availableNotationTexts.has(condition.notation_text)) {
             throw new ApolloError(
-                `Field '${path}.comparison_operator' must be a string and one of: ${validComparisonOperator.join(', ')}`,
+                `Value "${condition.notation_text}" in '${path}.notation_text' does not match any notation defined for this test.`,
                 'BAD_USER_INPUT'
             );
-        }
-
-        if (typeof criteria.mark !== 'number' || criteria.mark < 0) {
-            throw new ApolloError(
-                `Field '${path}.mark' must be a number ≥ 0.`,
-                'BAD_USER_INPUT'
-            );
-        }
-
-        if (criteria.criteria_type.toUpperCase() === 'MARK') {
-            if (
-                typeof criteria.notation_text !== 'string' ||
-                criteria.notation_text.trim() === ''
-            ) {
-                throw new ApolloError(
-                    `Field '${path}.notation_text' is required and must be a non-empty string when 'criteria_type' is 'MARK'.`,
-                    'BAD_USER_INPUT'
-                );
-            }
-
-            if (!validNotationTexts.has(criteria.notation_text)) {
-                throw new ApolloError(
-                    `Value "${criteria.notation_text}" for '${path}.notation_text' does not match any defined notations for this test.`,
-                    'BAD_USER_INPUT'
-                );
-            }
         }
     }
 }

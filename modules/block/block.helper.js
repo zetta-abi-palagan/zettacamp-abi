@@ -54,23 +54,18 @@ function GetCreateBlockPayload({ createBlockInput, userId }) {
 }
 
 /**
- * Processes and transforms a raw block input object into a structured data payload for an update operation.
+ * Processes and transforms a raw block input object into a structured data payload for a partial update operation.
+ * It only includes fields that are explicitly provided in the input.
  * @param {object} args - The arguments for creating the payload.
  * @param {object} args.updateBlockInput - The raw input object containing the block's properties to update.
- * @param {string} args.updateBlockInput.name - The name of the block.
- * @param {string} args.updateBlockInput.description - The description of the block.
- * @param {string} args.updateBlockInput.evaluation_type - The evaluation method (e.g., 'COMPETENCY').
- * @param {string} args.updateBlockInput.block_type - The type of block (e.g., 'REGULAR').
- * @param {string} [args.updateBlockInput.connected_block] - Optional. The ID of a related block.
- * @param {boolean} args.updateBlockInput.is_counted_in_final_transcript - Flag for final transcript inclusion.
- * @param {string} args.updateBlockInput.block_status - The status of the block (e.g., 'ACTIVE').
+ * @param {Array<object>} args.subjects - The existing subjects of the block, used for validation.
  * @param {string} args.userId - The ID of the user updating the block.
- * @returns {object} A processed data payload suitable for a database update operation.
+ * @returns {object} A processed data payload suitable for a partial database update operation.
  */
-function GetUpdateBlockPayload({ updateBlockInput, userId }) {
+function GetUpdateBlockPayload({ updateBlockInput, subjects, userId }) {
     CommonValidator.ValidateInputTypeObject(updateBlockInput);
     CommonValidator.ValidateObjectId(userId);
-    BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, isUpdate: true });
+    BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, subjects, isUpdate: true });
 
     const {
         name,
@@ -137,8 +132,6 @@ async function GetDeleteBlockPayload({ blockId, userId }) {
             tasks: null,
             studentTestResults: null
         };
-
-        console.log(deleteBlockPayload.block);
 
         if (!subjectIds.length) return deleteBlockPayload;
 

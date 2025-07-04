@@ -34,10 +34,11 @@ function ValidateSubjectStatusFilter(subject_status) {
  * @param {Array<string>} [args.subjectInput.connected_blocks] - Optional. An array of block IDs to connect.
  * @param {object} [args.subjectInput.subject_passing_criteria] - Optional. The criteria for passing the subject.
  * @param {boolean} args.isTransversal - A flag indicating if the subject belongs to a transversal block.
- * @param {boolean} [args.isUpdate=false] - Optional flag to indicate if this is an update operation, which allows for partial data.
+ * @param {Array<object>} [args.tests] - The existing tests of the subject, required for validating passing criteria.
+ * @param {boolean} [args.isUpdate=false] - Optional flag to indicate if this is an update operation.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function ValidateSubjectInput({ subjectInput, isTransversal, isUpdate = false }) {
+function ValidateSubjectInput({ subjectInput, isTransversal, tests, isUpdate = false }) {
     const validStatus = ['ACTIVE', 'INACTIVE'];
 
     const validationRules = [
@@ -99,90 +100,147 @@ function ValidateSubjectInput({ subjectInput, isTransversal, isUpdate = false })
     }
 
     if (subjectInput.subject_passing_criteria) {
-        validateSubjectPassingCriteria({ criteria: subjectInput.subject_passing_criteria });
+        if (!tests || !tests.length) {
+            throw new ApolloError("Cannot set 'subject_passing_criteria' because the subject has no tests.", 'BAD_USER_INPUT');
+        }
+
+        validateSubjectPassingCriteriaInput({
+            subjectPassingCriteria: subjectInput.subject_passing_criteria,
+            tests: tests
+        });
     }
 }
 
 /**
- * Recursively validates a nested structure defining the passing criteria for a subject.
- * A criteria object can be a logical group of other criteria or a single rule.
+ * Validates the top-level structure of a subject's passing criteria object.
  * @param {object} args - The arguments for the validation.
- * @param {object} args.criteria - The criteria object or sub-object to validate.
- * @param {string} [args.path='subject_passing_criteria'] - The dot-notation path to the current criteria object, used for clear error messages.
+ * @param {object} args.subjectPassingCriteria - The passing criteria object to validate.
+ * @param {Array<object>} args.tests - An array of the subject's tests to validate against.
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
-function validateSubjectPassingCriteria({ criteria, path = 'subject_passing_criteria' }) {
-    const validCriteriaType = ['MARK', 'AVERAGE'];
-    const validComparisonOperator = ['GTE', 'LTE', 'GT', 'LT', 'E'];
-    const validLogicalOperator = ['AND', 'OR'];
+function validateSubjectPassingCriteriaInput({ subjectPassingCriteria, tests }) {
+    const { pass_criteria, fail_criteria } = subjectPassingCriteria;
 
-    const isGroup = Array.isArray(criteria.conditions);
+    if (!pass_criteria && !fail_criteria) {
+        throw new ApolloError(
+            "Field 'subject_passing_criteria' must contain at least one of 'pass_criteria' or 'fail_criteria'.",
+            'BAD_USER_INPUT'
+        );
+    }
 
-    if (isGroup) {
-        if (
-            typeof criteria.logical_operator !== 'string' ||
-            !validLogicalOperator.includes(criteria.logical_operator.toUpperCase())
-        ) {
+    const availableTestIds = new Set(tests.map(String));
+
+    if (pass_criteria) {
+        validateSubjectCriteriaGroups({
+            criteriaGroups: pass_criteria.subject_criteria_groups,
+            availableTestIds: availableTestIds,
+            path: 'subject_passing_criteria.pass_criteria.subject_criteria_groups'
+        });
+    }
+
+    if (fail_criteria) {
+        validateSubjectCriteriaGroups({
+            criteriaGroups: fail_criteria.subject_criteria_groups,
+            availableTestIds: availableTestIds,
+            path: 'subject_passing_criteria.fail_criteria.subject_criteria_groups'
+        });
+    }
+}
+
+/**
+ * Validates an array of criteria groups for a subject's passing criteria.
+ * @param {object} args - The arguments for the validation.
+ * @param {Array<object>} args.criteriaGroups - The array of criteria groups to validate.
+ * @param {Set<string>} args.availableTestIds - A Set of test IDs that are valid for this subject.
+ * @param {string} args.path - The dot-notation path to the current groups array, used for error messages.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function validateSubjectCriteriaGroups({ criteriaGroups, availableTestIds, path }) {
+    if (!Array.isArray(criteriaGroups) || criteriaGroups.length === 0) {
+        throw new ApolloError(
+            `Field '${path}' must be a non-empty array of criteria groups.`,
+            'BAD_USER_INPUT'
+        );
+    }
+
+    criteriaGroups.forEach((group, groupIndex) => {
+        const groupPath = `${path}[${groupIndex}]`;
+        if (!Array.isArray(group.conditions) || group.conditions.length === 0) {
             throw new ApolloError(
-                `Field '${path}.logical_operator' must be a string and one of: ${validLogicalOperator.join(', ')}`,
+                `Field '${groupPath}.conditions' must be a non-empty array.`,
                 'BAD_USER_INPUT'
             );
         }
 
-        if (!criteria.conditions.length) {
-            throw new ApolloError(
-                `Field '${path}.conditions' must be a non-empty array.`,
-                'BAD_USER_INPUT'
-            );
-        }
-
-        criteria.conditions.forEach((condition, index) => {
-            validateSubjectPassingCriteria({
-                criteria: condition,
-                path: `${path}.conditions[${index}]`
+        group.conditions.forEach((condition, condIndex) => {
+            const conditionPath = `${groupPath}.conditions[${condIndex}]`;
+            validateSingleTestCondition({
+                condition,
+                availableTestIds,
+                path: conditionPath
             });
         });
-    } else {
+    });
+}
+
+/**
+ * Validates a single, atomic condition object within a subject's criteria group.
+ * @param {object} args - The arguments for the validation.
+ * @param {object} args.condition - The single condition object to validate.
+ * @param {Set<string>} args.availableTestIds - A Set of valid test IDs to check against if criteria type is 'MARK'.
+ * @param {string} args.path - The dot-notation path to the current condition, used for error messages.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function validateSingleTestCondition({ condition, availableTestIds, path }) {
+    const validCriteriaType = ['MARK', 'AVERAGE'];
+    const validComparisonOperator = ['GTE', 'LTE', 'GT', 'LT', 'E'];
+
+    if (
+        typeof condition.criteria_type !== 'string' ||
+        !validCriteriaType.includes(condition.criteria_type.toUpperCase())
+    ) {
+        throw new ApolloError(
+            `Field '${path}.criteria_type' is required and must be one of: ${validCriteriaType.join(', ')}.`,
+            'BAD_USER_INPUT'
+        );
+    }
+
+    if (
+        typeof condition.comparison_operator !== 'string' ||
+        !validComparisonOperator.includes(condition.comparison_operator.toUpperCase())
+    ) {
+        throw new ApolloError(
+            `Field '${path}.comparison_operator' is required and must be one of: ${validComparisonOperator.join(', ')}.`,
+            'BAD_USER_INPUT'
+        );
+    }
+
+    if (typeof condition.mark !== 'number' || condition.mark < 0) {
+        throw new ApolloError(
+            `Field '${path}.mark' is required and must be a number ≥ 0.`,
+            'BAD_USER_INPUT'
+        );
+    }
+
+    if (condition.criteria_type.toUpperCase() === 'MARK') {
         if (
-            typeof criteria.criteria_type !== 'string' ||
-            !validCriteriaType.includes(criteria.criteria_type.toUpperCase())
+            typeof condition.test !== 'string' ||
+            !mongoose.Types.ObjectId.isValid(condition.test)
         ) {
             throw new ApolloError(
-                `Field '${path}.criteria_type' must be a string and one of: ${validCriteriaType.join(', ')}`,
+                `Field '${path}.test' is required and must be a valid ObjectId when 'criteria_type' is 'MARK'.`,
                 'BAD_USER_INPUT'
             );
         }
-
-        if (criteria.criteria_type.toUpperCase() === 'MARK') {
-            if (
-                typeof criteria.test !== 'string' ||
-                !mongoose.Types.ObjectId.isValid(criteria.test)
-            ) {
-                throw new ApolloError(
-                    `Field '${path}.test' is required and must be a valid ObjectId when 'criteria_type' is 'MARK'.`,
-                    'BAD_USER_INPUT'
-                );
-            }
-        }
-
-        if (
-            typeof criteria.comparison_operator !== 'string' ||
-            !validComparisonOperator.includes(criteria.comparison_operator.toUpperCase())
-        ) {
+        if (!availableTestIds.has(condition.test)) {
             throw new ApolloError(
-                `Field '${path}.comparison_operator' must be a string and one of: ${validComparisonOperator.join(', ')}`,
-                'BAD_USER_INPUT'
-            );
-        }
-
-        if (typeof criteria.mark !== 'number' || criteria.mark < 0) {
-            throw new ApolloError(
-                `Field '${path}.mark' must be a number ≥ 0.`,
+                `Test with ID "${condition.test}" in '${path}.test' is not associated with this subject.`,
                 'BAD_USER_INPUT'
             );
         }
     }
 }
+
 
 /**
  * Validates the inputs for the BlockLoader resolver.

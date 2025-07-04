@@ -93,7 +93,7 @@ async function CreateTask(_, { createTaskInput }, context) {
         }
 
         CommonValidator.ValidateInputTypeObject(createTaskInput);
-        TaskValidator.ValidateTaskInput(createTaskInput);
+        TaskValidator.ValidateTaskInput({ taskInput: createTaskInput });
 
         // *************** Check if test exists and is not deleted
         const testCheck = await TestModel.findOne({ _id: createTaskInput.test, test_status: { $ne: 'DELETED' } }).lean();
@@ -115,7 +115,7 @@ async function CreateTask(_, { createTaskInput }, context) {
         // *************** Add new task to test's tasks array
         const updatedTest = await TestModel.updateOne({ _id: createTaskInput.test }, { $addToSet: { tasks: newTask._id } });
         if (!updatedTest.nModified) {
-            throw new ApolloError('Failed to add test to subject', 'SUBJECT_UPDATE_FAILED');
+            throw new ApolloError('Failed to add task to test', 'TEST_UPDATE_FAILED');
         }
 
         return newTask;

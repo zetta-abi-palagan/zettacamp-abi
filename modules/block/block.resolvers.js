@@ -122,17 +122,20 @@ async function UpdateBlock(_, { id, updateBlockInput }, context) {
 
         CommonValidator.ValidateObjectId(id);
         CommonValidator.ValidateInputTypeObject(updateBlockInput);
-        BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, isUpdate: true });
 
-        const updateBlockPayload = BlockHelper.GetUpdateBlockPayload({ updateBlockInput, userId });
+        const block = await BlockModel.findById(id).select({ subjects: 1 }).lean();
+
+        BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, subjects: block.subjects, isUpdate: true });
+
+        const updateBlockPayload = BlockHelper.GetUpdateBlockPayload({ updateBlockInput, subjects: block.subjects, userId });
+
+
 
         const updatedBlock = await BlockModel.findOneAndUpdate(
             { _id: id },
             { $set: updateBlockPayload },
             { new: true }
         ).lean();
-
-        console.log(updatedBlock);
 
         if (!updatedBlock) {
             throw new ApolloError('Block update failed', 'BLOCK_UPDATE_FAILED');
@@ -242,23 +245,23 @@ async function DeleteBlock(_, { id }, context) {
 // *************** LOADER ***************
 /**
  * Loads the subjects associated with a block using a DataLoader.
- * @param {object} block - The parent block object.
- * @param {Array<string>} block.subjects - An array of subject IDs to load.
+ * @param {object} parent - The parent object.
+ * @param {Array<string>} parent.subjects - An array of subject IDs to load.
  * @param {object} _ - The arguments object, not used in this resolver.
  * @param {object} context - The GraphQL context containing the dataLoaders.
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of subject objects.
  */
-async function SubjectLoader(block, _, context) {
+async function SubjectLoader(parent, _, context) {
     try {
-        BlockValidator.ValidateSubjectLoaderInput(block, context);
+        BlockValidator.ValidateSubjectLoaderInput(parent, context);
 
-        const subjects = await context.dataLoaders.SubjectLoader.loadMany(block.subjects);
+        const subjects = await context.dataLoaders.SubjectLoader.loadMany(parent.subjects);
 
         return subjects;
     } catch (error) {
         console.error("Error fetching subjects:", error);
 
-        throw new ApolloError(`Failed to fetch subjects for ${block.name}`, 'SUBJECT_FETCH_FAILED', {
+        throw new ApolloError(`Failed to fetch subjects for ${parent.name}`, 'SUBJECT_FETCH_FAILED', {
             error: error.message
         });
     }
@@ -330,6 +333,28 @@ async function DeletedByLoader(block, _, context) {
     }
 }
 
+/**
+ * Loads a single subject document, typically intended for resolving a related field.
+ * @param {object} parent - The parent object from the resolver.
+ * @param {string} parent.deleted_by - The ID of the subject to load.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
+ * @returns {Promise<object>} - A promise that resolves to the subject object.
+ */
+async function SingleSubjectLoader(parent, _, context) {
+    try {
+        BlockValidator.ValidateSingleSubjectLoaderInput(parent, context);
+
+        const deletedBy = await context.dataLoaders.SubjectLoader.load(parent.deleted_by);
+
+        return deletedBy;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch subject: ${error.message}`, 'SUBJECT_FETCH_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 // *************** EXPORT MODULE ***************
 module.exports = {
     Query: {
@@ -348,5 +373,9 @@ module.exports = {
         created_by: CreatedByLoader,
         updated_by: UpdatedByLoader,
         deleted_by: DeletedByLoader
+    },
+
+    BlockPassingCondition: {
+        subject: SingleSubjectLoader,
     }
 }

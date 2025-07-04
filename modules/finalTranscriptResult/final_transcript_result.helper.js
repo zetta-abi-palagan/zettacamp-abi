@@ -6,78 +6,191 @@ require('../subject/subject.model');
 require('../test/test.model');
 
 /**
- * Recursively evaluates a criteria object against a map of marks to determine a pass/fail result.
+ * Evaluates a single condition (e.g., mark >= 80).
  * @param {object} args - The arguments for the evaluation.
- * @param {object} args.criteria - The criteria object, which can be a single rule or a logical group of rules.
- * @param {Map<string, object>} args.marksMap - A map where keys are document IDs and values are mark objects.
- * @returns {boolean} - True if the criteria are met, otherwise false.
+ * @param {object} args.condition - The condition object to evaluate.
+ * @param {Map<string, object>} args.marksMap - A map of all calculated marks for lookup.
+ * @param {number} args.selfScore - The score of the entity itself (used for 'AVERAGE' type).
+ * @param {Array<object>} [args.selfMarks] - The detailed marks of the entity itself (used for 'MARK' type on the current item).
+ * @returns {boolean} - True if the condition is met, otherwise false.
  */
-function EvaluateCriteria({ criteria, marksMap }) {
-    // *************** Return true if no criteria specified
-    if (!criteria) return true;
+function evaluateSingleCondition({ condition, marksMap, selfScore, selfMarks }) {
+    const { criteria_type, subject, test, notation_text, comparison_operator, mark: threshold } = condition;
 
-    // *************** Check if criteria is a logical group (AND/OR of conditions)
-    const isGroup = criteria.logical_operator && Array.isArray(criteria.conditions) && criteria.conditions.length > 0;
+    let sourceMark;
 
-    if (isGroup) {
-        // *************** Recursively evaluate each condition in the group
-        const results = criteria.conditions.map(condition =>
-            EvaluateCriteria({ criteria: condition, marksMap })
-        );
+    if (criteria_type === 'AVERAGE') {
+        sourceMark = selfScore;
+    } else if (criteria_type === 'MARK') {
+        let resultSource;
+        if (test || subject) {
+            const sourceId = subject ? String(subject) : String(test);
+            resultSource = marksMap.get(sourceId);
+        } else {
+            resultSource = { marks: selfMarks };
+        }
 
-        // *************** Combine results based on logical operator
-        return criteria.logical_operator === 'AND'
-            ? results.every(Boolean)
-            : results.some(Boolean);
+        if (resultSource && notation_text && resultSource.marks) {
+            const notation = resultSource.marks.find(m => m.notation_text === notation_text);
+            sourceMark = notation ? notation.mark : undefined;
+        }
     }
 
-    // *************** Determine which result source to use (subject, test, or self)
-    let resultSource;
-    if (criteria.subject) {
-        resultSource = marksMap.get(String(criteria.subject));
-    } else if (criteria.test) {
-        resultSource = marksMap.get(String(criteria.test));
-    } else {
-        resultSource = marksMap.get('self');
-    }
+    if (typeof sourceMark === 'undefined') return false;
 
-    // *************** Return false if no result source found
-    if (!resultSource) return false;
-
-    // *************** Extract the mark to compare (by notation_text if specified, otherwise averageMark)
-    let mark;
-    if (criteria.notation_text && resultSource.marks) {
-        const notationMark = resultSource.marks.find(m => m.notation_text === criteria.notation_text);
-        mark = notationMark ? notationMark.mark : undefined;
-    } else {
-        mark = resultSource.averageMark;
-    }
-
-    // *************** Return false if mark is undefined
-    if (typeof mark === 'undefined') return false;
-
-    // *************** Compare mark using the specified operator
-    switch (criteria.comparison_operator) {
-        case 'GTE': return mark >= criteria.mark;
-        case 'LTE': return mark <= criteria.mark;
-        case 'GT': return mark > criteria.mark;
-        case 'LT': return mark < criteria.mark;
-        case 'E': return mark == criteria.mark;
+    switch (comparison_operator) {
+        case 'GTE': return sourceMark >= threshold;
+        case 'LTE': return sourceMark <= threshold;
+        case 'GT': return sourceMark > threshold;
+        case 'LT': return sourceMark < threshold;
+        case 'E': return sourceMark == threshold;
         default: return false;
     }
 }
 
 /**
+ * Evaluates a group of conditions that are logically connected by 'AND'.
+ * @param {object} args - The arguments for the evaluation.
+ * @param {Array<object>} args.conditions - The array of conditions in the group.
+ * @param {Map<string, object>} args.marksMap - A map of all calculated marks.
+ * @param {number} args.selfScore - The score of the entity itself.
+ * @param {Array<object>} [args.selfMarks] - The detailed marks of the entity itself.
+ * @returns {boolean} - True if all conditions in the group are met, otherwise false.
+ */
+function evaluateConditionGroup({ conditions, marksMap, selfScore, selfMarks }) {
+    // *************** 'every' implements the AND logic
+    return conditions.every(condition =>
+        evaluateSingleCondition({ condition, marksMap, selfScore, selfMarks })
+    );
+}
+
+/**
+ * Evaluates a set of criteria (pass or fail) for an entity.
+ * @param {object} args - The arguments for the evaluation.
+ * @param {object} args.criteriaSet - The pass_criteria or fail_criteria object.
+ * @param {string} args.groupKey - The key for the criteria groups array (e.g., 'block_criteria_groups').
+ * @param {Map<string, object>} args.marksMap - A map of all calculated marks.
+ * @param {number} args.selfScore - The score of the entity itself.
+ * @param {Array<object>} [args.selfMarks] - The detailed marks of the entity itself.
+ * @returns {boolean} - True if the criteria set is satisfied, otherwise false.
+ */
+function evaluateCriteriaSet({ criteriaSet, groupKey, marksMap, selfScore, selfMarks }) {
+    if (!criteriaSet || !Array.isArray(criteriaSet[groupKey])) return false;
+
+    // *************** 'some' implements the OR logic between groups
+    return criteriaSet[groupKey].some(group =>
+        evaluateConditionGroup({ conditions: group.conditions, marksMap, selfScore, selfMarks })
+    );
+}
+
+/**
+ * Calculates the results for all tests within a single subject.
+ * @param {object} args - The arguments for the calculation.
+ * @param {object} args.subject - The subject document, with its 'tests' array populated.
+ * @param {Map<string, object>} args.marksMap - The map of all student test results.
+ * @returns {object} An object containing test results, the weighted sum of marks, and the sum of test weights.
+ */
+function calculateTestResultsForSubject({ subject, marksMap }) {
+    const testResults = [];
+    let subjectWeightedSum = 0;
+    let testWeightSum = 0;
+
+    for (const test of subject.tests) {
+        const resultForTest = marksMap.get(String(test._id)) || { averageMark: 0, marks: [] };
+
+        const passed = evaluateCriteriaSet({
+            criteriaSet: test.test_passing_criteria && test.test_passing_criteria.pass_criteria,
+            groupKey: 'test_criteria_groups',
+            marksMap,
+            selfScore: resultForTest.averageMark,
+            selfMarks: resultForTest.marks
+        });
+        const failed = evaluateCriteriaSet({
+            criteriaSet: test.test_passing_criteria && test.test_passing_criteria.fail_criteria,
+            groupKey: 'test_criteria_groups',
+            marksMap,
+            selfScore: resultForTest.averageMark,
+            selfMarks: resultForTest.marks
+        });
+
+        const testPassed = !failed && passed;
+        const weightedMark = resultForTest.averageMark * test.weight;
+
+        testResults.push({
+            test: test._id,
+            test_result: testPassed ? 'PASS' : 'FAIL',
+            test_total_mark: Number(resultForTest.averageMark.toFixed(2)),
+            test_weighted_mark: Number(weightedMark.toFixed(2))
+        });
+
+        subjectWeightedSum += weightedMark;
+        testWeightSum += test.weight;
+    }
+
+    return { testResults, subjectWeightedSum, testWeightSum };
+}
+
+/**
+ * Calculates the results for all subjects within a single block.
+ * @param {object} args - The arguments for the calculation.
+ * @param {object} args.block - The block document, with its 'subjects' array populated.
+ * @param {Map<string, object>} args.marksMap - The map of all student test results, which will be updated with subject scores.
+ * @returns {object} An object containing subject results, the weighted sum of marks, and the sum of subject coefficients.
+ */
+function calculateSubjectResultsForBlock({ block, marksMap }) {
+    const subjectResults = [];
+    let blockWeightedSum = 0;
+    let blockCoefficientSum = 0;
+
+    for (const subject of block.subjects) {
+        const { testResults, subjectWeightedSum, testWeightSum } = calculateTestResultsForSubject({ subject, marksMap });
+
+        if (Math.abs(testWeightSum - 1) > 0.01) {
+            console.warn(`Warning: Test weights for subject ${subject._id} do not sum to 1. Found: ${testWeightSum}`);
+        }
+
+        const subjectScore = subjectWeightedSum;
+        marksMap.set(String(subject._id), { averageMark: subjectScore });
+
+        const passed = evaluateCriteriaSet({
+            criteriaSet: subject.subject_passing_criteria && subject.subject_passing_criteria.pass_criteria,
+            groupKey: 'subject_criteria_groups',
+            marksMap,
+            selfScore: subjectScore,
+        });
+        const failed = evaluateCriteriaSet({
+            criteriaSet: subject.subject_passing_criteria && subject.subject_passing_criteria.fail_criteria,
+            groupKey: 'subject_criteria_groups',
+            marksMap,
+            selfScore: subjectScore,
+        });
+
+        const subjectPassed = !failed && passed;
+        const subjectTotalMark = subjectScore * subject.coefficient;
+
+        subjectResults.push({
+            subject: subject._id,
+            test_results: testResults,
+            subject_total_mark: Number(subjectTotalMark.toFixed(2)),
+            subject_result: subjectPassed ? 'PASS' : 'FAIL'
+        });
+
+        blockWeightedSum += subjectTotalMark;
+        blockCoefficientSum += subject.coefficient;
+    }
+
+    return { subjectResults, blockWeightedSum, blockCoefficientSum };
+}
+
+/**
  * Calculates the entire final transcript for a single student.
- * This function aggregates all test results, evaluates them against block, subject, and test passing criteria,
- * and saves the complete, detailed result to the database.
+ * This function orchestrates the aggregation of all test results and evaluation of all passing criteria.
  * @param {object} args - The arguments for the calculation.
  * @param {string} args.studentId - The ID of the student for whom to calculate the transcript.
  * @param {string} args.userId - The ID of the user initiating the calculation.
  * @returns {Promise<void>} - This function does not return a value but saves the result to the database.
  */
 async function CalculateFinalTranscript({ studentId, userId }) {
-    // *************** Fetch all active blocks with their active subjects and tests
     const blocks = await BlockModel.find({ block_status: 'ACTIVE' })
         .populate({
             path: 'subjects',
@@ -88,109 +201,51 @@ async function CalculateFinalTranscript({ studentId, userId }) {
             }
         }).lean();
 
-    // *************** Fetch all test results for the student
     const studentTestResults = await StudentTestResultModel.find({ student: studentId }).lean();
-
-    // *************** Build a map of test results for quick lookup
     const marksMap = new Map();
     studentTestResults.forEach(result => {
         marksMap.set(String(result.test), { averageMark: result.average_mark, marks: result.marks });
     });
 
-    // *************** Prepare the payload for the final transcript result
+    const blockResults = [];
+    let allBlocksPassed = true;
+
+    for (const block of blocks) {
+        const { subjectResults, blockWeightedSum, blockCoefficientSum } = calculateSubjectResultsForBlock({ block, marksMap });
+        const blockScore = blockCoefficientSum ? blockWeightedSum / blockCoefficientSum : 0;
+
+        const passed = evaluateCriteriaSet({
+            criteriaSet: block.block_passing_criteria && block.block_passing_criteria.pass_criteria,
+            groupKey: 'block_criteria_groups',
+            marksMap,
+            selfScore: blockScore,
+        });
+        const failed = evaluateCriteriaSet({
+            criteriaSet: block.block_passing_criteria && block.block_passing_criteria.fail_criteria,
+            groupKey: 'block_criteria_groups',
+            marksMap,
+            selfScore: blockScore,
+        });
+        const blockPassed = !failed && passed;
+
+        if (!blockPassed) allBlocksPassed = false;
+
+        blockResults.push({
+            block: block._id,
+            subject_results: subjectResults,
+            block_total_mark: Number(blockScore.toFixed(2)),
+            block_result: blockPassed ? 'PASS' : 'FAIL'
+        });
+    }
+
     const finalTranscriptResultPayload = {
         student: studentId,
-        block_results: [],
+        block_results: blockResults,
+        overall_result: allBlocksPassed ? 'PASS' : 'FAIL',
         created_by: userId,
         updated_by: userId
     };
 
-    let allBlocksPassed = true;
-
-    // *************** Iterate through each block
-    for (const block of blocks) {
-        const blockResult = {
-            block: block._id,
-            subject_results: []
-        };
-
-        let blockWeightedSum = 0;
-        let blockCoefficientSum = 0;
-
-        // *************** Iterate through each subject in the block
-        for (const subject of block.subjects) {
-            const subjectResult = {
-                subject: subject._id,
-                test_results: []
-            };
-
-            let subjectWeightedSum = 0;
-            let testWeightSum = 0;
-
-            // *************** Iterate through each test in the subject
-            for (const test of subject.tests) {
-                const resultForTest = marksMap.get(String(test._id)) || { averageMark: 0, marks: [] };
-
-                // *************** Evaluate test passing criteria
-                marksMap.set('self', resultForTest);
-                const testPassed = EvaluateCriteria({ criteria: test.test_passing_criteria, marksMap });
-                marksMap.delete('self');
-
-                const weightedMark = resultForTest.averageMark * test.weight;
-
-                subjectResult.test_results.push({
-                    test: test._id,
-                    test_result: testPassed ? 'PASS' : 'FAIL',
-                    test_total_mark: resultForTest.averageMark,
-                    test_weighted_mark: weightedMark
-                });
-
-                subjectWeightedSum += weightedMark;
-                testWeightSum += test.weight;
-            }
-
-            // *************** Warn if test weights do not sum to 1
-            if (Math.abs(testWeightSum - 1) > 0.01) {
-                console.warn(`Warning: Test weights for subject ${subject._id} do not sum to 1. Found: ${testWeightSum}`);
-            }
-
-            const subjectScore = subjectWeightedSum;
-            marksMap.set(String(subject._id), { averageMark: subjectScore });
-            marksMap.set('self', { averageMark: subjectScore });
-
-            // *************** Evaluate subject passing criteria
-            const subjectPassed = EvaluateCriteria({ criteria: subject.subject_passing_criteria, marksMap });
-
-            marksMap.delete('self');
-            const subjectTotalMark = subjectScore * subject.coefficient;
-
-            subjectResult.subject_total_mark = subjectTotalMark;
-            subjectResult.subject_result = subjectPassed ? 'PASS' : 'FAIL';
-
-            blockResult.subject_results.push(subjectResult);
-            blockWeightedSum += subjectTotalMark;
-            blockCoefficientSum += subject.coefficient;
-        }
-
-        // *************** Calculate block score and evaluate block passing criteria
-        const blockScore = blockCoefficientSum ? blockWeightedSum / blockCoefficientSum : 0;
-
-        marksMap.set('self', { averageMark: blockScore });
-        const blockPassed = EvaluateCriteria({ criteria: block.block_passing_criteria, marksMap });
-        marksMap.delete('self');
-
-        blockResult.block_total_mark = blockScore;
-        blockResult.block_result = blockPassed ? 'PASS' : 'FAIL';
-
-        if (!blockPassed) allBlocksPassed = false;
-
-        finalTranscriptResultPayload.block_results.push(blockResult);
-    }
-
-    // *************** Set overall result based on all blocks
-    finalTranscriptResultPayload.overall_result = allBlocksPassed ? 'PASS' : 'FAIL';
-
-    // *************** Upsert the final transcript result in the database
     const finalTranscriptResult = await FinalTranscriptResultModel.findOneAndUpdate(
         { student: studentId },
         finalTranscriptResultPayload,
@@ -198,7 +253,7 @@ async function CalculateFinalTranscript({ studentId, userId }) {
     );
 
     if (!finalTranscriptResult) {
-        throw new Error('Failed to create final transcript result.');
+        throw new Error('Failed to create or update the final transcript result.');
     }
 }
 

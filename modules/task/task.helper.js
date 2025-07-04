@@ -180,7 +180,7 @@ function GetStudentTestResultPayload({ enterMarksInput, userId, notations }) {
         student: student,
         test: test,
         marks: marks,
-        average_mark: averageMark,
+        average_mark: Number(averageMark.toFixed(2)),
         mark_entry_date: Date.now(),
         student_test_result_status: 'PENDING',
         created_by: userId,

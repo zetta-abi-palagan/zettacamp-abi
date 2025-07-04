@@ -1,13 +1,7 @@
 // *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
-const subjectPassingCriteriaSchema = mongoose.Schema({
-    // Logical operator for the criteria: ‘AND’ or ‘OR’
-    logical_operator: {
-        type: String,
-        enum: ['AND', 'OR']
-    },
-
+const subjectConditionSchema = mongoose.Schema({
     // Type of the criteria: ‘MARK’ or ‘AVERAGE’
     criteria_type: {
         type: String,
@@ -32,10 +26,31 @@ const subjectPassingCriteriaSchema = mongoose.Schema({
     }
 }, { _id: false });
 
-subjectPassingCriteriaSchema.add({
-    // An array of conditions, each being a criteria or a nested group using AND/OR logic
-    conditions: [subjectPassingCriteriaSchema]
-});
+const subjectCriteriaGroupSchema = mongoose.Schema({
+    // An array of conditions, each object in condition will be checked by AND logical operator
+    conditions: {
+        type: [subjectConditionSchema]
+    }
+}, { _id: false });
+
+const subjectCriteriaGroupListSchema = mongoose.Schema({
+    // An array of criteria groups, each group will be checked by OR logical operator
+    subject_criteria_groups: {
+        type: [subjectCriteriaGroupSchema]
+    }
+}, { _id: false });
+
+const subjectPassingCriteriaSchema = mongoose.Schema({
+    // Criteria for passing the subject
+    pass_criteria: {
+        type: subjectCriteriaGroupListSchema
+    },
+
+    // Criteria for failing the subject
+    fail_criteria: {
+        type: subjectCriteriaGroupListSchema
+    },
+}, { _id: false });
 
 const subjectSchema = mongoose.Schema({
     // ID of the block the subject belongs to

@@ -22,11 +22,6 @@ module.exports = gql`
         E
     }
 
-    enum LogicalOperator {
-        AND
-        OR
-    }
-
     input CreateSubjectInput {
         block: ID!
         name: String!
@@ -45,8 +40,16 @@ module.exports = gql`
     }
 
     input SubjectPassingCriteriaInput {
-        logical_operator: LogicalOperator!
-        conditions: [SubjectPassingConditionInput!]!
+        pass_criteria: SubjectCriteriaGroupListInput
+        fail_criteria: SubjectCriteriaGroupListInput
+    }
+
+    input SubjectCriteriaGroupListInput {
+        subject_criteria_groups: [SubjectCriteriaGroupInput!]
+    }
+
+    input SubjectCriteriaGroupInput {
+        conditions: [SubjectPassingConditionInput!]
     }
 
     input SubjectPassingConditionInput {
@@ -54,8 +57,6 @@ module.exports = gql`
         test: ID
         comparison_operator: ComparisonOperator
         mark: Float
-        logical_operator: LogicalOperator
-        conditions: [SubjectPassingConditionInput!]
     }
 
     type Subject {
@@ -78,17 +79,23 @@ module.exports = gql`
     }
 
     type SubjectPassingCriteria {
-        logical_operator: LogicalOperator
+        pass_criteria: SubjectCriteriaGroupList
+        fail_criteria: SubjectCriteriaGroupList
+    }
+
+    type SubjectCriteriaGroupList {
+        subject_criteria_groups: [SubjectCriteriaGroup!]
+    }
+
+    type SubjectCriteriaGroup {
         conditions: [SubjectPassingCondition!]
     }
 
     type SubjectPassingCondition {
         criteria_type: CriteriaType
-        test: Test
+        test: ID
         comparison_operator: ComparisonOperator
         mark: Float
-        logical_operator: LogicalOperator
-        conditions: [SubjectPassingCondition!]
     }
 
     type Query {

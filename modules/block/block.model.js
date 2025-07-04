@@ -1,13 +1,7 @@
 // *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
-const blockPassingCriteriaSchema = mongoose.Schema({
-    // Logical operator for the criteria: ‘AND’ or ‘OR’
-    logical_operator: {
-        type: String,
-        enum: ['AND', 'OR']
-    },
-
+const blockConditionSchema = mongoose.Schema({
     // Type of the criteria: ‘MARK’ or ‘AVERAGE’
     criteria_type: {
         type: String,
@@ -32,10 +26,31 @@ const blockPassingCriteriaSchema = mongoose.Schema({
     }
 }, { _id: false });
 
-blockPassingCriteriaSchema.add({
-    // An array of conditions, each being a criteria or a nested group using AND/OR logic
-    conditions: [blockPassingCriteriaSchema]
-});
+const blockCriteriaGroupSchema = mongoose.Schema({
+    // An array of conditions, each object in condition will be checked by AND logical operator
+    conditions: {
+        type: [blockConditionSchema]
+    }
+}, { _id: false });
+
+const blockCriteriaGroupListSchema = mongoose.Schema({
+    // An array of criteria groups, each group will be checked by OR logical operator
+    block_criteria_groups: {
+        type: [blockCriteriaGroupSchema]
+    }
+}, { _id: false });
+
+const blockPassingCriteriaSchema = mongoose.Schema({
+    // Criteria for passing the block
+    pass_criteria: {
+        type: blockCriteriaGroupListSchema
+    },
+
+    // Criteria for failing the block
+    fail_criteria: {
+        type: blockCriteriaGroupListSchema
+    },
+}, { _id: false });
 
 const blockSchema = mongoose.Schema({
     // Block’s name

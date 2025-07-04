@@ -1,13 +1,7 @@
 // *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
-const testPassingCriteriaSchema = mongoose.Schema({
-    // Logical operator for the criteria: ‘AND’ or ‘OR’
-    logical_operator: {
-        type: String,
-        enum: ['AND', 'OR']
-    },
-
+const testConditionSchema = mongoose.Schema({
     // Type of the criteria: ‘MARK’ or ‘AVERAGE’
     criteria_type: {
         type: String,
@@ -17,7 +11,6 @@ const testPassingCriteriaSchema = mongoose.Schema({
     // Reference to notation_text in notations field in test
     notation_text: {
         type: String,
-
     },
 
     // The comparison operator used in the criteria: 'GTE' (>=), 'LTE' (<=), 'GT' (>), 'LT' (<), 'E' (==)
@@ -26,16 +19,37 @@ const testPassingCriteriaSchema = mongoose.Schema({
         enum: ['GTE', 'LTE', 'GT', 'LT', 'E']
     },
 
-    // The average of total notation marks, or the mark of one notation (depends on criteria_type)
+    // The average of total test marks, or the mark of one test (depends on criteria_type)
     mark: {
         type: Number
     }
 }, { _id: false });
 
-testPassingCriteriaSchema.add({
-    // An array of conditions, each being a criteria or a nested group using AND/OR logic
-    conditions: [testPassingCriteriaSchema]
-});
+const testCriteriaGroupSchema = mongoose.Schema({
+    // An array of conditions, each object in condition will be checked by AND logical operator
+    conditions: {
+        type: [testConditionSchema]
+    }
+}, { _id: false });
+
+const testCriteriaGroupListSchema = mongoose.Schema({
+    // An array of criteria groups, each group will be checked by OR logical operator
+    test_criteria_groups: {
+        type: [testCriteriaGroupSchema]
+    }
+}, { _id: false });
+
+const testPassingCriteriaSchema = mongoose.Schema({
+    // Criteria for passing the test
+    pass_criteria: {
+        type: testCriteriaGroupListSchema
+    },
+
+    // Criteria for failing the test
+    fail_criteria: {
+        type: testCriteriaGroupListSchema
+    },
+}, { _id: false });
 
 const testSchema = mongoose.Schema({
     // ID of the subject the test belongs to
