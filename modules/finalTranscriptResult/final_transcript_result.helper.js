@@ -12,17 +12,6 @@ require('../subject/subject.model');
 require('../test/test.model');
 
 /**
- * A Handlebars helper to format a number to a fixed number of decimal places.
- * @param {number} number - The number to be formatted.
- * @param {number} digits - The number of digits to appear after the decimal point.
- * @returns {string} The formatted number as a string, or an empty string if the input is not a number.
- */
-handlebars.registerHelper('toFixed', function (number, digits) {
-    if (typeof number !== 'number') return '';
-    return Number(number).toFixed(digits);
-});
-
-/**
  * A Handlebars helper to format a date into a human-readable string (e.g., "July 7, 2025").
  * @param {Date|string} date - The date object or string to be formatted.
  * @returns {string} The formatted date string, or an empty string if the input is invalid.

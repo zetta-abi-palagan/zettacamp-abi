@@ -148,19 +148,19 @@
                 <tr class="block-row">
                     <td><span class="item-type">Block:</span>{{block.name}}</td>
                     <td>{{block_result}}</td>
-                    <td>{{toFixed block_total_mark 2}}</td>
+                    <td>{{block_total_mark}}</td>
                 </tr>
                 {{#each subject_results}}
                 <tr class="subject-row">
                     <td><span class="item-type">Subject:</span>{{subject.name}}</td>
                     <td>{{subject_result}}</td>
-                    <td>{{toFixed subject_total_mark 2}}</td>
+                    <td>{{subject_total_mark}}</td>
                 </tr>
                 {{#each test_results}}
                 <tr class="test-row">
                     <td><span class="item-type">Test:</span>{{test.name}}</td>
                     <td>{{test_result}}</td>
-                    <td>{{toFixed test_total_mark 2}}</td>
+                    <td>{{test_total_mark}}</td>
                 </tr>
                 {{/each}}
                 {{/each}}
