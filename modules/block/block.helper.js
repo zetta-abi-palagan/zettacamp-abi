@@ -90,12 +90,6 @@ function GetUpdateBlockPayload({ updateBlockInput, subjects, userId }) {
         updated_by: userId
     };
 
-    Object.keys(payload).forEach(key => {
-        if (payload[key] === undefined) {
-            delete payload[key];
-        }
-    });
-
     return payload;
 }
 
