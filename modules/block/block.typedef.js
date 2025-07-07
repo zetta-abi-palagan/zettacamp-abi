@@ -42,6 +42,27 @@ module.exports = gql`
         connected_block: ID
         is_counted_in_final_transcript: Boolean
         block_status: BlockStatus
+        block_passing_criteria: BlockPassingCriteriaInput
+    }
+
+    input BlockPassingCriteriaInput {
+        pass_criteria: BlockCriteriaGroupListInput
+        fail_criteria: BlockCriteriaGroupListInput
+    }
+
+    input BlockCriteriaGroupListInput {
+        block_criteria_groups: [BlockCriteriaGroupInput!]
+    }
+
+    input BlockCriteriaGroupInput {
+        conditions: [BlockPassingConditionInput!]
+    }
+
+    input BlockPassingConditionInput {
+        criteria_type: CriteriaType
+        subject: ID
+        comparison_operator: ComparisonOperator
+        mark: Float
     }
 
     type Block {
@@ -54,12 +75,33 @@ module.exports = gql`
         is_counted_in_final_transcript: Boolean!
         subjects: [Subject!]!
         block_status: BlockStatus!
+        block_passing_criteria: BlockPassingCriteria
         created_by: User!
         created_at: String!
         updated_by: User!
         updated_at: String!
         deleted_by: User
         deleted_at: String
+    }
+
+    type BlockPassingCriteria {
+        pass_criteria: BlockCriteriaGroupList
+        fail_criteria: BlockCriteriaGroupList
+    }
+
+    type BlockCriteriaGroupList {
+        block_criteria_groups: [BlockCriteriaGroup!]
+    }
+
+    type BlockCriteriaGroup {
+        conditions: [BlockPassingCondition!]
+    }
+
+    type BlockPassingCondition {
+        criteria_type: CriteriaType
+        subject: ID
+        comparison_operator: ComparisonOperator
+        mark: Float
     }
 
     type Query {

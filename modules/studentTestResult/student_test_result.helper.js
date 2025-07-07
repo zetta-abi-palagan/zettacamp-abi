@@ -32,7 +32,7 @@ function GetUpdateStudentTestResultPayload({ marks, userId, notations }) {
 
     return {
         marks: marks,
-        average_mark: averageMark,
+        average_mark: Number(averageMark.toFixed(2)),
         updated_by: userId
     };
 }

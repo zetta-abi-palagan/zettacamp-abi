@@ -1,6 +1,48 @@
 // *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
+const testCriteriaGroupListSchema = mongoose.Schema({
+    // An array of criteria groups, each group will be checked by OR logical operator
+    test_criteria_groups: [{
+        // An array of conditions, each object in condition will be checked by AND logical operator
+        conditions: [{
+            // Type of the criteria: ‘MARK’ or ‘AVERAGE’
+            criteria_type: {
+                type: String,
+                enum: ['MARK', 'AVERAGE']
+            },
+
+            // Reference to notation_text in notations field in test
+            notation_text: {
+                type: String,
+            },
+
+            // The comparison operator used in the criteria: 'GTE' (>=), 'LTE' (<=), 'GT' (>), 'LT' (<), 'E' (==)
+            comparison_operator: {
+                type: String,
+                enum: ['GTE', 'LTE', 'GT', 'LT', 'E']
+            },
+
+            // The average of total test marks, or the mark of one test (depends on criteria_type)
+            mark: {
+                type: Number
+            }
+        }]
+    }]
+}, { _id: false });
+
+const testPassingCriteriaSchema = mongoose.Schema({
+    // Criteria for passing the test
+    pass_criteria: {
+        type: testCriteriaGroupListSchema
+    },
+
+    // Criteria for failing the test
+    fail_criteria: {
+        type: testCriteriaGroupListSchema
+    },
+}, { _id: false });
+
 const testSchema = mongoose.Schema({
     // ID of the subject the test belongs to
     subject: {
@@ -83,6 +125,11 @@ const testSchema = mongoose.Schema({
         required: true
     },
 
+    // Rules for passing the test using logical conditions on notation performance
+    test_passing_criteria: {
+        type: testPassingCriteriaSchema
+    },
+
     // Published status of the test
     is_published: {
         type: Boolean,
@@ -152,7 +199,7 @@ const testSchema = mongoose.Schema({
     }
 });
 
-const TestModel = mongoose.model('Test', testSchema);
+const TestModel = mongoose.model('test', testSchema);
 
 // *************** EXPORT MODULE ***************
 module.exports = TestModel;

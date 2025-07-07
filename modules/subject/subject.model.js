@@ -1,6 +1,49 @@
 // *************** IMPORT CORE ***************
 const mongoose = require('mongoose');
 
+const subjectCriteriaGroupListSchema = mongoose.Schema({
+    // An array of criteria groups, each group will be checked by OR logical operator
+    subject_criteria_groups: [{
+        // An array of conditions, each object in condition will be checked by AND logical operator
+        conditions: [{
+            // Type of the criteria: ‘MARK’ or ‘AVERAGE’
+            criteria_type: {
+                type: String,
+                enum: ['MARK', 'AVERAGE']
+            },
+
+            // Reference to test that is part of the condition to pass the subject
+            test: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "test"
+            },
+
+            // The comparison operator used in the criteria: 'GTE' (>=), 'LTE' (<=), 'GT' (>), 'LT' (<), 'E' (==)
+            comparison_operator: {
+                type: String,
+                enum: ['GTE', 'LTE', 'GT', 'LT', 'E']
+            },
+
+            // The average of total test marks, or the mark of one test (depends on criteria_type)
+            mark: {
+                type: Number
+            }
+        }]
+    }]
+}, { _id: false });
+
+const subjectPassingCriteriaSchema = mongoose.Schema({
+    // Criteria for passing the subject
+    pass_criteria: {
+        type: subjectCriteriaGroupListSchema
+    },
+
+    // Criteria for failing the subject
+    fail_criteria: {
+        type: subjectCriteriaGroupListSchema
+    },
+}, { _id: false });
+
 const subjectSchema = mongoose.Schema({
     // ID of the block the subject belongs to
     block: {
@@ -51,6 +94,11 @@ const subjectSchema = mongoose.Schema({
         type: String,
         enum: ['ACTIVE', 'INACTIVE', 'DELETED'],
         required: true
+    },
+
+    // Rules for passing the subject using logical conditions on test performance
+    subject_passing_criteria: {
+        type: subjectPassingCriteriaSchema
     },
 
     // ID of the user who created this subject record

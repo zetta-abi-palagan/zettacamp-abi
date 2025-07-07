@@ -215,30 +215,29 @@ async function UpdateTest(_, { id, updateTestInput }, context) {
         }
 
         CommonValidator.ValidateObjectId(id);
-        CommonValidator.ValidateObjectId(updateTestInput.subject);
 
         // *************** Fetch the test to be updated
-        const test = await TestModel.findById(id).lean();
+        const test = await TestModel.findById(id).select({ subject: 1, notations: 1 }).lean();
         if (!test) {
             throw new ApolloError('Test not found', 'NOT_FOUND');
         }
 
         // *************** Ensure parent subject exists and is active
-        const parentSubject = await SubjectModel.findOne({ _id: updateTestInput.subject, subject_status: { $ne: 'DELETED' } }).select({ block: 1 }).lean();
+        const parentSubject = await SubjectModel.findOne({ _id: test.subject, subject_status: { $ne: 'DELETED' } }).select({ block: 1 }).lean();
         if (!parentSubject) {
             throw new ApolloError('Parent subject not found.', 'NOT_FOUND');
         }
 
         // *************** Ensure parent block to the subject exists and is active
-        const parentBlock = await BlockModel.findById({ _id: parentSubject.block, block_status: { $ne: 'DELETED' } }).select({ evaluation_type: 1 }).lean();
-        if (!block || block.block_status !== 'ACTIVE') {
+        const parentBlock = await BlockModel.findById({ _id: parentSubject.block, block_status: { $ne: 'DELETED' } }).select({ evaluation_type: 1, block_status: 1 }).lean();
+        if (!parentBlock || parentBlock.block_status !== 'ACTIVE') {
             throw new ApolloError('Parent block not found.', 'NOT_FOUND');
         }
 
-        TestValidator.ValidateTestInput({ testInput: updateTestInput, evaluationType: parentBlock.evaluation_type, isUpdate: true });
+        TestValidator.ValidateTestInput({ testInput: updateTestInput, evaluationType: parentBlock.evaluation_type, existingNotations: test.notations, isUpdate: true });
 
         // *************** Prepare payload and update test
-        const updateTestPayload = TestHelper.GetUpdateTestPayload({ testInput: updateTestInput, userId, evaluationType: parentBlock.evaluation_type });
+        const updateTestPayload = TestHelper.GetUpdateTestPayload({ testInput: updateTestInput, userId, evaluationType: parentBlock.evaluation_type, existingNotations: test.notations });
 
         // *************** Update the test in the database
         const updatedTest = await TestModel.findOneAndUpdate({ _id: id }, { $set: updateTestPayload }, { new: true }).lean();

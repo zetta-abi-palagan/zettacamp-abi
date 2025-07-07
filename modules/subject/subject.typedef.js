@@ -23,6 +23,27 @@ module.exports = gql`
         coefficient: Float
         connected_blocks: [ID!]
         subject_status: SubjectStatus
+        subject_passing_criteria: SubjectPassingCriteriaInput
+    }
+
+    input SubjectPassingCriteriaInput {
+        pass_criteria: SubjectCriteriaGroupListInput
+        fail_criteria: SubjectCriteriaGroupListInput
+    }
+
+    input SubjectCriteriaGroupListInput {
+        subject_criteria_groups: [SubjectCriteriaGroupInput!]
+    }
+
+    input SubjectCriteriaGroupInput {
+        conditions: [SubjectPassingConditionInput!]
+    }
+
+    input SubjectPassingConditionInput {
+        criteria_type: CriteriaType
+        test: ID
+        comparison_operator: ComparisonOperator
+        mark: Float
     }
 
     type Subject {
@@ -35,12 +56,33 @@ module.exports = gql`
         connected_blocks: [Block!]!
         tests: [Test!]!
         subject_status: SubjectStatus!
+        subject_passing_criteria: SubjectPassingCriteria
         created_by: User!
         created_at: String!
         updated_by: User!
         updated_at: String!
         deleted_by: User
         deleted_at: String
+    }
+
+    type SubjectPassingCriteria {
+        pass_criteria: SubjectCriteriaGroupList
+        fail_criteria: SubjectCriteriaGroupList
+    }
+
+    type SubjectCriteriaGroupList {
+        subject_criteria_groups: [SubjectCriteriaGroup!]
+    }
+
+    type SubjectCriteriaGroup {
+        conditions: [SubjectPassingCondition!]
+    }
+
+    type SubjectPassingCondition {
+        criteria_type: CriteriaType
+        test: ID
+        comparison_operator: ComparisonOperator
+        mark: Float
     }
 
     type Query {

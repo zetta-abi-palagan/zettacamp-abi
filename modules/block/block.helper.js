@@ -54,23 +54,18 @@ function GetCreateBlockPayload({ createBlockInput, userId }) {
 }
 
 /**
- * Processes and transforms a raw block input object into a structured data payload for an update operation.
+ * Processes and transforms a raw block input object into a structured data payload for a partial update operation.
+ * It only includes fields that are explicitly provided in the input.
  * @param {object} args - The arguments for creating the payload.
  * @param {object} args.updateBlockInput - The raw input object containing the block's properties to update.
- * @param {string} args.updateBlockInput.name - The name of the block.
- * @param {string} args.updateBlockInput.description - The description of the block.
- * @param {string} args.updateBlockInput.evaluation_type - The evaluation method (e.g., 'COMPETENCY').
- * @param {string} args.updateBlockInput.block_type - The type of block (e.g., 'REGULAR').
- * @param {string} [args.updateBlockInput.connected_block] - Optional. The ID of a related block.
- * @param {boolean} args.updateBlockInput.is_counted_in_final_transcript - Flag for final transcript inclusion.
- * @param {string} args.updateBlockInput.block_status - The status of the block (e.g., 'ACTIVE').
+ * @param {Array<object>} args.subjects - The existing subjects of the block, used for validation.
  * @param {string} args.userId - The ID of the user updating the block.
- * @returns {object} A processed data payload suitable for a database update operation.
+ * @returns {object} A processed data payload suitable for a partial database update operation.
  */
-function GetUpdateBlockPayload({ updateBlockInput, userId }) {
+function GetUpdateBlockPayload({ updateBlockInput, subjects, userId }) {
     CommonValidator.ValidateInputTypeObject(updateBlockInput);
     CommonValidator.ValidateObjectId(userId);
-    BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, isUpdate: true });
+    BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, subjects, isUpdate: true });
 
     const {
         name,
@@ -79,19 +74,23 @@ function GetUpdateBlockPayload({ updateBlockInput, userId }) {
         block_type,
         connected_block,
         is_counted_in_final_transcript,
-        block_status
+        block_status,
+        block_passing_criteria
     } = updateBlockInput;
 
-    return {
-        name,
-        description,
+    const payload = {
+        name: name ? name : undefined,
+        description: description ? description : undefined,
         evaluation_type: evaluation_type ? evaluation_type.toUpperCase() : undefined,
         block_type: block_type ? block_type.toUpperCase() : undefined,
-        connected_block,
-        is_counted_in_final_transcript,
+        connected_block: connected_block ? connected_block : undefined,
+        is_counted_in_final_transcript: is_counted_in_final_transcript ? is_counted_in_final_transcript : undefined,
         block_status: block_status ? block_status.toUpperCase() : undefined,
+        block_passing_criteria: block_passing_criteria ? block_passing_criteria : undefined,
         updated_by: userId
     };
+
+    return payload;
 }
 
 /**
@@ -108,7 +107,7 @@ async function GetDeleteBlockPayload({ blockId, userId }) {
 
         const deletionTimestamp = Date.now();
 
-        const block = await BlockModel.findOne({ _id: blockId, block_status: {$ne: 'DELETED'} });
+        const block = await BlockModel.findOne({ _id: blockId, block_status: { $ne: 'DELETED' } });
         if (!block) {
             throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
         }
@@ -127,8 +126,6 @@ async function GetDeleteBlockPayload({ blockId, userId }) {
             tasks: null,
             studentTestResults: null
         };
-
-        console.log(deleteBlockPayload.block);
 
         if (!subjectIds.length) return deleteBlockPayload;
 

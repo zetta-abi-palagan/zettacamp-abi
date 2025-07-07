@@ -62,6 +62,27 @@ module.exports = gql`
         is_retake: Boolean
         connected_test: ID
         test_status: TestStatus
+        test_passing_criteria: TestPassingCriteriaInput
+    }
+
+    input TestPassingCriteriaInput {
+        pass_criteria: TestCriteriaGroupListInput
+        fail_criteria: TestCriteriaGroupListInput
+    }
+
+    input TestCriteriaGroupListInput {
+        test_criteria_groups: [TestCriteriaGroupInput!]
+    }
+
+    input TestCriteriaGroupInput {
+        conditions: [TestPassingConditionInput!]
+    }
+
+    input TestPassingConditionInput {
+        criteria_type: CriteriaType
+        notation_text: String
+        comparison_operator: ComparisonOperator
+        mark: Float
     }
 
     type Notation {
@@ -80,6 +101,7 @@ module.exports = gql`
         correction_type: CorrectionType!
         notations: [Notation!]!
         test_status: TestStatus!
+        test_passing_criteria: TestPassingCriteria
         is_published: Boolean!
         published_date: String
         published_by: User
@@ -92,6 +114,26 @@ module.exports = gql`
         updated_at: String!
         deleted_by: User
         deleted_at: String
+    }
+
+    type TestPassingCriteria {
+        pass_criteria: TestCriteriaGroupList
+        fail_criteria: TestCriteriaGroupList
+    }
+
+    type TestCriteriaGroupList {
+        test_criteria_groups: [TestCriteriaGroup!]
+    }
+
+    type TestCriteriaGroup {
+        conditions: [TestPassingCondition!]
+    }
+
+    type TestPassingCondition {
+        criteria_type: CriteriaType
+        notation_text: String
+        comparison_operator: ComparisonOperator
+        mark: Float
     }
 
     type PublishTestPayload {

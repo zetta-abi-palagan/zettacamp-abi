@@ -10,6 +10,7 @@ const subjectResolvers = require('../modules/subject/subject.resolvers');
 const testResolvers = require('../modules/test/test.resolvers');
 const studentTestResultResolvers = require('../modules/studentTestResult/student_test_result.resolvers');
 const taskResolvers = require('../modules/task/task.resolvers');
+const finalTranscriptResultResolvers = require('../modules/finalTranscriptResult/final_transcript_result.resolvers');
 
 // *************** EXPORT MODULE ***************
-module.exports = mergeResolvers([userResolvers, schoolResolvers, studentResolvers, blockResolvers, subjectResolvers, testResolvers, studentTestResultResolvers, taskResolvers]);
+module.exports = mergeResolvers([userResolvers, schoolResolvers, studentResolvers, blockResolvers, subjectResolvers, testResolvers, studentTestResultResolvers, taskResolvers, finalTranscriptResultResolvers]);

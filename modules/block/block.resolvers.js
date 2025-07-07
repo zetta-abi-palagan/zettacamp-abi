@@ -122,9 +122,15 @@ async function UpdateBlock(_, { id, updateBlockInput }, context) {
 
         CommonValidator.ValidateObjectId(id);
         CommonValidator.ValidateInputTypeObject(updateBlockInput);
-        BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, isUpdate: true });
 
-        const updateBlockPayload = BlockHelper.GetUpdateBlockPayload({ updateBlockInput, userId });
+        const block = await BlockModel.findById(id).select({ subjects: 1 }).lean();
+        if (!block) {
+            throw new ApolloError('Block not found', 'NOT_FOUND');
+        }
+
+        BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, subjects: block.subjects, isUpdate: true });
+
+        const updateBlockPayload = BlockHelper.GetUpdateBlockPayload({ updateBlockInput, subjects: block.subjects, userId });
 
         const updatedBlock = await BlockModel.findOneAndUpdate(
             { _id: id },
@@ -240,23 +246,23 @@ async function DeleteBlock(_, { id }, context) {
 // *************** LOADER ***************
 /**
  * Loads the subjects associated with a block using a DataLoader.
- * @param {object} block - The parent block object.
- * @param {Array<string>} block.subjects - An array of subject IDs to load.
+ * @param {object} parent - The parent object.
+ * @param {Array<string>} parent.subjects - An array of subject IDs to load.
  * @param {object} _ - The arguments object, not used in this resolver.
  * @param {object} context - The GraphQL context containing the dataLoaders.
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of subject objects.
  */
-async function SubjectLoader(block, _, context) {
+async function SubjectLoader(parent, _, context) {
     try {
-        BlockValidator.ValidateSubjectLoaderInput(block, context);
+        BlockValidator.ValidateSubjectLoaderInput(parent, context);
 
-        const subjects = await context.dataLoaders.SubjectLoader.loadMany(block.subjects);
+        const subjects = await context.dataLoaders.SubjectLoader.loadMany(parent.subjects);
 
         return subjects;
     } catch (error) {
         console.error("Error fetching subjects:", error);
 
-        throw new ApolloError(`Failed to fetch subjects for ${block.name}`, 'SUBJECT_FETCH_FAILED', {
+        throw new ApolloError(`Failed to fetch subjects for ${parent.name}`, 'SUBJECT_FETCH_FAILED', {
             error: error.message
         });
     }

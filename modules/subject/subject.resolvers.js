@@ -144,14 +144,14 @@ async function UpdateSubject(_, { id, updateSubjectInput }, context) {
         CommonValidator.ValidateInputTypeObject(updateSubjectInput);
 
         // *************** Find the subject to ensure it exists and get its is_transversal property
-        const subject = await SubjectModel.findById(id).select({ is_transversal: 1 }).lean();
+        const subject = await SubjectModel.findById(id).select({ is_transversal: 1, tests: 1 }).lean();
         if (!subject) {
             throw new ApolloError('Subject not found', 'NOT_FOUND');
         }
-        SubjectValidator.ValidateSubjectInput({ subjectInput: updateSubjectInput, isTransversal: subject.is_transversal, isUpdate: true });
+        SubjectValidator.ValidateSubjectInput({ subjectInput: updateSubjectInput, isTransversal: subject.is_transversal, tests: subject.tests, isUpdate: true });
 
         // *************** Prepare the payload and update the subject
-        const updateSubjectPayload = SubjectHelper.GetUpdateSubjectPayload({ updateSubjectInput, userId, isTransversal: subject.is_transversal });
+        const updateSubjectPayload = SubjectHelper.GetUpdateSubjectPayload({ subjectInput: updateSubjectInput, userId, isTransversal: subject.is_transversal, tests: subject.tests });
 
         const updatedSubject = await SubjectModel.findOneAndUpdate(
             { _id: id },

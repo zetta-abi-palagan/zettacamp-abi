@@ -50,39 +50,39 @@ function GetCreateSubjectPayload({ subjectInput, isTransversal, userId }) {
 }
 
 /**
- * Processes and transforms a raw subject input object into a structured data payload for an update operation.
+ * Processes and transforms a raw subject input object into a structured data payload for a partial update operation.
  * @param {object} args - The arguments for creating the payload.
  * @param {object} args.subjectInput - The raw input object containing the subject's properties to update.
- * @param {string} args.subjectInput.name - The name of the subject.
- * @param {string} args.subjectInput.description - The description of the subject.
- * @param {number} args.subjectInput.coefficient - The coefficient value for the subject.
- * @param {Array<string>} [args.subjectInput.connected_blocks] - Optional. An array of connected block IDs.
- * @param {string} args.subjectInput.subject_status - The status of the subject.
  * @param {string} args.userId - The ID of the user updating the subject.
- * @param {boolean} args.isTransversal - A flag indicating if the subject is transversal.
- * @returns {object} A processed data payload suitable for a database update operation.
+ * @param {boolean} args.isTransversal - A flag indicating if the subject belongs to a transversal block.
+ * @param {Array<object>} args.tests - The existing tests of the subject, used for validation.
+ * @returns {object} A processed data payload suitable for a partial database update operation.
  */
-function GetUpdateSubjectPayload({ subjectInput, userId, isTransversal }) {
+function GetUpdateSubjectPayload({ subjectInput, userId, isTransversal, tests }) {
     CommonValidator.ValidateInputTypeObject(subjectInput);
     CommonValidator.ValidateObjectId(userId);
-    SubjectValidator.ValidateSubjectInput({ subjectInput, isTransversal, isUpdate: true });
+    SubjectValidator.ValidateSubjectInput({ subjectInput, isTransversal, tests, isUpdate: true });
 
     const {
         name,
         description,
         coefficient,
         connected_blocks,
-        subject_status
+        subject_status,
+        subject_passing_criteria
     } = subjectInput;
 
-    return {
-        name,
-        description,
-        coefficient,
-        connected_blocks,
+    const payload = {
+        name: name ? name : undefined,
+        description: description ? description : undefined,
+        coefficient: coefficient ? coefficient : undefined,
+        connected_blocks: connected_blocks ? connected_blocks : undefined,
         subject_status: subject_status ? subject_status.toUpperCase() : undefined,
-        updated_by: userId
+        subject_passing_criteria: subject_passing_criteria ? subject_passing_criteria : undefined,
+        updated_by: userId ? userId : undefined
     };
+
+    return payload;
 }
 
 /**

@@ -68,15 +68,17 @@ function GetUpdateTaskPayload({ taskInput, userId }) {
         due_date
     } = taskInput;
 
-    return {
-        user: user,
-        title: title,
-        description: description,
+    const payload = {
+        user: user ? user : undefined,
+        title: title ? title : undefined,
+        description: description ? description : undefined,
         task_type: task_type ? task_type.toUpperCase() : undefined,
         task_status: task_status ? task_status.toUpperCase() : undefined,
-        due_date: due_date,
-        updated_by: userId
+        due_date: due_date ? due_date : undefined,
+        updated_by: userId ? userId : undefined
     };
+
+    return payload;
 }
 
 /**
@@ -172,7 +174,7 @@ function GetStudentTestResultPayload({ enterMarksInput, userId, notations }) {
         student: student,
         test: test,
         marks: marks,
-        average_mark: averageMark,
+        average_mark: Number(averageMark.toFixed(2)),
         mark_entry_date: Date.now(),
         student_test_result_status: 'PENDING',
         created_by: userId,
