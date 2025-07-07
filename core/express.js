@@ -2,7 +2,7 @@
 const express = require('express');
 
 // *************** IMPORT MODULE ***************
-const finalTranscriptResultRouter = require('../modules/finalTranscriptResult/final_transcript_result.router');
+const mergedRouter = require('./router');
 
 /**
  * Initializes and configures the Express application.
@@ -16,7 +16,7 @@ function InitializeExpressApp() {
         res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
     })
 
-    app.use('/api', finalTranscriptResultRouter);
+    app.use('/api', mergedRouter);
 
     return app;
 }
