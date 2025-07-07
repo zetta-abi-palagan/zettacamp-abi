@@ -1,6 +1,9 @@
 // *************** IMPORT CORE ***************
 const express = require('express');
 
+// *************** IMPORT MODULE ***************
+const finalTranscriptResultRouter = require('../modules/finalTranscriptResult/final_transcript_result.router');
+
 /**
  * Initializes and configures the Express application.
  * @returns {object} The configured Express app instance.
@@ -12,6 +15,8 @@ function InitializeExpressApp() {
     app.get('/health', function (req, res) {
         res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
     })
+
+    app.use('/api', finalTranscriptResultRouter);
 
     return app;
 }
