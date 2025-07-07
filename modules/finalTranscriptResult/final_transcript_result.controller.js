@@ -17,7 +17,7 @@ async function GetFinalTranscriptPdf(request, response) {
             return response.status(400).json({ error: 'Invalid Student ID format.' });
         }
 
-        const pdfBuffer = await FinalTranscriptResultHelper.GenerateTranscriptPdf(studentId);
+        const pdfBuffer = await FinalTranscriptResultHelper.GenerateFinalTranscriptPdf(studentId);
 
         response.setHeader('Content-Type', 'application/pdf');
         response.setHeader('Content-Disposition', `inline; filename=transcript-${studentId}.pdf`);

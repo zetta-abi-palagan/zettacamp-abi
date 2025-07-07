@@ -1,9 +1,76 @@
+// *************** IMPORT LIBRARY *************** 
+const fs = require('fs').promises;
+const path = require('path');
+const puppeteer = require('puppeteer');
+const handlebars = require('handlebars');
+
 // *************** IMPORT MODULE *************** 
 const BlockModel = require('../block/block.model');
 const StudentTestResultModel = require('../studentTestResult/student_test_result.model')
 const FinalTranscriptResultModel = require('./final_transcript_result.model');
 require('../subject/subject.model');
 require('../test/test.model');
+
+/**
+ * A Handlebars helper to format a number to a fixed number of decimal places.
+ * @param {number} number - The number to be formatted.
+ * @param {number} digits - The number of digits to appear after the decimal point.
+ * @returns {string} The formatted number as a string, or an empty string if the input is not a number.
+ */
+handlebars.registerHelper('toFixed', function (number, digits) {
+    if (typeof number !== 'number') return '';
+    return Number(number).toFixed(digits);
+});
+
+/**
+ * A Handlebars helper to format a date into a human-readable string (e.g., "July 7, 2025").
+ * @param {Date|string} date - The date object or string to be formatted.
+ * @returns {string} The formatted date string, or an empty string if the input is invalid.
+ */
+handlebars.registerHelper('formatDate', function (date) {
+    if (!date) return '';
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric'
+    });
+});
+
+/**
+ * Generates a PDF buffer for a student's final transcript.
+ * This function fetches the data, compiles an HTML template with it,
+ * and uses a headless browser (Puppeteer) to render the HTML and create the PDF.
+ * @param {string} studentId - The unique identifier of the student.
+ * @returns {Promise<Buffer>} A promise that resolves to a Buffer containing the generated PDF data.
+ */
+async function GenerateFinalTranscriptPdf(studentId) {
+    const transcriptData = await FinalTranscriptResultModel.findOne({ student: studentId })
+        .populate({ path: 'student', populate: { path: 'school' } })
+        .populate({ path: 'block_results.block' })
+        .populate({ path: 'block_results.subject_results.subject' })
+        .populate({ path: 'block_results.subject_results.test_results.test' })
+        .lean();
+
+    if (!transcriptData) {
+        throw new Error('Transcript data not found');
+    }
+
+    const templatePath = path.resolve(__dirname, '../../templates/final_transcript_result.hbs');
+    const templateHtml = await fs.readFile(templatePath, 'utf8');
+    const finalHtml = handlebars.compile(templateHtml)(transcriptData);
+
+    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
+    const page = await browser.newPage();
+    await page.setContent(finalHtml, { waitUntil: 'networkidle0' });
+
+    const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '25px', right: '25px', bottom: '25px', left: '25px' }
+    });
+
+    await browser.close();
+
+    return pdfBuffer;
+}
 
 /**
  * Evaluates a single condition (e.g., mark >= 80).
@@ -259,5 +326,6 @@ async function CalculateFinalTranscript({ studentId, userId }) {
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    CalculateFinalTranscript
+    CalculateFinalTranscript,
+    GenerateFinalTranscriptPdf
 }
