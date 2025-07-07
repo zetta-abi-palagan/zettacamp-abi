@@ -78,17 +78,22 @@ function GetUpdateBlockPayload({ updateBlockInput, subjects, userId }) {
         block_passing_criteria
     } = updateBlockInput;
 
-    const payload = {
-        name: name ? name : undefined,
-        description: description ? description : undefined,
-        evaluation_type: evaluation_type ? evaluation_type.toUpperCase() : undefined,
-        block_type: block_type ? block_type.toUpperCase() : undefined,
-        connected_block: connected_block ? connected_block : undefined,
-        is_counted_in_final_transcript: is_counted_in_final_transcript ? is_counted_in_final_transcript : undefined,
-        block_status: block_status ? block_status.toUpperCase() : undefined,
-        block_passing_criteria: block_passing_criteria ? block_passing_criteria : undefined,
-        updated_by: userId
-    };
+    const payload = {};
+
+    if (name !== undefined && name !== null) payload.name = name;
+    if (description !== undefined && description !== null) payload.description = description;
+    if (evaluation_type !== undefined && evaluation_type !== null) payload.evaluation_type = evaluation_type.toUpperCase();
+    if (block_type !== undefined && block_type !== null) payload.block_type = block_type.toUpperCase();
+    if (connected_block !== undefined && connected_block !== null) payload.connected_block = connected_block;
+    if (is_counted_in_final_transcript !== undefined && is_counted_in_final_transcript !== null) {
+        payload.is_counted_in_final_transcript = is_counted_in_final_transcript;
+    }
+    if (block_status !== undefined && block_status !== null) payload.block_status = block_status.toUpperCase();
+    if (block_passing_criteria !== undefined && block_passing_criteria !== null) {
+        payload.block_passing_criteria = block_passing_criteria;
+    }
+
+    payload.updated_by = userId;
 
     return payload;
 }

@@ -72,15 +72,18 @@ function GetUpdateSubjectPayload({ subjectInput, userId, isTransversal, tests })
         subject_passing_criteria
     } = subjectInput;
 
-    const payload = {
-        name: name ? name : undefined,
-        description: description ? description : undefined,
-        coefficient: coefficient ? coefficient : undefined,
-        connected_blocks: connected_blocks ? connected_blocks : undefined,
-        subject_status: subject_status ? subject_status.toUpperCase() : undefined,
-        subject_passing_criteria: subject_passing_criteria ? subject_passing_criteria : undefined,
-        updated_by: userId ? userId : undefined
-    };
+    const payload = {};
+
+    if (name !== undefined && name !== null) payload.name = name;
+    if (description !== undefined && description !== null) payload.description = description;
+    if (coefficient !== undefined && coefficient !== null) payload.coefficient = coefficient;
+    if (connected_blocks !== undefined && connected_blocks !== null) payload.connected_blocks = connected_blocks;
+    if (subject_status !== undefined && subject_status !== null) payload.subject_status = subject_status.toUpperCase();
+    if (subject_passing_criteria !== undefined && subject_passing_criteria !== null) {
+        payload.subject_passing_criteria = subject_passing_criteria;
+    }
+
+    payload.updated_by = userId;
 
     return payload;
 }

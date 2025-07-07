@@ -82,21 +82,22 @@ function GetUpdateTestPayload({ testInput, userId, evaluationType, existingNotat
         test_passing_criteria,
     } = testInput;
 
-    const payload = {
-        name: name ? name : undefined,
-        description: description ? description : undefined,
-        test_type: test_type ? test_type.toUpperCase() : undefined,
-        result_visibility: result_visibility ? result_visibility.toUpperCase() : undefined,
-        weight: weight ? weight : undefined,
-        correction_type: correction_type ? correction_type.toUpperCase() : undefined,
-        notations: notations ? notations : undefined,
-        is_retake: is_retake ? is_retake : undefined,
-        connected_test: connected_test ? connected_test : undefined,
-        test_status: test_status ? test_status.toUpperCase() : undefined,
-        test_passing_criteria: test_passing_criteria ? test_passing_criteria : undefined,
-        updated_by: userId ? userId : undefined
-    };
-    
+    let payload = {};
+
+    if (name !== undefined && name !== null) payload.name = name;
+    if (description !== undefined && description !== null) payload.description = description;
+    if (test_type !== undefined && test_type !== null) payload.test_type = test_type.toUpperCase();
+    if (result_visibility !== undefined && result_visibility !== null) payload.result_visibility = result_visibility.toUpperCase();
+    if (weight !== undefined && weight !== null) payload.weight = weight;
+    if (correction_type !== undefined && correction_type !== null) payload.correction_type = correction_type.toUpperCase();
+    if (notations !== undefined && notations !== null) payload.notations = notations;
+    if (is_retake !== undefined && is_retake !== null) payload.is_retake = is_retake;
+    if (connected_test !== undefined && connected_test !== null) payload.connected_test = connected_test;
+    if (test_status !== undefined && test_status !== null) payload.test_status = test_status.toUpperCase();
+    if (test_passing_criteria !== undefined && test_passing_criteria !== null) payload.test_passing_criteria = test_passing_criteria;
+
+    payload.updated_by = userId;
+
     return payload;
 }
 
