@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Final Transcript</title>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Final Transcript</h1>
+        </div>
+
+        <div class="student-info">
+            <p><strong>Student Name:</strong> {{student.first_name}} {{student.last_name}}</p>
+            <p><strong>Student ID:</strong> {{student._id}}</p>
+            <p><strong>Date of Birth:</strong> {{formatDate student.date_of_birth}}</p>
+            <p><strong>School:</strong> {{student.school.commercial_name}}</p>
+        </div>
+
+        <div class="summary-section">
+            <p>Overall Result: {{overall_result}}</p>
+        </div>
+
+        <table class="transcript-table">
+            <thead>
+                <tr>
+                    <th>Syllabus Component</th>
+                    <th>Result</th>
+                    <th>Final Mark</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each block_results}}
+                <tr class="block-row">
+                    <td><span class="item-type">Block:</span>{{block.name}}</td>
+                    <td>{{block_result}}</td>
+                    <td>{{toFixed block_total_mark 2}}</td>
+                </tr>
+                {{#each subject_results}}
+                <tr class="subject-row">
+                    <td><span class="item-type">Subject:</span>{{subject.name}}</td>
+                    <td>{{subject_result}}</td>
+                    <td>{{toFixed subject_total_mark 2}}</td>
+                </tr>
+                {{#each test_results}}
+                <tr class="test-row">
+                    <td><span class="item-type">Test:</span>{{test.name}}</td>
+                    <td>{{test_result}}</td>
+                    <td>{{toFixed test_total_mark 2}}</td>
+                </tr>
+                {{/each}}
+                {{/each}}
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>Transcript generated on: {{formatDate updated_at}}</p>
+    </div>
+</body>
+
+</html>
