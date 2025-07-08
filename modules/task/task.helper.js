@@ -68,15 +68,16 @@ function GetUpdateTaskPayload({ taskInput, userId }) {
         due_date
     } = taskInput;
 
-    const payload = {
-        user: user ? user : undefined,
-        title: title ? title : undefined,
-        description: description ? description : undefined,
-        task_type: task_type ? task_type.toUpperCase() : undefined,
-        task_status: task_status ? task_status.toUpperCase() : undefined,
-        due_date: due_date ? due_date : undefined,
-        updated_by: userId ? userId : undefined
-    };
+    const payload = {};
+
+    if (user !== undefined && user !== null) payload.user = user;
+    if (title !== undefined && title !== null) payload.title = title;
+    if (description !== undefined && description !== null) payload.description = description;
+    if (task_type !== undefined && task_type !== null) payload.task_type = task_type.toUpperCase();
+    if (task_status !== undefined && task_status !== null) payload.task_status = task_status.toUpperCase();
+    if (due_date !== undefined && due_date !== null) payload.due_date = due_date;
+
+    payload.updated_by = userId;
 
     return payload;
 }
