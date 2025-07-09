@@ -107,6 +107,7 @@ async function UpdateUser(_, { id, updateUserInput }, context) {
             throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
         }
 
+        CommonValidator.ValidateObjectId(id);
         CommonValidator.ValidateInputTypeObject(updateUserInput);
 
         let isEmailUnique = true;
