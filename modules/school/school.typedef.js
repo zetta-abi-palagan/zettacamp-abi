@@ -38,14 +38,14 @@ module.exports = gql`
     }
 
     input UpdateSchoolInput {
-        commercial_name: String!
-        legal_name: String!
-        address: String!
-        city: String!
-        country: String!
-        zipcode: String!
+        commercial_name: String
+        legal_name: String
+        address: String
+        city: String
+        country: String
+        zipcode: String
         logo: String
-        school_status: Status!
+        school_status: Status
     }
 
     type Query {
@@ -54,8 +54,8 @@ module.exports = gql`
     }
 
     type Mutation {
-        CreateSchool(input: CreateSchoolInput!): School!
-        UpdateSchool(id: ID!, input: UpdateSchoolInput!): School!
+        CreateSchool(createSchoolInput: CreateSchoolInput!): School!
+        UpdateSchool(id: ID!, updateSchoolInput: UpdateSchoolInput!): School!
         DeleteSchool(id: ID!): School!
     }
 `
