@@ -15,20 +15,6 @@ module.exports = gql`
         INACTIVE
         DELETED
     }
-    
-    type User {
-        _id: ID!
-        first_name: String!
-        last_name: String!
-        email: String!
-        role: Role!
-        profile_picture: String
-        user_status: Status!
-        created_by: User!
-        created_at: String!
-        updated_by: User!
-        updated_at: String!
-    }
 
     input CreateUserInput {
         first_name: String!
@@ -50,6 +36,30 @@ module.exports = gql`
         user_status: Status
     }
 
+    input LoginInput {
+        email: String!
+        password: String!
+    }
+
+    type LoginResponse {
+        token: String!
+        user: User!
+    }
+
+    type User {
+        _id: ID!
+        first_name: String!
+        last_name: String!
+        email: String!
+        role: Role!
+        profile_picture: String
+        user_status: Status!
+        created_by: User!
+        created_at: String!
+        updated_by: User!
+        updated_at: String!
+    }
+
     type Query {
         GetAllUsers: [User!]!
         GetOneUser(id: ID!): User
@@ -59,5 +69,6 @@ module.exports = gql`
         CreateUser(createUserInput: CreateUserInput!): User!
         UpdateUser(id: ID!, updateUserInput: UpdateUserInput!): User!
         DeleteUser(id: ID!): User!
+        Login(loginInput: LoginInput!): LoginResponse!
     }
 `
