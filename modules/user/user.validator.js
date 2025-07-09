@@ -44,7 +44,7 @@ function ValidateUserInput({ userInput, isEmailUnique, isUpdate = false }) {
         },
         {
             field: 'password',
-            required: true, // Required only on create
+            required: true,
             validate: (val) => typeof val === 'string' && val.trim() !== '',
             message: 'Password is required.',
         },
