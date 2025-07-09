@@ -21,6 +21,7 @@ function GenerateToken(user) {
     return token;
 }
 
+// *************** EXPORT MODULE ***************s
 module.exports = {
     GenerateToken,
 }
