@@ -75,17 +75,12 @@ async function GetUpdateUserPayload({ updateUserInput, userId, isEmailUnique }) 
         user_status
     } = updateUserInput;
 
-    let hashedPassword;
-    if (password) {
-        hashedPassword = await bcrypt.hash(password, parseInt(config.BCRYPT_ROUNDS));
-    }
-
     const payload = {};
 
     if (first_name !== undefined && first_name !== null) payload.first_name = first_name;
     if (last_name !== undefined && last_name !== null) payload.last_name = last_name;
     if (email !== undefined && email !== null) payload.email = email;
-    if (hashedPassword) payload.password = hashedPassword;
+    if (password !== undefined && password !== null) payload.password = await bcrypt.hash(password, parseInt(config.BCRYPT_ROUNDS));
     if (role !== undefined && role !== null) payload.role = role.toUpperCase();
     if (profile_picture !== undefined && profile_picture !== null) payload.profile_picture = profile_picture;
     if (user_status !== undefined && user_status !== null) payload.user_status = user_status.toUpperCase();
