@@ -21,7 +21,7 @@ const CommonValidator = require('../../shared/validator/index');
  * @param {boolean} args.isEmailUnique - A flag indicating if the provided email is unique.
  * @returns {Promise<object>} A promise that resolves to a processed data payload suitable for a database create operation.
  */
-async function GetCreateUserInputPayload({ createUserInput, userId, isEmailUnique }) {
+async function GetCreateUserPayload({ createUserInput, userId, isEmailUnique }) {
     CommonValidator.ValidateInputTypeObject(createUserInput);
     CommonValidator.ValidateObjectId(userId);
     UserValidator.ValidateUserInput({ userInput: createUserInput, isEmailUnique });
@@ -60,7 +60,7 @@ async function GetCreateUserInputPayload({ createUserInput, userId, isEmailUniqu
  * @param {boolean} args.isEmailUnique - A flag indicating if the provided email is unique.
  * @returns {Promise<object>} A promise that resolves to a processed data payload suitable for a partial database update.
  */
-async function GetUpdateUserInputPayload({ updateUserInput, userId, isEmailUnique }) {
+async function GetUpdateUserPayload({ updateUserInput, userId, isEmailUnique }) {
     CommonValidator.ValidateInputTypeObject(updateUserInput);
     CommonValidator.ValidateObjectId(userId);
     UserValidator.ValidateUserInput({ userInput: updateUserInput, isEmailUnique, isUpdate: true });
@@ -133,7 +133,7 @@ async function GetDeleteUserPayload({ userId, deletedBy }) {
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetCreateUserInputPayload,
-    GetUpdateUserInputPayload,
+    GetCreateUserPayload,
+    GetUpdateUserPayload,
     GetDeleteUserPayload
 }
