@@ -8,7 +8,8 @@ const config = {
     PORT: process.env.PORT,
     MONGO_URI: process.env.MONGO_URI,
     SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
-    SENDGRID_SENDER_EMAIL: process.env.SENDGRID_SENDER_EMAIL
+    SENDGRID_SENDER_EMAIL: process.env.SENDGRID_SENDER_EMAIL,
+    BCRYPT_ROUNDS: process.env.BCRYPT_ROUNDS || 10
 }
 
 // *************** EXPORT MODULE ***************

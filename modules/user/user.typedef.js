@@ -41,12 +41,13 @@ module.exports = gql`
     }
 
     input UpdateUserInput {
-        first_name: String!
-        last_name: String!
-        email: String!
-        role: Role!
+        first_name: String
+        last_name: String
+        email: String
+        password: String
+        role: Role
         profile_picture: String
-        user_status: Status!
+        user_status: Status
     }
 
     type Query {
