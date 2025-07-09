@@ -28,6 +28,7 @@ module.exports = gql`
         first_name: String!
         last_name: String!
         email: String!
+        password: String!
         date_of_birth: String!
         profile_picture: String
         student_status: Status!
@@ -35,13 +36,14 @@ module.exports = gql`
     }
 
     input UpdateStudentInput {
-        first_name: String!
-        last_name: String!
-        email: String!
-        date_of_birth: String!
+        first_name: String
+        last_name: String
+        email: String
+        password: String
+        date_of_birth: String
         profile_picture: String
-        student_status: Status!
-        school: ID!
+        student_status: Status
+        school: ID
     }
 
     type Query {
@@ -50,8 +52,8 @@ module.exports = gql`
     }
 
     type Mutation {
-        CreateStudent(input: CreateStudentInput!): Student!
-        UpdateStudent(id: ID!, input: UpdateStudentInput!): Student!
+        CreateStudent(createStudentInput: CreateStudentInput!): Student!
+        UpdateStudent(id: ID!, updateStudentInput: UpdateStudentInput!): Student!
         DeleteStudent(id: ID!): Student!
     }
 `
