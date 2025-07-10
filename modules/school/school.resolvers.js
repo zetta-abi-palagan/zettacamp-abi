@@ -186,9 +186,9 @@ async function CreateSchool(_, { createSchoolInput }, context) {
         }
 
         CommonValidator.ValidateInputTypeObject(createSchoolInput);
-        SchoolValidator.ValidateSchoolInput(createSchoolInput);
+        SchoolValidator.ValidateSchoolInput({ schoolInput: createSchoolInput });
 
-        const createSchoolPayload = SchoolHelper.GetCreateSchoolPayload(createSchoolInput, userId);
+        const createSchoolPayload = SchoolHelper.GetCreateSchoolPayload({ createSchoolInput, userId });
 
         const newSchool = await SchoolModel.create(createSchoolPayload);
         if (!newSchool) {

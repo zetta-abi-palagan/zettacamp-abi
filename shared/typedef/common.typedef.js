@@ -23,7 +23,7 @@ module.exports = gql`
 
     input SortInput {
         field: String!
-        order: String!
+        order: SortOrder!
     }
 
     input UserReferenceFilterInput {
