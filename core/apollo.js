@@ -30,6 +30,14 @@ async function SetupApolloServer(app, port) {
         typeDefs,
         resolvers,
         context: async ({ req }) => {
+            const query = req.body && req.body.query;
+            if (query && (query.indexOf('__schema') !== -1 || query.indexOf('__type') !== -1)) {
+                return {
+                    dataLoaders: CreateLoaders(),
+                    user: null
+                };
+            }
+
             const { user: decodedUser } = AuthorizeRequest(req, req.body);
 
             let user;
