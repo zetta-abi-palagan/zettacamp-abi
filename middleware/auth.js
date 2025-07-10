@@ -54,7 +54,7 @@ function VerifyToken(token) {
  * @param {object} body - The parsed body of the request, containing the GraphQL query and variables.
  * @returns {Promise<object>} A promise that resolves to an object containing the authenticated user's data for the GraphQL context.
  */
-async function AuthorizeRequest(req, body) {
+function AuthorizeRequest(req, body) {
     try {
         // *************** Extract token from Authorization header
         const token = ExtractBearerToken(req);
