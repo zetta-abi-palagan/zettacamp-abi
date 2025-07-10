@@ -9,23 +9,6 @@ module.exports = gql`
         DELETED
     }
 
-    type School {
-        _id: ID!
-        commercial_name: String!
-        legal_name: String!
-        address: String!
-        city: String!
-        country: String!
-        zipcode: String!
-        logo: String
-        school_status: Status!
-        students: [Student!]!
-        created_by: User!
-        created_at: String!
-        updated_by: User!
-        updated_at: String!
-    }
-
     input CreateSchoolInput {
         commercial_name: String!
         legal_name: String!
@@ -48,8 +31,54 @@ module.exports = gql`
         school_status: Status
     }
 
+    input SchoolFilterInput {
+        commercial_name: String
+        legal_name: String
+        city: String
+        country: String
+        zipcode: String
+        school_status: Status
+        students: StudentReferenceFilterInput
+        created_by: UserReferenceFilterInput
+        updated_by: UserReferenceFilterInput
+    }
+
+    input StudentReferenceFilterInput {
+        first_name: String
+        last_name: String
+        email: String
+        student_status: Status
+    }
+
+    type PaginatedSchools{
+        data: [School!]!
+        countDocuments: Int!
+    }
+
+    type School {
+        _id: ID!
+        commercial_name: String!
+        legal_name: String!
+        address: String!
+        city: String!
+        country: String!
+        zipcode: String!
+        logo: String
+        school_status: Status!
+        students: [Student!]!
+        created_by: User!
+        created_at: String!
+        updated_by: User!
+        updated_at: String!
+    }
+
     type Query {
-        GetAllSchools: [School!]!
+        GetAllSchools(
+        filter: SchoolFilterInput,
+        sort: SortInput,
+        page: Int,
+        limit: Int
+        ): PaginatedSchools!
         GetOneSchool(id: ID!): School
     }
 
