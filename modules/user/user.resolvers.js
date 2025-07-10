@@ -1,8 +1,13 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
+const bcrypt = require('bcrypt');
 
 // *************** IMPORT MODULE *************** 
 const UserModel = require('./user.model');
+const StudentModel = require('../student/student.model');
+
+// *************** IMPORT UTILITIES ***************
+const { GenerateToken } = require('../../middleware/auth');
 
 // *************** IMPORT HELPER FUNCTION *************** 
 const UserHelper = require('./user.helper');
@@ -178,6 +183,60 @@ async function DeleteUser(_, { id }, context) {
     }
 }
 
+/**
+ * GraphQL resolver to handle user and student login.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the mutation.
+ * @param {object} args.loginInput - An object containing the user's email and password.
+ * @returns {Promise<object>} - A promise that resolves to an object containing the JWT and user data.
+ */
+async function Login(_, { loginInput }) {
+    try {
+        CommonValidator.ValidateInputTypeObject(loginInput);
+        UserValidator.ValidateLoginInput(loginInput);
+
+        let account = await UserModel.findOne({ email: loginInput.email }).lean();
+        let accountType = 'user';
+
+        if (!account) {
+            account = await StudentModel.findOne({ email: loginInput.email }).lean();
+            accountType = 'student';
+        }
+
+        if (!account) {
+            throw new ApolloError('User not found', 'ACCOUNT_NOT_FOUND');
+        }
+
+        const isMatch = await bcrypt.compare(loginInput.password, account.password);
+        if (!isMatch) {
+            throw new ApolloError('Invalid credentials', 'INVALID_CREDENTIALS');
+        }
+
+        const userForToken = {
+            _id: account._id,
+            role: accountType === 'student' ? 'STUDENT' : account.role
+        };
+
+        const token = GenerateToken(userForToken);
+
+        const { password, ...userWithoutPassword } = account;
+
+        return {
+            token,
+            user: {
+                ...userWithoutPassword,
+                role: userForToken.role
+            }
+        }
+    } catch (error) {
+        console.error('Unexpected error in Login:', error);
+
+        throw new ApolloError('Failed to login:', 'LOGIN_FAILED', {
+            error: error.message
+        });
+    }
+}
+
 // *************** LOADER *************** 
 /**
  * Loads the user who created the user using a DataLoader.
@@ -233,7 +292,8 @@ module.exports = {
     Mutation: {
         CreateUser,
         UpdateUser,
-        DeleteUser
+        DeleteUser,
+        Login
     },
 
     User: {

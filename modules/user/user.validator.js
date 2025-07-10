@@ -85,6 +85,25 @@ function ValidateUserInput({ userInput, isEmailUnique, isUpdate = false }) {
 }
 
 /**
+ * Validates the input object for a user login.
+ * @param {object} loginInput - The object containing the user's login credentials.
+ * @param {string} loginInput.email - The user's email address.
+ * @param {string} loginInput.password - The user's password.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateLoginInput(loginInput) {
+    const { email, password } = loginInput;
+
+    if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new ApolloError('A valid email address is required.', 'BAD_USER_INPUT', { field: 'email' });
+    }
+
+    if (!password || typeof password !== 'string' || password.trim() === '') {
+        throw new ApolloError('Password is required.', 'BAD_USER_INPUT', { field: 'password' });
+    }
+}
+
+/**
  * Validates the inputs for resolvers that use the UserLoader.
  * @param {object} parent - The parent object.
  * @param {object} context - The GraphQL context, which must contain a configured UserLoader.
@@ -118,5 +137,6 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
 // *************** EXPORT MODULE ***************
 module.exports = {
     ValidateUserInput,
+    ValidateLoginInput,
     ValidateUserLoaderInput
 }
