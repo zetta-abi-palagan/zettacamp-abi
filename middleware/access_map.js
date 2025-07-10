@@ -81,14 +81,14 @@ const accessMap = {
         PublishTest: { roles: ['ADMIN', 'ACADEMIC_DIRECTOR'] },
 
         // *************** Task & Result Mutations 
-        UpdateStudentTestResult: { roles: ['CORRECTOR', 'ACADEMIC_DIRECTOR'] },
+        UpdateStudentTestResult: { roles: ['ADMIN', 'CORRECTOR', 'ACADEMIC_DIRECTOR'] },
         DeleteStudentTestResult: { roles: ['ADMIN', 'ACADEMIC_DIRECTOR'] },
         CreateTask: { roles: ['ADMIN', 'ACADEMIC_DIRECTOR'] },
         UpdateTask: { roles: ['ADMIN', 'ACADEMIC_DIRECTOR'] },
         DeleteTask: { roles: ['ADMIN', 'ACADEMIC_DIRECTOR'] },
         AssignCorrector: { roles: ['ACADEMIC_DIRECTOR'] },
-        EnterMarks: { roles: ['CORRECTOR'] },
-        ValidateMarks: { roles: ['ACADEMIC_DIRECTOR'] },
+        EnterMarks: { roles: ['ADMIN', 'CORRECTOR'] },
+        ValidateMarks: { roles: ['ADMIN', 'ACADEMIC_DIRECTOR'] },
     }
 };
 

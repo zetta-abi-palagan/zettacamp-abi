@@ -5,6 +5,11 @@ const { ApolloServer } = require('apollo-server-express');
 const typeDefs = require('./typedef');
 const resolvers = require('./resolvers');
 const CreateLoaders = require('./loaders');
+const UserModel = require('../modules/user/user.model');
+const StudentModel = require('../modules/student/student.model');
+
+// *************** IMPORT UTILITIES ***************
+const { AuthorizeRequest } = require('../middleware/auth');
 
 /**
  * Creates and applies Apollo Server middleware to the Express app.
@@ -24,13 +29,21 @@ async function SetupApolloServer(app, port) {
     const server = new ApolloServer({
         typeDefs,
         resolvers,
-        context: () => {
+        context: async ({ req }) => {
+            const { user: decodedUser } = AuthorizeRequest(req, req.body);
+
+            let user;
+
+            if (decodedUser && decodedUser._id) {
+                if (decodedUser.role === 'STUDENT') {
+                    user = await StudentModel.findOne({ _id: decodedUser._id, student_status: 'ACTIVE' }).lean();
+                } else {
+                    user = UserModel.findOne({ _id: decodedUser._id, user_status: 'ACTIVE' }).lean();
+                }
+            }
             return {
                 dataLoaders: CreateLoaders(),
-                user: {
-                    // *************** Using dummy user ID for now, will change later with authenticated user
-                    _id: '6846e5769e5502fce150eb67'
-                },
+                user
             }
         }
     });

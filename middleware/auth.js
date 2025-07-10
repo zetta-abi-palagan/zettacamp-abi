@@ -1,6 +1,7 @@
 // *************** IMPORT LIBRARY ***************
 const jwt = require('jsonwebtoken');
 const { ApolloError, AuthenticationError, ForbiddenError } = require('apollo-server');
+const { parse } = require('graphql');
 
 // *************** IMPORT MODULE *************** 
 const config = require('../core/config');
@@ -55,54 +56,86 @@ function VerifyToken(token) {
  * @returns {object} An object containing the authenticated user's data, to be used as the GraphQL context.
  */
 function AuthorizeRequest(req, body) {
-    const authHeader = req.headers && req.headers.authorization;
-    const token = authHeader ? authHeader.replace(/^Bearer\s+/i, '') : null;
+    try {
+        const authHeader = req.headers && req.headers.authorization;
+        const token = authHeader ? authHeader.replace(/^Bearer\s+/i, '') : null;
 
-    const query = body && body.query;
-    const operationMatch = query && query.match(/^(query|mutation)\s+([a-zA-Z0-9_]+)/i);
-    if (!operationMatch) throw new Error('Invalid GraphQL operation format');
+        const query = body && body.query;
+        if (!query) throw new Error('Missing GraphQL query');
 
-    const operationTypeRaw = operationMatch[1];
-    const fieldName = operationMatch[2];
-    const operationType = operationTypeRaw.toUpperCase();
+        const parsed = parse(query);
 
-    const accessConfig = accessMap[operationType] && accessMap[operationType][fieldName];
-    let user;
+        const operationDef = parsed.definitions.find(
+            (def) => def.kind === 'OperationDefinition'
+        );
 
-    if (!accessConfig) {
-        if (token) {
-            try {
-                user = VerifyToken(token);
-            } catch (error) {
-                user = null;
+        if (!operationDef) {
+            return { user: null };
+        }
+
+        const operationType = operationDef.operation.toUpperCase();
+
+        let fieldName = null;
+        if (
+            operationDef.name &&
+            typeof operationDef.name.value === 'string'
+        ) {
+            fieldName = operationDef.name.value;
+        } else if (
+            operationDef.selectionSet &&
+            Array.isArray(operationDef.selectionSet.selections) &&
+            operationDef.selectionSet.selections.length &&
+            operationDef.selectionSet.selections[0].name &&
+            typeof operationDef.selectionSet.selections[0].name.value === 'string'
+        ) {
+            fieldName = operationDef.selectionSet.selections[0].name.value;
+        }
+
+        if (!fieldName || fieldName.startsWith('__')) {
+            return { user: null };
+        }
+
+        const accessConfig = accessMap[operationType] && accessMap[operationType][fieldName];
+        let user;
+
+        if (!accessConfig) {
+            if (token) {
+                try {
+                    user = VerifyToken(token);
+                } catch (error) {
+                    user = null;
+                }
+            }
+            return { user };
+        }
+
+        if (!token) throw new AuthenticationError('Missing auth token');
+
+        user = VerifyToken(token);
+
+        const allowedRoles = Array.isArray(accessConfig)
+            ? accessConfig
+            : accessConfig.roles || [];
+
+        if (!allowedRoles.includes(user.role)) {
+            throw new ForbiddenError('Unauthorized');
+        }
+
+        if (typeof accessConfig.validator === 'function') {
+            if (user.role === 'STUDENT') {
+                try {
+                    accessConfig.validator({ user, variables: body.variables });
+                } catch (err) {
+                    throw new ForbiddenError('Authorization validation failed:', err.message);
+                }
             }
         }
+
         return { user };
+    } catch (error) {
+        console.error('Auth error:', error);
+        throw new ApolloError(`Auth failed: ${error.message}`, 'INTERNAL_SERVER_ERROR');
     }
-
-    if (!token) throw new AuthenticationError('Missing auth token');
-
-    user = VerifyToken(token);
-
-    const allowedRoles = Array.isArray(accessConfig)
-        ? accessConfig
-        : accessConfig.roles || [];
-
-    if (!allowedRoles.includes(user.role)) {
-        throw new ForbiddenError('Unauthorized');
-    }
-
-    if (typeof accessConfig.validator === 'function') {
-        if (user.role === 'STUDENT') {
-            try {
-                accessConfig.validator({ user, variables: body.variables });
-            } catch (err) {
-                throw new ForbiddenError('Authorization validation failed:', err.message);
-            }
-        }
-    }
-
-    return { user };
 }
 
 // *************** EXPORT MODULE ***************s
