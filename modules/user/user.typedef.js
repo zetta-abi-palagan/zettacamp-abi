@@ -53,7 +53,7 @@ module.exports = gql`
 
     type PaginatedUsers {
         data: [User!]!
-        totalCount: Int!
+        countDocuments: Int!
     }
 
     type LoginResponse {

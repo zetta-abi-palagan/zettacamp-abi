@@ -18,14 +18,103 @@ const CommonValidator = require('../../shared/validator/index');
 
 // *************** QUERY ***************
 /**
- * Fetches all non-deleted users from the database.
- * @returns {Promise<Array<object>>} - A promise that resolves to an array of user objects.
+ * GraphQL resolver to fetch a paginated, sorted, and filtered list of users using an aggregation pipeline.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the query.
+ * @param {object} [args.filter] - Optional. An object containing fields to filter the user list.
+ * @param {object} [args.sort] - Optional. An object specifying the sorting field and order ('ASC' or 'DESC').
+ * @param {number} [args.page=1] - Optional. The page number for pagination.
+ * @param {number} [args.limit=10] - Optional. The number of users per page.
+ * @returns {Promise<object>} - A promise that resolves to an object containing the paginated 'data' and the total 'countDocuments'.
  */
-async function GetAllUsers() {
+async function GetAllUsers(_, { filter, sort, page = 1, limit = 10 }) {
     try {
-        const users = await UserModel.find({ user_status: { $ne: 'DELETED' } }).lean();
+        const pipeline = [];
+        const matchStage = {};
 
-        return users;
+        pipeline.push({
+            $lookup: {
+                from: 'users',
+                localField: 'created_by',
+                foreignField: '_id',
+                as: 'creatorInfo'
+            }
+        });
+        pipeline.push({ $unwind: { path: "$creatorInfo", preserveNullAndEmptyArrays: true } });
+
+        pipeline.push({
+            $lookup: {
+                from: 'users',
+                localField: 'updated_by',
+                foreignField: '_id',
+                as: 'updaterInfo'
+            }
+        });
+        pipeline.push({ $unwind: { path: "$updaterInfo", preserveNullAndEmptyArrays: true } });
+
+        if (filter) {
+            if (filter.first_name) matchStage.first_name = { $regex: filter.first_name, $options: 'i' };
+            if (filter.last_name) matchStage.last_name = { $regex: filter.last_name, $options: 'i' };
+            if (filter.email) matchStage.email = { $regex: filter.email, $options: 'i' };
+            if (filter.role) matchStage.role = filter.role;
+            if (filter.user_status) matchStage.user_status = filter.user_status;
+
+            if (filter.created_by) {
+                if (filter.created_by.first_name) matchStage['creatorInfo.first_name'] = { $regex: filter.created_by.first_name, $options: 'i' };
+                if (filter.created_by.last_name) matchStage['creatorInfo.last_name'] = { $regex: filter.created_by.last_name, $options: 'i' };
+                if (filter.created_by.email) matchStage['creatorInfo.email'] = { $regex: filter.created_by.email, $options: 'i' };
+                if (filter.created_by.role) matchStage['creatorInfo.role'] = filter.created_by.role;
+            }
+
+            if (filter.updated_by) {
+                if (filter.updated_by.first_name) matchStage['updaterInfo.first_name'] = { $regex: filter.updated_by.first_name, $options: 'i' };
+                if (filter.updated_by.last_name) matchStage['updaterInfo.last_name'] = { $regex: filter.updated_by.last_name, $options: 'i' };
+                if (filter.updated_by.email) matchStage['updaterInfo.email'] = { $regex: filter.updated_by.email, $options: 'i' };
+                if (filter.updated_by.role) matchStage['updaterInfo.role'] = filter.updated_by.role;
+            }
+        }
+
+        if (!filter || !filter.user_status) {
+            matchStage.user_status = { $ne: 'DELETED' };
+        }
+
+        if (Object.keys(matchStage).length > 0) {
+            pipeline.push({ $match: matchStage });
+        }
+
+        const sortStage = {};
+        if (sort && sort.field && sort.order) {
+            const sortOrder = sort.order === 'DESC' ? -1 : 1;
+            if (sort.field.startsWith('created_by.')) {
+                sortStage[`creatorInfo.${sort.field.split('.')[1]}`] = sortOrder;
+            } else if (sort.field.startsWith('updated_by.')) {
+                sortStage[`updaterInfo.${sort.field.split('.')[1]}`] = sortOrder;
+            } else {
+                sortStage[sort.field] = sortOrder;
+            }
+        } else {
+            sortStage.created_at = -1;
+        }
+        pipeline.push({ $sort: sortStage });
+
+        pipeline.push({
+            $facet: {
+                data: [
+                    { $skip: (page - 1) * limit },
+                    { $limit: limit }
+                ],
+                countDocuments: [
+                    { $count: 'count' }
+                ]
+            }
+        });
+
+        const results = await UserModel.aggregate(pipeline);
+
+        return {
+            data: results[0].data,
+            countDocuments: results[0].countDocuments.length > 0 ? results[0].countDocuments[0].count : 0,
+        };
     } catch (error) {
         console.error('Unexpected error in GetAllUsers:', error);
 

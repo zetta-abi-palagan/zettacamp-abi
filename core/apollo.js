@@ -38,7 +38,7 @@ async function SetupApolloServer(app, port) {
                 if (decodedUser.role === 'STUDENT') {
                     user = await StudentModel.findOne({ _id: decodedUser._id, student_status: 'ACTIVE' }).lean();
                 } else {
-                    user = UserModel.findOne({ _id: decodedUser._id, user_status: 'ACTIVE' }).lean();
+                    user = await UserModel.findOne({ _id: decodedUser._id, user_status: 'ACTIVE' }).lean();
                 }
             }
             return {
