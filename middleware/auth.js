@@ -75,13 +75,8 @@ function AuthorizeRequest(req, body) {
 
         const operationType = operationDef.operation.toUpperCase();
 
-        let fieldName = null;
+        let fieldName;
         if (
-            operationDef.name &&
-            typeof operationDef.name.value === 'string'
-        ) {
-            fieldName = operationDef.name.value;
-        } else if (
             operationDef.selectionSet &&
             Array.isArray(operationDef.selectionSet.selections) &&
             operationDef.selectionSet.selections.length &&
