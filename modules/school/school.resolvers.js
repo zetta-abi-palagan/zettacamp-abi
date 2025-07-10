@@ -25,6 +25,8 @@ const CommonValidator = require('../../shared/validator/index');
  */
 async function GetAllSchools(_, { filter, sort, page = 1, limit = 10 }) {
     try {
+        SchoolValidator.ValidateGetAllSchoolsInput({ filter, sort, page, limit });
+
         const pipeline = [];
         const matchStage = {};
 

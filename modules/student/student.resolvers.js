@@ -14,14 +14,117 @@ const CommonValidator = require('../../shared/validator/index');
 
 // *************** QUERY ***************
 /**
- * Fetches all non-deleted students from the database.
- * @returns {Promise<Array<object>>} - A promise that resolves to an array of student objects.
+ * GraphQL resolver to fetch a paginated, sorted, and filtered list of students using an aggregation pipeline.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the query.
+ * @param {object} [args.filter] - Optional. An object containing fields to filter the student list, including nested filters for related documents.
+ * @param {object} [args.sort] - Optional. An object specifying the sorting field and order ('ASC' or 'DESC').
+ * @param {number} [args.page=1] - Optional. The page number for pagination.
+ * @param {number} [args.limit=10] - Optional. The number of students per page.
+ * @returns {Promise<object>} - A promise that resolves to an object containing the paginated 'data' and the total 'countDocuments'.
  */
-async function GetAllStudents() {
+async function GetAllStudents(_, { filter, sort, page = 1, limit = 10 }) {
     try {
-        const students = await StudentModel.find({ student_status: { $ne: 'DELETED' } }).lean();
+        StudentValidator.ValidateGetAllStudentsInput({ filter, sort, page, limit });
 
-        return students;
+        const pipeline = [];
+        const matchStage = {};
+
+        if ((filter && filter.school) || (sort && sort.field.startsWith('school.'))) {
+            pipeline.push({
+                $lookup: {
+                    from: 'schools',
+                    localField: 'school',
+                    foreignField: '_id',
+                    as: 'schoolInfo'
+                }
+            });
+            pipeline.push({ $unwind: { path: "$schoolInfo", preserveNullAndEmptyArrays: true } });
+        }
+
+        if ((filter && filter.created_by) || (sort && sort.field.startsWith('created_by.'))) {
+            pipeline.push({
+                $lookup: {
+                    from: 'users',
+                    localField: 'created_by',
+                    foreignField: '_id',
+                    as: 'creatorInfo'
+                }
+            });
+            pipeline.push({ $unwind: { path: "$creatorInfo", preserveNullAndEmptyArrays: true } });
+        }
+
+        if ((filter && filter.updated_by) || (sort && sort.field.startsWith('updated_by.'))) {
+            pipeline.push({
+                $lookup: {
+                    from: 'users',
+                    localField: 'updated_by',
+                    foreignField: '_id',
+                    as: 'updaterInfo'
+                }
+            });
+            pipeline.push({ $unwind: { path: "$updaterInfo", preserveNullAndEmptyArrays: true } });
+        }
+
+        if (filter) {
+            if (filter.first_name) matchStage.first_name = { $regex: filter.first_name, $options: 'i' };
+            if (filter.last_name) matchStage.last_name = { $regex: filter.last_name, $options: 'i' };
+            if (filter.email) matchStage.email = { $regex: filter.email, $options: 'i' };
+            if (filter.student_status) matchStage.student_status = filter.student_status;
+
+            if (filter.school) {
+                if (filter.school.commercial_name) matchStage['schoolInfo.commercial_name'] = { $regex: filter.school.commercial_name, $options: 'i' };
+                if (filter.school.legal_name) matchStage['schoolInfo.legal_name'] = { $regex: filter.school.legal_name, $options: 'i' };
+                if (filter.school.city) matchStage['schoolInfo.city'] = { $regex: filter.school.city, $options: 'i' };
+                if (filter.school.country) matchStage['schoolInfo.country'] = { $regex: filter.school.country, $options: 'i' };
+                if (filter.school.school_status) matchStage['schoolInfo.school_status'] = filter.school.school_status;
+            }
+            if (filter.created_by) {
+                if (filter.created_by.first_name) matchStage['creatorInfo.first_name'] = { $regex: filter.created_by.first_name, $options: 'i' };
+                if (filter.created_by.last_name) matchStage['creatorInfo.last_name'] = { $regex: filter.created_by.last_name, $options: 'i' };
+            }
+            if (filter.updated_by) {
+                if (filter.updated_by.first_name) matchStage['updaterInfo.first_name'] = { $regex: filter.updated_by.first_name, $options: 'i' };
+                if (filter.updated_by.last_name) matchStage['updaterInfo.last_name'] = { $regex: filter.updated_by.last_name, $options: 'i' };
+            }
+        }
+
+        if (!filter || !filter.student_status) {
+            matchStage.student_status = { $ne: 'DELETED' };
+        }
+        if (Object.keys(matchStage).length > 0) {
+            pipeline.push({ $match: matchStage });
+        }
+
+        const sortStage = {};
+        if (sort && sort.field && sort.order) {
+            const sortOrder = sort.order === 'DESC' ? -1 : 1;
+            if (sort.field.startsWith('school.')) {
+                sortStage[`schoolInfo.${sort.field.split('.')[1]}`] = sortOrder;
+            } else if (sort.field.startsWith('created_by.')) {
+                sortStage[`creatorInfo.${sort.field.split('.')[1]}`] = sortOrder;
+            } else if (sort.field.startsWith('updated_by.')) {
+                sortStage[`updaterInfo.${sort.field.split('.')[1]}`] = sortOrder;
+            } else {
+                sortStage[sort.field] = sortOrder;
+            }
+        } else {
+            sortStage.created_at = -1;
+        }
+        pipeline.push({ $sort: sortStage });
+
+        pipeline.push({
+            $facet: {
+                data: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+                countDocuments: [{ $count: 'count' }]
+            }
+        });
+
+        const results = await StudentModel.aggregate(pipeline);
+        return {
+            data: results[0].data,
+            countDocuments: results[0].countDocuments.length > 0 ? results[0].countDocuments[0].count : 0,
+        };
     } catch (error) {
         console.error('Unexpected error in GetAllStudents:', error);
 

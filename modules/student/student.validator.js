@@ -5,6 +5,73 @@ const mongoose = require('mongoose');
 const { ApolloError } = require('apollo-server');
 
 /**
+ * Validates the filter, sort, and pagination inputs for fetching all students.
+ * @param {object} args - The arguments for the validation.
+ * @param {object} [args.filter] - Optional. An object containing fields to filter the student list, including nested filters.
+ * @param {object} [args.sort] - Optional. An object specifying the sorting field and order.
+ * @param {number} [args.page] - Optional. The page number for pagination.
+ * @param {number} [args.limit] - Optional. The number of students per page.
+ * @returns {void} - This function does not return a value but throws an error if validation fails.
+ */
+function ValidateGetAllStudentsInput({ filter, sort, page, limit }) {
+    const allowedRoles = ['ADMIN', 'USER', 'ACADEMIC_DIRECTOR', 'CORRECTOR'];
+    const allowedStatus = ['ACTIVE', 'INACTIVE'];
+
+    if (filter) {
+        if (filter.email && !emailRegex.test(filter.email)) {
+            throw new ApolloError('Invalid email format in student filter.', 'BAD_USER_INPUT');
+        }
+        if (filter.student_status && !allowedStatus.includes(filter.student_status)) {
+            throw new ApolloError('Invalid status in student filter.', 'BAD_USER_INPUT');
+        }
+
+        if (filter.school) {
+            if (filter.school.school_status && !allowedStatus.includes(filter.school.school_status)) {
+                throw new ApolloError('Invalid status in school filter.', 'BAD_USER_INPUT');
+            }
+        }
+
+        if (filter.created_by) {
+            if (filter.created_by.email && !emailRegex.test(filter.created_by.email)) {
+                throw new ApolloError('Invalid email format in created_by filter.', 'BAD_USER_INPUT');
+            }
+            if (filter.created_by.role && !allowedRoles.includes(filter.created_by.role)) {
+                throw new ApolloError('Invalid role in created_by filter.', 'BAD_USER_INPUT');
+            }
+        }
+
+        if (filter.updated_by) {
+            if (filter.updated_by.email && !emailRegex.test(filter.updated_by.email)) {
+                throw new ApolloError('Invalid email format in updated_by filter.', 'BAD_USER_INPUT');
+            }
+            if (filter.updated_by.role && !allowedRoles.includes(filter.updated_by.role)) {
+                throw new ApolloError('Invalid role in updated_by filter.', 'BAD_USER_INPUT');
+            }
+        }
+    }
+
+    if (sort) {
+        if (!sort.field || typeof sort.field !== 'string') {
+            throw new ApolloError('Sort field must be a non-empty string.', 'BAD_USER_INPUT');
+        }
+        if (!/^[a-zA-Z0-9_.]+$/.test(sort.field)) {
+            throw new ApolloError('Sort field contains invalid characters.', 'BAD_USER_INPUT');
+        }
+        if (!sort.order || !['ASC', 'DESC'].includes(sort.order.toUpperCase())) {
+            throw new ApolloError('Sort order must be either "ASC" or "DESC".', 'BAD_USER_INPUT');
+        }
+    }
+
+    if (page !== undefined && (!Number.isInteger(page) || page < 1)) {
+        throw new ApolloError('Page must be a positive integer.', 'BAD_USER_INPUT');
+    }
+
+    if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
+        throw new ApolloError('Limit must be a positive integer.', 'BAD_USER_INPUT');
+    }
+}
+
+/**
  * Validates the input object for creating or updating a student using a rule-based approach.
  * @param {object} args - The arguments for the validation.
  * @param {object} args.studentInput - An object containing the student's properties to be validated.
@@ -141,6 +208,7 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
 
 // *************** EXPORT MODULE ***************
 module.exports = {
+    ValidateGetAllStudentsInput,
     ValidateStudentInput,
     ValidateSchoolLoaderInput,
     ValidateUserLoaderInput
