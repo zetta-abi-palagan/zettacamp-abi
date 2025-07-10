@@ -49,87 +49,155 @@ function VerifyToken(token) {
 }
 
 /**
- * Authorizes an incoming GraphQL request based on a predefined access map.
- * It checks for a valid JWT, user roles, and can run additional custom validation logic.
+ * Authorizes an incoming GraphQL request by checking it against a predefined access map.
  * @param {object} req - The incoming HTTP request object, containing headers.
  * @param {object} body - The parsed body of the request, containing the GraphQL query and variables.
- * @returns {object} An object containing the authenticated user's data, to be used as the GraphQL context.
+ * @returns {Promise<object>} A promise that resolves to an object containing the authenticated user's data for the GraphQL context.
  */
-function AuthorizeRequest(req, body) {
+async function AuthorizeRequest(req, body) {
     try {
-        const authHeader = req.headers && req.headers.authorization;
-        const token = authHeader ? authHeader.replace(/^Bearer\s+/i, '') : null;
+        // *************** Extract token from Authorization header
+        const token = ExtractBearerToken(req);
 
-        const query = body && body.query;
-        if (!query) throw new Error('Missing GraphQL query');
+        // *************** Parse GraphQL operation type and field name
+        const operation = GetGraphQLOperation(body && body.query);
 
-        const parsed = parse(query);
-
-        const operationDef = parsed.definitions.find(
-            (def) => def.kind === 'OperationDefinition'
-        );
-
-        if (!operationDef) {
+        // *************** If operation can't be determined, return unauthenticated
+        if (!operation) {
             return { user: null };
         }
 
-        const operationType = operationDef.operation.toUpperCase();
+        const { operationType, fieldName } = operation;
 
-        let fieldName;
-        if (
-            operationDef.selectionSet &&
-            Array.isArray(operationDef.selectionSet.selections) &&
-            operationDef.selectionSet.selections.length &&
-            operationDef.selectionSet.selections[0].name &&
-            typeof operationDef.selectionSet.selections[0].name.value === 'string'
-        ) {
-            fieldName = operationDef.selectionSet.selections[0].name.value;
-        }
-
-        if (!fieldName || fieldName.startsWith('__')) {
-            return { user: null };
-        }
-
+        // *************** Get access configuration for this operation
         const accessConfig = accessMap[operationType] && accessMap[operationType][fieldName];
-        let user;
 
+        // *************** If no access config, try to verify token if present, else unauthenticated
         if (!accessConfig) {
             if (token) {
                 try {
-                    user = VerifyToken(token);
+                    const user = VerifyToken(token);
+                    return { user };
                 } catch (error) {
-                    user = null;
+                    return { user: null };
                 }
             }
-            return { user };
+            return { user: null };
         }
 
-        if (!token) throw new AuthenticationError('Missing auth token');
-
-        user = VerifyToken(token);
-
-        const allowedRoles = Array.isArray(accessConfig)
-            ? accessConfig
-            : accessConfig.roles || [];
-
-        if (!allowedRoles.includes(user.role)) {
-            throw new ForbiddenError('Unauthorized');
+        // *************** Require token for protected operation
+        if (!token) {
+            throw new AuthenticationError('An authentication token is required.');
         }
 
-        if (typeof accessConfig.validator === 'function') {
-            if (user.role === 'STUDENT') {
-                try {
-                    accessConfig.validator({ user, variables: body.variables });
-                } catch (err) {
-                    throw new ForbiddenError('Authorization validation failed:', err.message);
-                }
-            }
-        }
+        // *************** Verify token and extract user
+        const user = VerifyToken(token);
 
+        // *************** Check if user role is allowed for this operation
+        CheckUserRole({ user, accessConfig });
+
+        // *************** Run custom validator if defined in access config
+        RunCustomValidator({ accessConfig, user, variables: body.variables });
+
+        // *************** Return authenticated user for context
         return { user };
     } catch (error) {
         console.error('Auth error:', error);
+
         throw new ApolloError(`Auth failed: ${error.message}`, 'INTERNAL_SERVER_ERROR');
+    }
+}
+
+/**
+ * Extracts the Bearer token from the request's Authorization header.
+ * @param {object} req - The request object.
+ * @returns {string|null} The token or null if not found.
+ */
+function ExtractBearerToken(req) {
+    const authHeader = req.headers && req.headers.authorization;
+    if (!authHeader) {
+        return null;
+    }
+    // *************** Remove "Bearer " prefix to get the raw token
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+
+    return token;
+}
+
+/**
+ * Parses a GraphQL query to extract the operation type and field name.
+ * @param {string} query - The GraphQL query string from the request body.
+ * @returns {{operationType: string, fieldName: string}|null} Operation details or null.
+ */
+function GetGraphQLOperation(query) {
+    if (!query) {
+        throw new Error('Missing GraphQL query');
+    }
+
+    // *************** Parse the GraphQL query into AST
+    const parsed = parse(query);
+
+    // *************** Find the main operation definition (query/mutation/subscription)
+    const operationDef = parsed.definitions.find(
+        (def) => def.kind === 'OperationDefinition'
+    );
+
+    if (!operationDef) {
+        return null;
+    }
+
+    // *************** Extract operation type (QUERY, MUTATION, etc.)
+    const operationType = operationDef.operation.toUpperCase();
+
+    let fieldName;
+
+    // *************** Extract the first field name from the selection set
+    if (
+        operationDef.selectionSet &&
+        Array.isArray(operationDef.selectionSet.selections) &&
+        operationDef.selectionSet.selections.length
+    ) {
+        fieldName = operationDef.selectionSet.selections[0].name.value;
+    }
+
+    // *************** Return operation type and field name
+    return { operationType, fieldName };
+}
+
+/**
+ * Authorizes a user based on their role against an access configuration.
+ * @param {object} user - The authenticated user object, containing a 'role'.
+ * @param {object|string[]} accessConfig - The configuration defining allowed roles.
+ * @throws {ForbiddenError} If the user's role is not permitted.
+ */
+function CheckUserRole({ user, accessConfig }) {
+    const allowedRoles = Array.isArray(accessConfig)
+        ? accessConfig
+        : accessConfig.roles || [];
+
+    if (!allowedRoles.includes(user.role)) {
+        throw new ForbiddenError('You are not authorized to perform this action.');
+    }
+}
+
+/**
+ * Runs a custom validation function if it exists for the given access config.
+ * @param {object} accessConfig - The access configuration.
+ * @param {object} user - The authenticated user.
+ * @param {object} variables - The GraphQL variables.
+ * @throws {ForbiddenError} If the custom validation fails.
+ */
+function RunCustomValidator({ accessConfig, user, variables }) {
+    const needsValidation = typeof accessConfig.validator === 'function' && user.role === 'STUDENT';
+
+    if (!needsValidation) {
+        return;
+    }
+
+    try {
+        accessConfig.validator({ user, variables });
+    } catch (err) {
+        throw new ForbiddenError(`Authorization validation failed: ${err.message}`);
     }
 }
 
