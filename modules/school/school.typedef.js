@@ -74,10 +74,10 @@ module.exports = gql`
 
     type Query {
         GetAllSchools(
-        filter: SchoolFilterInput,
-        sort: SortInput,
-        page: Int,
-        limit: Int
+            filter: SchoolFilterInput,
+            sort: SortInput,
+            page: Int,
+            limit: Int
         ): PaginatedSchools!
         GetOneSchool(id: ID!): School
     }

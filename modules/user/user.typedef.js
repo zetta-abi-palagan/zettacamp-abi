@@ -77,10 +77,10 @@ module.exports = gql`
 
     type Query {
         GetAllUsers(
-        filter: UserFilterInput, 
-        sort: SortInput,
-        page: Int, 
-        limit: Int
+            filter: UserFilterInput, 
+            sort: SortInput,
+            page: Int, 
+            limit: Int
         ): PaginatedUsers!
         GetOneUser(id: ID!): User
     }

@@ -14,14 +14,129 @@ const CommonValidator = require('../../shared/validator/index');
 
 // *************** QUERY ***************
 /**
- * Fetches all non-deleted schools from the database.
- * @returns {Promise<Array<object>>} - A promise that resolves to an array of school objects.
+ * GraphQL resolver to fetch a paginated, sorted, and filtered list of schools using an aggregation pipeline.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the query.
+ * @param {object} [args.filter] - Optional. An object containing fields to filter the school list, including nested filters for related documents.
+ * @param {object} [args.sort] - Optional. An object specifying the sorting field and order ('ASC' or 'DESC').
+ * @param {number} [args.page=1] - Optional. The page number for pagination.
+ * @param {number} [args.limit=10] - Optional. The number of schools per page.
+ * @returns {Promise<object>} - A promise that resolves to an object containing the paginated 'data' and the total 'countDocuments'.
  */
-async function GetAllSchools() {
+async function GetAllSchools(_, { filter, sort, page = 1, limit = 10 }) {
     try {
-        const schools = await SchoolModel.find({ school_status: { $ne: 'DELETED' } }).lean();
+        const pipeline = [];
+        const matchStage = {};
 
-        return schools;
+        if ((filter && filter.created_by) || (sort && sort.field.startsWith('created_by.'))) {
+            pipeline.push({
+                $lookup: {
+                    from: 'users',
+                    localField: 'created_by',
+                    foreignField: '_id',
+                    as: 'creatorInfo'
+                }
+            });
+            pipeline.push({ $unwind: { path: "$creatorInfo", preserveNullAndEmptyArrays: true } });
+        }
+
+        if ((filter && filter.updated_by) || (sort && sort.field.startsWith('updated_by.'))) {
+            pipeline.push({
+                $lookup: {
+                    from: 'users',
+                    localField: 'updated_by',
+                    foreignField: '_id',
+                    as: 'updaterInfo'
+                }
+            });
+            pipeline.push({ $unwind: { path: "$updaterInfo", preserveNullAndEmptyArrays: true } });
+        }
+
+        if (filter && filter.students) {
+            pipeline.push({
+                $lookup: {
+                    from: 'students',
+                    localField: 'students',
+                    foreignField: '_id',
+                    as: 'studentDetails'
+                }
+            });
+        }
+
+        if (filter) {
+            if (filter.commercial_name) matchStage.commercial_name = { $regex: filter.commercial_name, $options: 'i' };
+            if (filter.legal_name) matchStage.legal_name = { $regex: filter.legal_name, $options: 'i' };
+            if (filter.city) matchStage.city = { $regex: filter.city, $options: 'i' };
+            if (filter.country) matchStage.country = { $regex: filter.country, $options: 'i' };
+            if (filter.zipcode) matchStage.zipcode = { $regex: filter.zipcode, $options: 'i' };
+            if (filter.school_status) matchStage.school_status = filter.school_status;
+
+            if (filter.created_by) {
+                if (filter.created_by.first_name) matchStage['creatorInfo.first_name'] = { $regex: filter.created_by.first_name, $options: 'i' };
+                if (filter.created_by.last_name) matchStage['creatorInfo.last_name'] = { $regex: filter.created_by.last_name, $options: 'i' };
+                if (filter.created_by.email) matchStage['creatorInfo.email'] = { $regex: filter.created_by.email, $options: 'i' };
+                if (filter.created_by.role) matchStage['creatorInfo.role'] = filter.created_by.role;
+            }
+
+            if (filter.updated_by) {
+                if (filter.updated_by.first_name) matchStage['updaterInfo.first_name'] = { $regex: filter.updated_by.first_name, $options: 'i' };
+                if (filter.updated_by.last_name) matchStage['updaterInfo.last_name'] = { $regex: filter.updated_by.last_name, $options: 'i' };
+                if (filter.updated_by.email) matchStage['updaterInfo.email'] = { $regex: filter.updated_by.email, $options: 'i' };
+                if (filter.updated_by.role) matchStage['updaterInfo.role'] = filter.updated_by.role;
+            }
+
+            if (filter.students) {
+                const studentMatch = {};
+                if (filter.students.first_name) studentMatch.first_name = { $regex: filter.students.first_name, $options: 'i' };
+                if (filter.students.last_name) studentMatch.last_name = { $regex: filter.students.last_name, $options: 'i' };
+                if (filter.students.email) studentMatch.email = { $regex: filter.students.email, $options: 'i' };
+                if (filter.students.student_status) studentMatch.student_status = filter.students.student_status;
+
+                matchStage['studentDetails'] = { $elemMatch: studentMatch };
+            }
+        }
+
+        if (!filter || !filter.school_status) {
+            matchStage.school_status = { $ne: 'DELETED' };
+        }
+
+        if (Object.keys(matchStage).length > 0) {
+            pipeline.push({ $match: matchStage });
+        }
+
+        const sortStage = {};
+        if (sort && sort.field && sort.order) {
+            const sortOrder = sort.order === 'DESC' ? -1 : 1;
+            if (sort.field.startsWith('created_by.')) {
+                sortStage[`creatorInfo.${sort.field.split('.')[1]}`] = sortOrder;
+            } else if (sort.field.startsWith('updated_by.')) {
+                sortStage[`updaterInfo.${sort.field.split('.')[1]}`] = sortOrder;
+            } else {
+                sortStage[sort.field] = sortOrder;
+            }
+        } else {
+            sortStage.created_at = -1;
+        }
+        pipeline.push({ $sort: sortStage });
+
+        pipeline.push({
+            $facet: {
+                data: [
+                    { $skip: (page - 1) * limit },
+                    { $limit: limit }
+                ],
+                countDocuments: [
+                    { $count: 'count' }
+                ]
+            }
+        });
+
+        const results = await SchoolModel.aggregate(pipeline);
+
+        return {
+            data: results[0].data,
+            countDocuments: results[0].countDocuments.length > 0 ? results[0].countDocuments[0].count : 0,
+        };
     } catch (error) {
         console.error('Unexpected error in GetAllSchools:', error);
 
@@ -156,7 +271,7 @@ async function DeleteSchool(_, { id }, context) {
                 students.filter,
                 students.update
             );
-            if(!deletedStudents.nModified) {
+            if (!deletedStudents.nModified) {
                 throw new ApolloError('No student match for deletion', 'STUDENT_NOT_FOUND');
             }
         }

@@ -32,25 +32,29 @@ async function GetAllUsers(_, { filter, sort, page = 1, limit = 10 }) {
         const pipeline = [];
         const matchStage = {};
 
-        pipeline.push({
-            $lookup: {
-                from: 'users',
-                localField: 'created_by',
-                foreignField: '_id',
-                as: 'creatorInfo'
-            }
-        });
-        pipeline.push({ $unwind: { path: "$creatorInfo", preserveNullAndEmptyArrays: true } });
+        if ((filter && filter.created_by) || (sort && sort.field.startsWith('created_by.'))) {
+            pipeline.push({
+                $lookup: {
+                    from: 'users',
+                    localField: 'created_by',
+                    foreignField: '_id',
+                    as: 'creatorInfo'
+                }
+            });
+            pipeline.push({ $unwind: { path: "$creatorInfo", preserveNullAndEmptyArrays: true } });
+        }
 
-        pipeline.push({
-            $lookup: {
-                from: 'users',
-                localField: 'updated_by',
-                foreignField: '_id',
-                as: 'updaterInfo'
-            }
-        });
-        pipeline.push({ $unwind: { path: "$updaterInfo", preserveNullAndEmptyArrays: true } });
+        if ((filter && filter.updated_by) || (sort && sort.field.startsWith('updated_by.'))) {
+            pipeline.push({
+                $lookup: {
+                    from: 'users',
+                    localField: 'updated_by',
+                    foreignField: '_id',
+                    as: 'updaterInfo'
+                }
+            });
+            pipeline.push({ $unwind: { path: "$updaterInfo", preserveNullAndEmptyArrays: true } });
+        }
 
         if (filter) {
             if (filter.first_name) matchStage.first_name = { $regex: filter.first_name, $options: 'i' };
