@@ -41,6 +41,21 @@ module.exports = gql`
         password: String!
     }
 
+    input UserFilterInput {
+        first_name: String
+        last_name: String
+        email: String
+        role: Role
+        user_status: Status
+        created_by: UserReferenceFilterInput
+        updated_by: UserReferenceFilterInput
+    }
+
+    type PaginatedUsers {
+        data: [User!]!
+        totalCount: Int!
+    }
+
     type LoginResponse {
         token: String!
         user: User!
@@ -61,7 +76,12 @@ module.exports = gql`
     }
 
     type Query {
-        GetAllUsers: [User!]!
+        GetAllUsers(
+        filter: UserFilterInput, 
+        sort: SortInput,
+        page: Int, 
+        limit: Int
+        ): PaginatedUsers!
         GetOneUser(id: ID!): User
     }
 
