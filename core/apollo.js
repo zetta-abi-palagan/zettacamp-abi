@@ -5,6 +5,11 @@ const { ApolloServer } = require('apollo-server-express');
 const typeDefs = require('./typedef');
 const resolvers = require('./resolvers');
 const CreateLoaders = require('./loaders');
+const UserModel = require('../modules/user/user.model');
+const StudentModel = require('../modules/student/student.model');
+
+// *************** IMPORT UTILITIES ***************
+const { AuthorizeRequest } = require('../middleware/auth');
 
 /**
  * Creates and applies Apollo Server middleware to the Express app.
@@ -24,13 +29,34 @@ async function SetupApolloServer(app, port) {
     const server = new ApolloServer({
         typeDefs,
         resolvers,
-        context: () => {
+        context: async ({ req }) => {
+            // *************** Extract GraphQL query from request body
+            const query = req.body && req.body.query;
+
+            // *************** If introspection query, skip auth and return no user
+            if (query && (query.indexOf('__schema') !== -1 || query.indexOf('__type') !== -1)) {
+                return {
+                    dataLoaders: CreateLoaders(),
+                    user: null
+                };
+            }
+
+            // *************** Authorize request and extract user info
+            const { user: decodedUser } = AuthorizeRequest(req, req.body);
+
+            let user;
+
+            // *************** Fetch user details from DB if authenticated
+            if (decodedUser && decodedUser._id) {
+                if (decodedUser.role === 'STUDENT') {
+                    user = await StudentModel.findOne({ _id: decodedUser._id, student_status: 'ACTIVE' }).lean();
+                } else {
+                    user = await UserModel.findOne({ _id: decodedUser._id, user_status: 'ACTIVE' }).lean();
+                }
+            }
             return {
                 dataLoaders: CreateLoaders(),
-                user: {
-                    // *************** Using dummy user ID for now, will change later with authenticated user
-                    _id: '6846e5769e5502fce150eb67'
-                },
+                user
             }
         }
     });

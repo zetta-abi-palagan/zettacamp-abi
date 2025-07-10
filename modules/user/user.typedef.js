@@ -15,7 +15,52 @@ module.exports = gql`
         INACTIVE
         DELETED
     }
-    
+
+    input CreateUserInput {
+        first_name: String!
+        last_name: String!
+        email: String!
+        password: String!
+        role: Role!
+        profile_picture: String
+        user_status: Status!
+    }
+
+    input UpdateUserInput {
+        first_name: String
+        last_name: String
+        email: String
+        password: String
+        role: Role
+        profile_picture: String
+        user_status: Status
+    }
+
+    input LoginInput {
+        email: String!
+        password: String!
+    }
+
+    input UserFilterInput {
+        first_name: String
+        last_name: String
+        email: String
+        role: Role
+        user_status: Status
+        created_by: UserReferenceFilterInput
+        updated_by: UserReferenceFilterInput
+    }
+
+    type PaginatedUsers {
+        data: [User!]!
+        countDocuments: Int!
+    }
+
+    type LoginResponse {
+        token: String!
+        user: User!
+    }
+
     type User {
         _id: ID!
         first_name: String!
@@ -30,33 +75,20 @@ module.exports = gql`
         updated_at: String!
     }
 
-    input CreateUserInput {
-        first_name: String!
-        last_name: String!
-        email: String!
-        password: String!
-        role: Role!
-        profile_picture: String
-        user_status: Status!
-    }
-
-    input UpdateUserInput {
-        first_name: String!
-        last_name: String!
-        email: String!
-        role: Role!
-        profile_picture: String
-        user_status: Status!
-    }
-
     type Query {
-        GetAllUsers: [User!]!
+        GetAllUsers(
+            filter: UserFilterInput, 
+            sort: SortInput,
+            page: Int, 
+            limit: Int
+        ): PaginatedUsers!
         GetOneUser(id: ID!): User
     }
 
     type Mutation {
-        CreateUser(input: CreateUserInput!): User!
-        UpdateUser(id: ID!, input: UpdateUserInput!): User!
+        CreateUser(createUserInput: CreateUserInput!): User!
+        UpdateUser(id: ID!, updateUserInput: UpdateUserInput!): User!
         DeleteUser(id: ID!): User!
+        Login(loginInput: LoginInput!): LoginResponse!
     }
 `

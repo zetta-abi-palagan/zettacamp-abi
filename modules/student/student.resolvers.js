@@ -1,283 +1,275 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
-const mongoose = require('mongoose');
-const validator = require('validator');
 
 // *************** IMPORT MODULE *************** 
 const StudentModel = require('./student.model');
 const SchoolModel = require('../school/school.model');
 
+// *************** IMPORT HELPER FUNCTION *************** 
+const StudentHelper = require('./student.helper');
+
+// *************** IMPORT VALIDATOR ***************
+const StudentValidator = require('./student.validator');
+const CommonValidator = require('../../shared/validator/index');
+
 // *************** QUERY ***************
 /**
- * Fetches all active students from the database.
- * @returns {Promise<Array<object>>} - A promise that resolves to an array of active student objects.
+ * GraphQL resolver to fetch a paginated, sorted, and filtered list of students using an aggregation pipeline.
+ * @param {object} _ - The parent object, which is not used in this resolver.
+ * @param {object} args - The arguments for the query.
+ * @param {object} [args.filter] - Optional. An object containing fields to filter the student list, including nested filters for related documents.
+ * @param {object} [args.sort] - Optional. An object specifying the sorting field and order ('ASC' or 'DESC').
+ * @param {number} [args.page=1] - Optional. The page number for pagination.
+ * @param {number} [args.limit=10] - Optional. The number of students per page.
+ * @returns {Promise<object>} - A promise that resolves to an object containing the paginated 'data' and the total 'countDocuments'.
  */
-async function GetAllStudents() {
+async function GetAllStudents(_, { filter, sort, page = 1, limit = 10 }) {
     try {
-        return await StudentModel.find({ student_status: 'ACTIVE' });
+        StudentValidator.ValidateGetAllStudentsInput({ filter, sort, page, limit });
+
+        const pipeline = [];
+        const matchStage = {};
+
+        if ((filter && filter.school) || (sort && sort.field.startsWith('school.'))) {
+            pipeline.push({
+                $lookup: {
+                    from: 'schools',
+                    localField: 'school',
+                    foreignField: '_id',
+                    as: 'schoolInfo'
+                }
+            });
+            pipeline.push({ $unwind: { path: "$schoolInfo", preserveNullAndEmptyArrays: true } });
+        }
+
+        if ((filter && filter.created_by) || (sort && sort.field.startsWith('created_by.'))) {
+            pipeline.push({
+                $lookup: {
+                    from: 'users',
+                    localField: 'created_by',
+                    foreignField: '_id',
+                    as: 'creatorInfo'
+                }
+            });
+            pipeline.push({ $unwind: { path: "$creatorInfo", preserveNullAndEmptyArrays: true } });
+        }
+
+        if ((filter && filter.updated_by) || (sort && sort.field.startsWith('updated_by.'))) {
+            pipeline.push({
+                $lookup: {
+                    from: 'users',
+                    localField: 'updated_by',
+                    foreignField: '_id',
+                    as: 'updaterInfo'
+                }
+            });
+            pipeline.push({ $unwind: { path: "$updaterInfo", preserveNullAndEmptyArrays: true } });
+        }
+
+        if (filter) {
+            if (filter.first_name) matchStage.first_name = { $regex: filter.first_name, $options: 'i' };
+            if (filter.last_name) matchStage.last_name = { $regex: filter.last_name, $options: 'i' };
+            if (filter.email) matchStage.email = { $regex: filter.email, $options: 'i' };
+            if (filter.student_status) matchStage.student_status = filter.student_status;
+
+            if (filter.school) {
+                if (filter.school.commercial_name) matchStage['schoolInfo.commercial_name'] = { $regex: filter.school.commercial_name, $options: 'i' };
+                if (filter.school.legal_name) matchStage['schoolInfo.legal_name'] = { $regex: filter.school.legal_name, $options: 'i' };
+                if (filter.school.city) matchStage['schoolInfo.city'] = { $regex: filter.school.city, $options: 'i' };
+                if (filter.school.country) matchStage['schoolInfo.country'] = { $regex: filter.school.country, $options: 'i' };
+                if (filter.school.school_status) matchStage['schoolInfo.school_status'] = filter.school.school_status;
+            }
+            if (filter.created_by) {
+                if (filter.created_by.first_name) matchStage['creatorInfo.first_name'] = { $regex: filter.created_by.first_name, $options: 'i' };
+                if (filter.created_by.last_name) matchStage['creatorInfo.last_name'] = { $regex: filter.created_by.last_name, $options: 'i' };
+            }
+            if (filter.updated_by) {
+                if (filter.updated_by.first_name) matchStage['updaterInfo.first_name'] = { $regex: filter.updated_by.first_name, $options: 'i' };
+                if (filter.updated_by.last_name) matchStage['updaterInfo.last_name'] = { $regex: filter.updated_by.last_name, $options: 'i' };
+            }
+        }
+
+        if (!filter || !filter.student_status) {
+            matchStage.student_status = { $ne: 'DELETED' };
+        }
+        if (Object.keys(matchStage).length > 0) {
+            pipeline.push({ $match: matchStage });
+        }
+
+        const sortStage = {};
+        if (sort && sort.field && sort.order) {
+            const sortOrder = sort.order === 'DESC' ? -1 : 1;
+            if (sort.field.startsWith('school.')) {
+                sortStage[`schoolInfo.${sort.field.split('.')[1]}`] = sortOrder;
+            } else if (sort.field.startsWith('created_by.')) {
+                sortStage[`creatorInfo.${sort.field.split('.')[1]}`] = sortOrder;
+            } else if (sort.field.startsWith('updated_by.')) {
+                sortStage[`updaterInfo.${sort.field.split('.')[1]}`] = sortOrder;
+            } else {
+                sortStage[sort.field] = sortOrder;
+            }
+        } else {
+            sortStage.created_at = -1;
+        }
+        pipeline.push({ $sort: sortStage });
+
+        pipeline.push({
+            $facet: {
+                data: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+                countDocuments: [{ $count: 'count' }]
+            }
+        });
+
+        const results = await StudentModel.aggregate(pipeline);
+        return {
+            data: results[0].data,
+            countDocuments: results[0].countDocuments.length > 0 ? results[0].countDocuments[0].count : 0,
+        };
     } catch (error) {
+        console.error('Unexpected error in GetAllStudents:', error);
+
         throw new ApolloError(`Failed to fetch students: ${error.message}`, "INTERNAL_SERVER_ERROR");
     }
 }
 
 /**
- * Fetches a single active student by their unique ID.
+ * GraphQL resolver to fetch a single student by their unique ID.
  * @param {object} _ - The parent object, which is not used in this resolver.
- * @param {object} args - The arguments object.
+ * @param {object} args - The arguments for the query.
  * @param {string} args.id - The unique identifier of the student to retrieve.
  * @returns {Promise<object>} - A promise that resolves to the found student object.
  */
 async function GetOneStudent(_, { id }) {
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
-    }
-
     try {
-        const student = await StudentModel.findOne({ _id: id, student_status: 'ACTIVE' })
+        CommonValidator.ValidateObjectId(id);
+
+        const student = await StudentModel.findById(id).lean();
         if (!student) {
-            throw new ApolloError("User not found", "NOT_FOUND");
+            throw new ApolloError('Student not found', 'NOT_FOUND');
         }
 
         return student;
     } catch (error) {
+        console.error('Unexpected error in GetOneStudent:', error);
+
         throw new ApolloError(`Failed to fetch student: ${error.message}`, "INTERNAL_SERVER_ERROR");
     }
 }
 
 // *************** MUTATION ***************
 /**
- * Creates a new student with the provided input data.
+ * GraphQL resolver to create a new student and associate them with a school.
  * @param {object} _ - The parent object, which is not used in this resolver.
- * @param {object} args - The arguments object.
- * @param {object} args.input - The data for the new student.
+ * @param {object} args - The arguments for the mutation.
+ * @param {object} args.createStudentInput - An object containing the details for the new student.
+ * @param {object} context - The GraphQL context, used here to get the authenticated user's ID.
  * @returns {Promise<object>} - A promise that resolves to the newly created student object.
  */
-async function CreateStudent(_, { input }) {
-    const {
-        first_name,
-        last_name,
-        email,
-        date_of_birth,
-        profile_picture,
-        student_status,
-        school
-    } = input;
-
-    const validStatus = ['ACTIVE', 'INACTIVE'];
-
-    if (!first_name || validator.isEmpty(first_name, { ignore_whitespace: true })) {
-        throw new ApolloError('First name is required.', 'BAD_USER_INPUT', {
-            field: 'first_name'
-        });
-    }
-
-    if (!last_name || validator.isEmpty(last_name, { ignore_whitespace: true })) {
-        throw new ApolloError('Last name is required.', 'BAD_USER_INPUT', {
-            field: 'last_name'
-        });
-    }
-
-    if (!email || !validator.isEmail(email)) {
-        throw new ApolloError('A valid email address is required.', 'BAD_USER_INPUT', {
-            field: 'email'
-        });
-    }
-
-    const studentExisted = await StudentModel.findOne({ email: email });
-    if (studentExisted) {
-        throw new ApolloError('The email address is already used.', 'BAD_USER_INPUT', {
-            field: 'email'
-        });
-    }
-
-    if (!(date_of_birth instanceof Date ? !isNaN(date_of_birth.getTime()) : !isNaN(new Date(date_of_birth).getTime()))) {
-        throw new ApolloError('A valid date of birth format is required.', 'BAD_USER_INPUT', {
-            field: 'date_of_birth'
-        });
-    }
-
-    if (profile_picture && !validator.isURL(profile_picture)) {
-        throw new ApolloError('Profile picture must be a valid URL.', 'BAD_USER_INPUT', {
-            field: 'profile_picture'
-        });
-    }
-
-    if (!student_status || !validator.isIn(student_status.toUpperCase(), validStatus)) {
-        throw new ApolloError(`Student status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
-            field: 'student_status'
-        });
-    }
-
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(school);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${school}`, "BAD_USER_INPUT");
-    }
-
-    const schoolCheck = await SchoolModel.findOne({ _id: school, school_status: 'ACTIVE' });
-    if (!schoolCheck) {
-        throw new ApolloError('School not found', 'NOT_FOUND', {
-            field: 'school'
-        });
-    }
-
+async function CreateStudent(_, { createStudentInput }, context) {
     try {
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const createdByUserId = '6846e5769e5502fce150eb67';
-
-        const studentData = {
-            first_name: first_name,
-            last_name: last_name,
-            email: email,
-            // *************** Using dummy password for now
-            password: 'password123',
-            date_of_birth: date_of_birth,
-            profile_picture: profile_picture,
-            student_status: student_status.toUpperCase(),
-            created_by: createdByUserId,
-            updated_by: createdByUserId,
-            school: school
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
         }
 
-        // *************** Create new student data in the MongoDB
-        const newStudent = await StudentModel.create(studentData);
+        CommonValidator.ValidateInputTypeObject(createStudentInput);
 
-        // *************** Add the new student to the associated active school
-        await SchoolModel.updateOne({ _id: school, school_status: 'ACTIVE' }, { $addToSet: { students: newStudent._id } });
+        const emailExist = await StudentModel.exists({ email: createStudentInput.email });
+
+        StudentValidator.ValidateStudentInput({ studentInput: createStudentInput, isEmailUnique: !emailExist });
+
+        const createStudentPayload = await StudentHelper.GetCreateStudentPayload({ createStudentInput, userId, isEmailUnique: !emailExist });
+
+        const newStudent = await StudentModel.create(createStudentPayload);
+        if (!newStudent) {
+            throw new ApolloError('Failed to create student', 'STUDENT_CREATION_FAILED');
+        }
+
+        const updatedSchool = await SchoolModel.updateOne(
+            { _id: createStudentInput.school },
+            { $addToSet: { students: newStudent._id } }
+        )
+        if (!updatedSchool.nModified) {
+            throw new ApolloError('Failed to update school with new student', 'SCHOOL_UPDATE_FAILED');
+        }
 
         return newStudent;
     } catch (error) {
-        throw new ApolloError('Failed to create student:', 'STUDENT_CREATION_FAILED', {
+        console.error('Unexpected error in CreateStudent:', error);
+
+        throw new ApolloError('Failed to create student', 'STUDENT_CREATION_FAILED', {
             error: error.message
         });
     }
 }
 
 /**
- * Updates an existing student's information.
+ * GraphQL resolver to update an existing student's details, with logic to handle school changes.
  * @param {object} _ - The parent object, which is not used in this resolver.
- * @param {object} args - The arguments object.
+ * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the student to update.
- * @param {object} args.input - The new data to update for the student.
+ * @param {object} args.updateStudentInput - An object containing the fields to be updated.
+ * @param {object} context - The GraphQL context, used here to get the authenticated user's ID.
  * @returns {Promise<object>} - A promise that resolves to the updated student object.
  */
-async function UpdateStudent(_, { id, input }) {
-    const {
-        first_name,
-        last_name,
-        email,
-        date_of_birth,
-        profile_picture,
-        student_status,
-        school
-    } = input;
-
-    const validStatus = ['ACTIVE', 'INACTIVE'];
-
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
-    }
-
-    if (!first_name || validator.isEmpty(first_name, { ignore_whitespace: true })) {
-        throw new ApolloError('First name is required.', 'BAD_USER_INPUT', {
-            field: 'first_name'
-        });
-    }
-
-    if (!last_name || validator.isEmpty(last_name, { ignore_whitespace: true })) {
-        throw new ApolloError('Last name is required.', 'BAD_USER_INPUT', {
-            field: 'last_name'
-        });
-    }
-
-    if (!email || !validator.isEmail(email)) {
-        throw new ApolloError('A valid email address is required.', 'BAD_USER_INPUT', {
-            field: 'email'
-        });
-    }
-
-    const studentExisted = await StudentModel.findOne({ email: email });
-    if (studentExisted.id ==! id) {
-        throw new ApolloError('The email address is already used.', 'BAD_USER_INPUT', {
-            field: 'email'
-        });
-    }
-
-    if (!(date_of_birth instanceof Date ? !isNaN(date_of_birth.getTime()) : !isNaN(new Date(date_of_birth).getTime()))) {
-        throw new ApolloError('A valid date of birth format is required.', 'BAD_USER_INPUT', {
-            field: 'date_of_birth'
-        });
-    }
-
-    if (profile_picture && !validator.isURL(profile_picture)) {
-        throw new ApolloError('Profile picture must be a valid URL.', 'BAD_USER_INPUT', {
-            field: 'profile_picture'
-        });
-    }
-
-    if (!student_status || !validator.isIn(student_status.toUpperCase(), validStatus)) {
-        throw new ApolloError(`Student status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
-            field: 'student_status'
-        });
-    }
-
-    const isValidSchoolId = mongoose.Types.ObjectId.isValid(school);
-    if (!isValidSchoolId) {
-        throw new ApolloError(`Invalid ID: ${school}`, "BAD_USER_INPUT");
-    }
-
-    const schoolCheck = await SchoolModel.findOne({ _id: school, school_status: 'ACTIVE' });
-    if (!schoolCheck) {
-        throw new ApolloError('School not found', 'NOT_FOUND', {
-            field: 'school'
-        });
-    }
-
+async function UpdateStudent(_, { id, updateStudentInput }, context) {
     try {
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const updatedByUserId = '6846e5769e5502fce150eb67';
-
-        // *************** Check if student data is already in database
-        const existingStudent = await StudentModel.findOne({ _id: id, student_status: 'ACTIVE' });
-        if (!existingStudent) {
-            throw new ApolloError('Student not found', 'NOT_FOUND', {
-                field: 'student'
-            });
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
         }
 
-        // *************** Determine if school has changed
-        const hasSchoolChanged = String(existingStudent.school) !== school;
+        CommonValidator.ValidateObjectId(id);
+        CommonValidator.ValidateInputTypeObject(updateStudentInput);
 
-        // *************** If student change school, remove student data from old school
+        let isEmailUnique = true;
+        if (updateStudentInput.email) {
+            const emailExists = await StudentModel.exists({ email: updateStudentInput.email, _id: { $ne: id } });
+            isEmailUnique = !emailExists;
+        }
+
+        StudentValidator.ValidateStudentInput({ studentInput: updateStudentInput, isEmailUnique, isUpdate: true });
+
+        const student = await StudentModel.findOne({ _id: id, student_status: { $ne: 'DELETED' } }).select({ school: 1 }).lean();
+        if (!student) {
+            throw new ApolloError('Student not found', "NOT_FOUND");
+        }
+
+        const updateStudentPayload = await StudentHelper.GetUpdateStudentPayload({ updateStudentInput, userId, isEmailUnique });
+
+        const updatedStudent = await StudentModel.findOneAndUpdate(
+            { _id: id },
+            { $set: updateStudentPayload },
+            { new: true }
+        )
+
+        if (!updatedStudent) {
+            throw new ApolloError('Student not found or update failed', 'STUDENT_UPDATE_FAILED');
+        }
+
+        const hasSchoolChanged = String(existingStudent.school) !== updateStudentInput.school;
         if (hasSchoolChanged) {
-            await SchoolModel.updateOne(
+            const oldSchoolUpdate = await SchoolModel.updateOne(
                 { _id: existingStudent.school },
                 { $pull: { students: id } }
             );
-        }
+            if (!oldSchoolUpdate.nModified) {
+                throw new ApolloError('Failed to remove student from old school', 'SCHOOL_UPDATE_FAILED');
+            }
 
-        const studentData = {
-            first_name: first_name,
-            last_name: last_name,
-            email: email,
-            date_of_birth: date_of_birth,
-            profile_picture: profile_picture,
-            student_status: student_status.toUpperCase(),
-            updated_by: updatedByUserId,
-            school: school
-        }
-
-        // *************** Update the student data
-        const updatedStudent = await StudentModel.findOneAndUpdate({ _id: id, student_status: 'ACTIVE' }, studentData, { new: true });
-
-        // *************** If student change school, add student data to new school
-        if (hasSchoolChanged) {
-            await SchoolModel.updateOne({ _id: school, school_status: 'ACTIVE' }, { $addToSet: { students: updatedStudent._id } });
+            const newSchoolUpdate = await SchoolModel.updateOne(
+                { _id: updateStudentInput.school },
+                { $addToSet: { students: id } }
+            );
+            if (!newSchoolUpdate.nModified) {
+                throw new ApolloError('Failed to add student to new school', 'SCHOOL_UPDATE_FAILED');
+            }
         }
 
         return updatedStudent;
     } catch (error) {
+        console.error('Unexpected error in UpdateStudent:', error);
+
         throw new ApolloError('Failed to update student:', 'STUDENT_UPDATE_FAILED', {
             error: error.message
         });
@@ -285,40 +277,44 @@ async function UpdateStudent(_, { id, input }) {
 }
 
 /**
- * Deletes a student by changing their status to 'DELETED'.
+ * GraphQL resolver to soft-delete a student and remove their reference from the parent school.
  * @param {object} _ - The parent object, which is not used in this resolver.
- * @param {object} args - The arguments object.
+ * @param {object} args - The arguments for the mutation.
  * @param {string} args.id - The unique identifier of the student to delete.
- * @returns {Promise<object>} - A promise that resolves to the student object with a 'DELETED' status.
+ * @param {object} context - The GraphQL context, used here to get the authenticated user's ID.
+ * @returns {Promise<object>} - A promise that resolves to the student object as it was before being soft-deleted.
  */
-async function DeleteStudent(_, { id }) {
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
-    if (!isValidObjectId) {
-        throw new ApolloError(`Invalid ID: ${id}`, "BAD_USER_INPUT");
-    }
-
+async function DeleteStudent(_, { id }, context) {
     try {
-        // *************** Using dummy user ID for now (replace with actual user ID from auth/session later)
-        const deletedByUserId = '6846e5769e5502fce150eb67';
-
-        const student = await StudentModel.findById(id);
-        if (!student) {
-            throw new ApolloError(`Student not found with ID: ${id}`, "NOT_FOUND");
+        const userId = (context && context.user && context.user._id);
+        if (!userId) {
+            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
         }
 
-        const studentData = {
-            student_status: 'DELETED',
-            deleted_by: deletedByUserId,
-            deleted_at: Date.now()
-        }
-        const deletedStudent = await StudentModel.findOneAndUpdate({ _id: id }, studentData)
+        CommonValidator.ValidateObjectId(id);
 
-        if (student.school) {
-            await SchoolModel.updateOne({ _id: student.school }, { $pull: { students: id } });
+        const { student, school } = await StudentHelper.GetDeleteStudentPayload({ studentId: id, userId });
+
+        const deletedStudent = await StudentModel.findOneAndUpdate(
+            student.filter,
+            student.update
+        )
+        if (!deletedStudent) {
+            throw new ApolloError('Student deletion failed', 'STUDENT_DELETION_FAILED');
+        }
+
+        const updatedSchool = await SchoolModel.updateOne(
+            school.filter,
+            school.update
+        );
+        if (!updatedSchool.nModified) {
+            throw new ApolloError('Failed to update school (remove student)', 'SCHOOL_UPDATE_FAILED');
         }
 
         return deletedStudent;
     } catch (error) {
+        console.error('Unexpected error in DeleteStudent:', error);
+
         throw new ApolloError('Failed to delete student:', 'STUDENT_DELETION_FAILED', {
             error: error.message
         });
@@ -328,50 +324,66 @@ async function DeleteStudent(_, { id }) {
 // *************** LOADER ***************
 /**
  * Loads the school associated with a student using a DataLoader.
- * @param {object} parent - The parent student object.
- * @param {string} parent.school - The ID of the school to load.
- * @param {object} _ - The arguments object, not used here.
- * @param {object} context - The GraphQL context containing dataLoaders.
+ * @param {object} student - The parent student object.
+ * @param {string} student.school - The ID of the school to load.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
  * @returns {Promise<object>} - A promise that resolves to the school object.
  */
-async function SchoolLoader(parent, _, context) {
+async function SchoolLoader(student, _, context) {
     try {
-        return await context.dataLoaders.SchoolLoader.load(parent.school);
+        StudentValidator.ValidateSchoolLoaderInput(student, context);
+
+        const school = await context.dataLoaders.SchoolLoader.load(student.school);
+
+        return school;
     } catch (error) {
         throw new ApolloError(`Failed to fetch school: ${error.message}`, 'SCHOOL_FETCH_FAILED');
     }
 }
 
 /**
- * Loads the user who created the record using a DataLoader.
- * @param {object} parent - The parent student object.
- * @param {string} parent.created_by - The ID of the user to load.
- * @param {object} _ - The arguments object, not used here.
- * @param {object} context - The GraphQL context containing dataLoaders.
+ * Loads the user who created the student using a DataLoader.
+ * @param {object} student - The parent student object.
+ * @param {string} student.created_by - The ID of the user who created the student.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
-async function CreatedByLoader(parent, _, context) {
+async function CreatedByLoader(student, _, context) {
     try {
-    return await context.dataLoaders.UserLoader.load(parent.created_by);
-  } catch (error) {
-    throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
-  }
+        StudentValidator.ValidateUserLoaderInput(student, context, 'created_by');
+
+        const createdBy = await context.dataLoaders.UserLoader.load(student.created_by);
+
+        return createdBy;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
+            error: error.message
+        });
+    }
 }
 
 /**
- * Loads the user who last updated the record using a DataLoader.
- * @param {object} parent - The parent student object.
- * @param {string} parent.updated_by - The ID of the user to load.
- * @param {object} _ - The arguments object, not used here.
- * @param {object} context - The GraphQL context containing dataLoaders.
+ * Loads the user who last updated the student using a DataLoader.
+ * @param {object} student - The parent student object.
+ * @param {string} student.updated_by - The ID of the user who last updated the student.
+ * @param {object} _ - The arguments object, not used in this resolver.
+ * @param {object} context - The GraphQL context containing the dataLoaders.
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
-async function UpdatedByLoader(parent, _, context) {
+async function UpdatedByLoader(student, _, context) {
     try {
-    return await context.dataLoaders.UserLoader.load(parent.updated_by);
-  } catch (error) {
-    throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED');
-  }
+        StudentValidator.ValidateUserLoaderInput(student, context, 'updated_by');
+
+        const updatedBy = await context.dataLoaders.UserLoader.load(student.updated_by);
+
+        return updatedBy;
+    } catch (error) {
+        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
+            error: error.message
+        });
+    }
 }
 
 // *************** EXPORT MODULE ***************

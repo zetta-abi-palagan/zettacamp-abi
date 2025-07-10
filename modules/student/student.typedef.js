@@ -8,7 +8,52 @@ module.exports = gql`
         INACTIVE
         DELETED
     }
-    
+
+    input CreateStudentInput {
+        first_name: String!
+        last_name: String!
+        email: String!
+        password: String!
+        date_of_birth: String!
+        profile_picture: String
+        student_status: Status!
+        school: ID!
+    }
+
+    input UpdateStudentInput {
+        first_name: String
+        last_name: String
+        email: String
+        password: String
+        date_of_birth: String
+        profile_picture: String
+        student_status: Status
+        school: ID
+    }
+
+    input StudentFilterInput {
+        first_name: String
+        last_name: String
+        email: String
+        student_status: Status
+        school: SchoolReferenceFilterInput
+        created_by: UserReferenceFilterInput
+        updated_by: UserReferenceFilterInput
+    }
+
+    input SchoolReferenceFilterInput {
+        commercial_name: String
+        legal_name: String
+        city: String
+        country: String
+        school_status: Status
+    }
+
+    type PaginatedStudents {
+        data: [Student!]!
+        countDocuments: Int!
+    }
+
     type Student {
         _id: ID!
         first_name: String!
@@ -24,34 +69,19 @@ module.exports = gql`
         updated_at: String!
     }
 
-    input CreateStudentInput {
-        first_name: String!
-        last_name: String!
-        email: String!
-        date_of_birth: String!
-        profile_picture: String
-        student_status: Status!
-        school: ID!
-    }
-
-    input UpdateStudentInput {
-        first_name: String!
-        last_name: String!
-        email: String!
-        date_of_birth: String!
-        profile_picture: String
-        student_status: Status!
-        school: ID!
-    }
-
     type Query {
-        GetAllStudents: [Student!]!
+        GetAllStudents(
+            filter: StudentFilterInput, 
+            sort: SortInput, 
+            page: Int, 
+            limit: Int
+        ): PaginatedStudents!
         GetOneStudent(id: ID!): Student
     }
 
     type Mutation {
-        CreateStudent(input: CreateStudentInput!): Student!
-        UpdateStudent(id: ID!, input: UpdateStudentInput!): Student!
+        CreateStudent(createStudentInput: CreateStudentInput!): Student!
+        UpdateStudent(id: ID!, updateStudentInput: UpdateStudentInput!): Student!
         DeleteStudent(id: ID!): Student!
     }
 `
