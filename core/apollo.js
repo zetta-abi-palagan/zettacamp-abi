@@ -30,7 +30,10 @@ async function SetupApolloServer(app, port) {
         typeDefs,
         resolvers,
         context: async ({ req }) => {
+            // *************** Extract GraphQL query from request body
             const query = req.body && req.body.query;
+
+            // *************** If introspection query, skip auth and return no user
             if (query && (query.indexOf('__schema') !== -1 || query.indexOf('__type') !== -1)) {
                 return {
                     dataLoaders: CreateLoaders(),
@@ -38,10 +41,12 @@ async function SetupApolloServer(app, port) {
                 };
             }
 
+            // *************** Authorize request and extract user info
             const { user: decodedUser } = AuthorizeRequest(req, req.body);
 
             let user;
 
+            // *************** Fetch user details from DB if authenticated
             if (decodedUser && decodedUser._id) {
                 if (decodedUser.role === 'STUDENT') {
                     user = await StudentModel.findOne({ _id: decodedUser._id, student_status: 'ACTIVE' }).lean();
