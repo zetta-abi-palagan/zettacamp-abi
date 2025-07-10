@@ -93,10 +93,12 @@ function AuthorizeRequest(req, body) {
     }
 
     if (typeof accessConfig.validator === 'function') {
-        try {
-            accessConfig.validator({ user, variables: body.variables });
-        } catch (err) {
-            throw new ForbiddenError('Validation failed: ' + err.message);
+        if (user.role === 'STUDENT') {
+            try {
+                accessConfig.validator({ user, variables: body.variables });
+            } catch (err) {
+                throw new ForbiddenError('Authorization validation failed:', err.message);
+            }
         }
     }
 
