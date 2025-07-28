@@ -9,16 +9,16 @@ const mergedRouter = require('./router');
  * @returns {object} The configured Express app instance.
  */
 function InitializeExpressApp() {
-    const app = express();
+  const app = express();
 
-    // *************** Endpoint for checking if the server is up
-    app.get('/health', function (req, res) {
-        res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
-    })
+  // *************** Endpoint for checking if the server is up
+  app.get('/health', function (req, res) {
+    res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
+  });
 
-    app.use('/api', mergedRouter);
+  app.use('/api', mergedRouter);
 
-    return app;
+  return app;
 }
 
 /**
@@ -29,25 +29,25 @@ function InitializeExpressApp() {
  * @returns {Promise<void>} A promise that resolves when the server has started listening.
  */
 async function StartExpressServer(app, port) {
-    if (!app || typeof app.listen !== 'function') {
-        throw new Error("Invalid Express app: .listen method not found.");
-    }
-    if (!port) {
-        console.warn("Port not provided; defaulting to 5000");
-        port = 5000;
-    }
+  if (!app || typeof app.listen !== 'function') {
+    throw new Error('Invalid Express app: .listen method not found.');
+  }
+  if (!port) {
+    console.warn('Port not provided; defaulting to 5000');
+    port = 5000;
+  }
 
-    return new Promise(function(resolve, reject) {
-        const server = app.listen(port, function() {
-            console.log(`Server is running on http://localhost:${port}`);
-            resolve(server);
-        });
-
-        server.on('error', function(err) {
-            console.error('Failed to start server:', err.message);
-            reject(err);
-        });
+  return new Promise(function (resolve, reject) {
+    const server = app.listen(port, function () {
+      console.log(`Server is running on http://localhost:${port}`);
+      resolve(server);
     });
+
+    server.on('error', function (err) {
+      console.error('Failed to start server:', err.message);
+      reject(err);
+    });
+  });
 }
 
 // *************** EXPORT MODULE ***************

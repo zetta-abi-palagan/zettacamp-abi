@@ -7,7 +7,7 @@ const config = require('../../core/config');
 const StudentModel = require('./student.model');
 
 // *************** IMPORT UTILITES ***************
-const CommonHelper = require('../../shared/helper/index')
+const CommonHelper = require('../../shared/helper/index');
 
 // *************** IMPORT VALIDATOR ***************
 const StudentValidator = require('./student.validator');
@@ -22,37 +22,28 @@ const CommonValidator = require('../../shared/validator/index');
  * @returns {Promise<object>} A promise that resolves to a processed data payload suitable for a database create operation.
  */
 async function GetCreateStudentPayload({ createStudentInput, userId, isEmailUnique }) {
-    CommonValidator.ValidateInputTypeObject(createStudentInput);
-    CommonValidator.ValidateObjectId(userId);
-    StudentValidator.ValidateStudentInput({ studentInput: createStudentInput, isEmailUnique });
+  CommonValidator.ValidateInputTypeObject(createStudentInput);
+  CommonValidator.ValidateObjectId(userId);
+  StudentValidator.ValidateStudentInput({ studentInput: createStudentInput, isEmailUnique });
 
-    const {
-        first_name,
-        last_name,
-        email,
-        password,
-        date_of_birth,
-        profile_picture,
-        student_status,
-        school
-    } = createStudentInput;
+  const { first_name, last_name, email, password, date_of_birth, profile_picture, student_status, school } = createStudentInput;
 
-    CommonValidator.ValidateObjectId(school);
+  CommonValidator.ValidateObjectId(school);
 
-    const hashedPassword = await bcrypt.hash(password, parseInt(config.BCRYPT_ROUNDS));
+  const hashedPassword = await bcrypt.hash(password, parseInt(config.BCRYPT_ROUNDS));
 
-    return {
-        first_name,
-        last_name,
-        email,
-        password: hashedPassword,
-        date_of_birth,
-        profile_picture,
-        student_status: student_status.toUpperCase(),
-        school,
-        created_by: userId,
-        updated_by: userId
-    };
+  return {
+    first_name,
+    last_name,
+    email,
+    password: hashedPassword,
+    date_of_birth,
+    profile_picture,
+    student_status: student_status.toUpperCase(),
+    school,
+    created_by: userId,
+    updated_by: userId,
+  };
 }
 
 /**
@@ -65,35 +56,28 @@ async function GetCreateStudentPayload({ createStudentInput, userId, isEmailUniq
  * @returns {Promise<object>} A promise that resolves to a processed data payload suitable for a partial database update.
  */
 async function GetUpdateStudentPayload({ updateStudentInput, userId, isEmailUnique }) {
-    CommonValidator.ValidateInputTypeObject(updateStudentInput);
-    CommonValidator.ValidateObjectId(userId);
-    StudentValidator.ValidateStudentInput({ studentInput: updateStudentInput, isEmailUnique, isUpdate: true });
+  CommonValidator.ValidateInputTypeObject(updateStudentInput);
+  CommonValidator.ValidateObjectId(userId);
+  StudentValidator.ValidateStudentInput({ studentInput: updateStudentInput, isEmailUnique, isUpdate: true });
 
-    const {
-        first_name,
-        last_name,
-        email,
-        password,
-        date_of_birth,
-        profile_picture,
-        student_status,
-        school
-    } = updateStudentInput;
+  const { first_name, last_name, email, password, date_of_birth, profile_picture, student_status, school } = updateStudentInput;
 
-    const payload = {};
+  const payload = {};
 
-    if (first_name !== undefined && first_name !== null) payload.first_name = first_name;
-    if (last_name !== undefined && last_name !== null) payload.last_name = last_name;
-    if (email !== undefined && email !== null) payload.email = email;
-    if (password !== undefined && password !== null) payload.password = await bcrypt.hash(password, parseInt(config.BCRYPT_ROUNDS));
-    if (date_of_birth !== undefined && date_of_birth !== null) payload.date_of_birth = date_of_birth;
-    if (profile_picture !== undefined && profile_picture !== null) payload.profile_picture = profile_picture;
-    if (student_status !== undefined && student_status !== null) payload.student_status = student_status.toUpperCase();
-    if (school !== undefined && school !== null) { payload.school = school; }
+  if (first_name !== undefined && first_name !== null) payload.first_name = first_name;
+  if (last_name !== undefined && last_name !== null) payload.last_name = last_name;
+  if (email !== undefined && email !== null) payload.email = email;
+  if (password !== undefined && password !== null) payload.password = await bcrypt.hash(password, parseInt(config.BCRYPT_ROUNDS));
+  if (date_of_birth !== undefined && date_of_birth !== null) payload.date_of_birth = date_of_birth;
+  if (profile_picture !== undefined && profile_picture !== null) payload.profile_picture = profile_picture;
+  if (student_status !== undefined && student_status !== null) payload.student_status = student_status.toUpperCase();
+  if (school !== undefined && school !== null) {
+    payload.school = school;
+  }
 
-    payload.updated_by = userId;
+  payload.updated_by = userId;
 
-    return payload;
+  return payload;
 }
 
 /**
@@ -104,36 +88,36 @@ async function GetUpdateStudentPayload({ updateStudentInput, userId, isEmailUniq
  * @returns {Promise<object>} A promise that resolves to a structured payload for the delete and update operations.
  */
 async function GetDeleteStudentPayload({ studentId, userId }) {
-    try {
-        CommonValidator.ValidateObjectId(studentId);
-        CommonValidator.ValidateObjectId(userId);
+  try {
+    CommonValidator.ValidateObjectId(studentId);
+    CommonValidator.ValidateObjectId(userId);
 
-        const deletionTimestamp = Date.now();
+    const deletionTimestamp = Date.now();
 
-        const student = await StudentModel.findOne({ _id: studentId, student_status: { $ne: 'DELETED' } });
-        if (!student) {
-            throw new ApolloError('Student not found', 'STUDENT_NOT_FOUND');
-        }
-
-        const deleteStudentPayload = {
-            student: CommonHelper.BuildDeletePayload({
-                ids: [studentId],
-                statusKey: 'student_status',
-                timestamp: deletionTimestamp,
-                userId: userId
-            }),
-            school: BuildPullStudentFromSchoolPayload({
-                schoolId: student.school,
-                studentId
-            })
-        };
-
-        return deleteStudentPayload;
-    } catch (error) {
-        throw new ApolloError(`Failed in GetDeleteStudentPayload: ${error.message}`, 'DELETE_STUDENT_PAYLOAD_FAILED', {
-            error: error.message
-        });
+    const student = await StudentModel.findOne({ _id: studentId, student_status: { $ne: 'DELETED' } });
+    if (!student) {
+      throw new ApolloError('Student not found', 'STUDENT_NOT_FOUND');
     }
+
+    const deleteStudentPayload = {
+      student: CommonHelper.BuildDeletePayload({
+        ids: [studentId],
+        statusKey: 'student_status',
+        timestamp: deletionTimestamp,
+        userId: userId,
+      }),
+      school: BuildPullStudentFromSchoolPayload({
+        schoolId: student.school,
+        studentId,
+      }),
+    };
+
+    return deleteStudentPayload;
+  } catch (error) {
+    throw new ApolloError(`Failed in GetDeleteStudentPayload: ${error.message}`, 'DELETE_STUDENT_PAYLOAD_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -144,15 +128,15 @@ async function GetDeleteStudentPayload({ studentId, userId }) {
  * @returns {object} An object containing 'filter' and 'update' properties for a MongoDB $pull operation.
  */
 function BuildPullStudentFromSchoolPayload({ schoolId, studentId }) {
-    return {
-        filter: { _id: schoolId },
-        update: { $pull: { students: studentId } }
-    };
+  return {
+    filter: { _id: schoolId },
+    update: { $pull: { students: studentId } },
+  };
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetCreateStudentPayload,
-    GetUpdateStudentPayload,
-    GetDeleteStudentPayload
-}
+  GetCreateStudentPayload,
+  GetUpdateStudentPayload,
+  GetDeleteStudentPayload,
+};

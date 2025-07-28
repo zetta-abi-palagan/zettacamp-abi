@@ -16,61 +16,61 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateGetAllSchoolsInput({ filter, sort, page, limit }) {
-    const allowedRoles = ['ADMIN', 'USER', 'ACADEMIC_DIRECTOR', 'CORRECTOR'];
-    const allowedStatus = ['ACTIVE', 'INACTIVE'];
+  const allowedRoles = ['ADMIN', 'USER', 'ACADEMIC_DIRECTOR', 'CORRECTOR'];
+  const allowedStatus = ['ACTIVE', 'INACTIVE'];
 
-    if (filter) {
-        if (filter.school_status && !allowedStatus.includes(filter.school_status)) {
-            throw new ApolloError('Invalid status in school filter.', 'BAD_USER_INPUT');
-        }
-
-        if (filter.students) {
-            if (filter.students.email && !emailRegex.test(filter.students.email)) {
-                throw new ApolloError('Invalid email format in students filter.', 'BAD_USER_INPUT');
-            }
-            if (filter.students.student_status && !allowedStatus.includes(filter.students.student_status)) {
-                throw new ApolloError('Invalid status in students filter.', 'BAD_USER_INPUT');
-            }
-        }
-
-        if (filter.created_by) {
-            if (filter.created_by.email && !emailRegex.test(filter.created_by.email)) {
-                throw new ApolloError('Invalid email format in created_by filter.', 'BAD_USER_INPUT');
-            }
-            if (filter.created_by.role && !allowedRoles.includes(filter.created_by.role)) {
-                throw new ApolloError('Invalid role in created_by filter.', 'BAD_USER_INPUT');
-            }
-        }
-
-        if (filter.updated_by) {
-            if (filter.updated_by.email && !emailRegex.test(filter.updated_by.email)) {
-                throw new ApolloError('Invalid email format in updated_by filter.', 'BAD_USER_INPUT');
-            }
-            if (filter.updated_by.role && !allowedRoles.includes(filter.updated_by.role)) {
-                throw new ApolloError('Invalid role in updated_by filter.', 'BAD_USER_INPUT');
-            }
-        }
+  if (filter) {
+    if (filter.school_status && !allowedStatus.includes(filter.school_status)) {
+      throw new ApolloError('Invalid status in school filter.', 'BAD_USER_INPUT');
     }
 
-    if (sort) {
-        if (!sort.field || typeof sort.field !== 'string') {
-            throw new ApolloError('Sort field must be a non-empty string.', 'BAD_USER_INPUT');
-        }
-        if (!/^[a-zA-Z0-9_.]+$/.test(sort.field)) {
-            throw new ApolloError('Sort field contains invalid characters.', 'BAD_USER_INPUT');
-        }
-        if (!sort.order || !['ASC', 'DESC'].includes(sort.order.toUpperCase())) {
-            throw new ApolloError('Sort order must be either "ASC" or "DESC".', 'BAD_USER_INPUT');
-        }
+    if (filter.students) {
+      if (filter.students.email && !emailRegex.test(filter.students.email)) {
+        throw new ApolloError('Invalid email format in students filter.', 'BAD_USER_INPUT');
+      }
+      if (filter.students.student_status && !allowedStatus.includes(filter.students.student_status)) {
+        throw new ApolloError('Invalid status in students filter.', 'BAD_USER_INPUT');
+      }
     }
 
-    if (page !== undefined && (!Number.isInteger(page) || page < 1)) {
-        throw new ApolloError('Page must be a positive integer.', 'BAD_USER_INPUT');
+    if (filter.created_by) {
+      if (filter.created_by.email && !emailRegex.test(filter.created_by.email)) {
+        throw new ApolloError('Invalid email format in created_by filter.', 'BAD_USER_INPUT');
+      }
+      if (filter.created_by.role && !allowedRoles.includes(filter.created_by.role)) {
+        throw new ApolloError('Invalid role in created_by filter.', 'BAD_USER_INPUT');
+      }
     }
 
-    if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
-        throw new ApolloError('Limit must be a positive integer.', 'BAD_USER_INPUT');
+    if (filter.updated_by) {
+      if (filter.updated_by.email && !emailRegex.test(filter.updated_by.email)) {
+        throw new ApolloError('Invalid email format in updated_by filter.', 'BAD_USER_INPUT');
+      }
+      if (filter.updated_by.role && !allowedRoles.includes(filter.updated_by.role)) {
+        throw new ApolloError('Invalid role in updated_by filter.', 'BAD_USER_INPUT');
+      }
     }
+  }
+
+  if (sort) {
+    if (!sort.field || typeof sort.field !== 'string') {
+      throw new ApolloError('Sort field must be a non-empty string.', 'BAD_USER_INPUT');
+    }
+    if (!/^[a-zA-Z0-9_.]+$/.test(sort.field)) {
+      throw new ApolloError('Sort field contains invalid characters.', 'BAD_USER_INPUT');
+    }
+    if (!sort.order || !['ASC', 'DESC'].includes(sort.order.toUpperCase())) {
+      throw new ApolloError('Sort order must be either "ASC" or "DESC".', 'BAD_USER_INPUT');
+    }
+  }
+
+  if (page !== undefined && (!Number.isInteger(page) || page < 1)) {
+    throw new ApolloError('Page must be a positive integer.', 'BAD_USER_INPUT');
+  }
+
+  if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
+    throw new ApolloError('Limit must be a positive integer.', 'BAD_USER_INPUT');
+  }
 }
 
 /**
@@ -89,69 +89,69 @@ function ValidateGetAllSchoolsInput({ filter, sort, page, limit }) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateSchoolInput({ schoolInput, isUpdate = false }) {
-    const validStatus = ['ACTIVE', 'INACTIVE'];
+  const validStatus = ['ACTIVE', 'INACTIVE'];
 
-    const validationRules = [
-        {
-            field: 'commercial_name',
-            required: true,
-            validate: (val) => typeof val === 'string' && val.trim() !== '',
-            message: 'Commercial name is required.',
-        },
-        {
-            field: 'legal_name',
-            required: true,
-            validate: (val) => typeof val === 'string' && val.trim() !== '',
-            message: 'Legal name is required.',
-        },
-        {
-            field: 'address',
-            required: true,
-            validate: (val) => typeof val === 'string' && val.trim() !== '',
-            message: 'Address is required.',
-        },
-        {
-            field: 'city',
-            required: true,
-            validate: (val) => typeof val === 'string' && val.trim() !== '',
-            message: 'City is required.',
-        },
-        {
-            field: 'country',
-            required: true,
-            validate: (val) => typeof val === 'string' && val.trim() !== '',
-            message: 'Country is required.',
-        },
-        {
-            field: 'zipcode',
-            required: true,
-            validate: (val) => typeof val === 'string' && val.trim() !== '',
-            message: 'Zipcode is required.',
-        },
-        {
-            field: 'logo',
-            required: false,
-            validate: (val) => typeof val === 'string' && val.startsWith('http'),
-            message: 'Logo must be a valid URL.',
-        },
-        {
-            field: 'school_status',
-            required: true,
-            validate: (val) => typeof val === 'string' && validStatus.includes(val.toUpperCase()),
-            message: `School status must be one of: ${validStatus.join(', ')}.`,
-        },
-    ];
+  const validationRules = [
+    {
+      field: 'commercial_name',
+      required: true,
+      validate: (val) => typeof val === 'string' && val.trim() !== '',
+      message: 'Commercial name is required.',
+    },
+    {
+      field: 'legal_name',
+      required: true,
+      validate: (val) => typeof val === 'string' && val.trim() !== '',
+      message: 'Legal name is required.',
+    },
+    {
+      field: 'address',
+      required: true,
+      validate: (val) => typeof val === 'string' && val.trim() !== '',
+      message: 'Address is required.',
+    },
+    {
+      field: 'city',
+      required: true,
+      validate: (val) => typeof val === 'string' && val.trim() !== '',
+      message: 'City is required.',
+    },
+    {
+      field: 'country',
+      required: true,
+      validate: (val) => typeof val === 'string' && val.trim() !== '',
+      message: 'Country is required.',
+    },
+    {
+      field: 'zipcode',
+      required: true,
+      validate: (val) => typeof val === 'string' && val.trim() !== '',
+      message: 'Zipcode is required.',
+    },
+    {
+      field: 'logo',
+      required: false,
+      validate: (val) => typeof val === 'string' && val.startsWith('http'),
+      message: 'Logo must be a valid URL.',
+    },
+    {
+      field: 'school_status',
+      required: true,
+      validate: (val) => typeof val === 'string' && validStatus.includes(val.toUpperCase()),
+      message: `School status must be one of: ${validStatus.join(', ')}.`,
+    },
+  ];
 
-    for (const rule of validationRules) {
-        const value = schoolInput[rule.field];
+  for (const rule of validationRules) {
+    const value = schoolInput[rule.field];
 
-        if ((!isUpdate && rule.required) || value !== undefined) {
-            if (!rule.validate(value)) {
-                const message = typeof rule.message === 'function' ? rule.message(value) : rule.message;
-                throw new ApolloError(message, 'BAD_USER_INPUT', { field: rule.field });
-            }
-        }
+    if ((!isUpdate && rule.required) || value !== undefined) {
+      if (!rule.validate(value)) {
+        const message = typeof rule.message === 'function' ? rule.message(value) : rule.message;
+        throw new ApolloError(message, 'BAD_USER_INPUT', { field: rule.field });
+      }
     }
+  }
 }
 
 /**
@@ -161,27 +161,35 @@ function ValidateSchoolInput({ schoolInput, isUpdate = false }) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateStudentLoaderInput(school, context) {
-    if (!school || typeof school !== 'object' || school === null) {
-        throw new ApolloError('Input error: school must be a valid object.', 'BAD_USER_INPUT', {
-            field: 'school'
-        });
-    }
+  if (!school || typeof school !== 'object' || school === null) {
+    throw new ApolloError('Input error: school must be a valid object.', 'BAD_USER_INPUT', {
+      field: 'school',
+    });
+  }
 
-    if (!Array.isArray(school.students)) {
-        throw new ApolloError('Input error: school.students must be an array.', 'BAD_USER_INPUT', {
-            field: 'school.students'
-        });
+  if (!Array.isArray(school.students)) {
+    throw new ApolloError('Input error: school.students must be an array.', 'BAD_USER_INPUT', {
+      field: 'school.students',
+    });
+  }
+  for (const studentId of school.students) {
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      throw new ApolloError(`Invalid subject ID found in students array: ${studentId}`, 'BAD_USER_INPUT', {
+        field: 'school.students',
+      });
     }
-    for (const studentId of school.students) {
-        if (!mongoose.Types.ObjectId.isValid(studentId)) {
-            throw new ApolloError(`Invalid subject ID found in students array: ${studentId}`, 'BAD_USER_INPUT', {
-                field: 'school.students'
-            });
-        }
-    }
-    if (!context || !context.dataLoaders || !context.dataLoaders.StudentLoader || typeof context.dataLoaders.StudentLoader.loadMany !== 'function') {
-        throw new ApolloError('Server configuration error: StudentLoader with loadMany function not found on context.', 'INTERNAL_SERVER_ERROR');
-    }
+  }
+  if (
+    !context ||
+    !context.dataLoaders ||
+    !context.dataLoaders.StudentLoader ||
+    typeof context.dataLoaders.StudentLoader.loadMany !== 'function'
+  ) {
+    throw new ApolloError(
+      'Server configuration error: StudentLoader with loadMany function not found on context.',
+      'INTERNAL_SERVER_ERROR'
+    );
+  }
 }
 
 /**
@@ -192,33 +200,25 @@ function ValidateStudentLoaderInput(school, context) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateUserLoaderInput(parent, context, fieldName) {
-    if (!parent || typeof parent !== 'object' || parent === null) {
-        throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
-    }
+  if (!parent || typeof parent !== 'object' || parent === null) {
+    throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
+  }
 
-    if (
-        !context ||
-        !context.dataLoaders ||
-        !context.dataLoaders.UserLoader ||
-        typeof context.dataLoaders.UserLoader.load !== 'function'
-    ) {
-        throw new ApolloError(
-            'Server configuration error: UserLoader not found on context.',
-            'INTERNAL_SERVER_ERROR'
-        );
-    }
+  if (!context || !context.dataLoaders || !context.dataLoaders.UserLoader || typeof context.dataLoaders.UserLoader.load !== 'function') {
+    throw new ApolloError('Server configuration error: UserLoader not found on context.', 'INTERNAL_SERVER_ERROR');
+  }
 
-    const userId = parent[fieldName];
+  const userId = parent[fieldName];
 
-    if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
-        throw new ApolloError(`Input error: If provided, parent.${fieldName} must be a valid ID.`, 'BAD_USER_INPUT');
-    }
+  if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApolloError(`Input error: If provided, parent.${fieldName} must be a valid ID.`, 'BAD_USER_INPUT');
+  }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    ValidateGetAllSchoolsInput,
-    ValidateSchoolInput,
-    ValidateStudentLoaderInput,
-    ValidateUserLoaderInput
-}
+  ValidateGetAllSchoolsInput,
+  ValidateSchoolInput,
+  ValidateStudentLoaderInput,
+  ValidateUserLoaderInput,
+};

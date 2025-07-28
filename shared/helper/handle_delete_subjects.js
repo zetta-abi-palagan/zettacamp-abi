@@ -1,7 +1,7 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const SubjectModel = require('../../modules/subject/subject.model');
 
 // *************** IMPORT UTILITES ***************
@@ -19,30 +19,30 @@ const CommonValidator = require('../validator/index');
  * @returns {Promise<object>} A promise that resolves to an object containing the subject delete payload and an array of test IDs.
  */
 async function HandleDeleteSubjects({ subjectIds, userId, timestamp }) {
-    try {
-        CommonValidator.ValidateObjectIdArray(subjectIds, 'INVALID_SUBJECT_ID');
+  try {
+    CommonValidator.ValidateObjectIdArray(subjectIds, 'INVALID_SUBJECT_ID');
 
-        const subjects = await SubjectModel.find({ _id: { $in: subjectIds } });
+    const subjects = await SubjectModel.find({ _id: { $in: subjectIds } });
 
-        if (!subjects.length) {
-            throw new ApolloError('No matching subjects found', 'SUBJECTS_NOT_FOUND');
-        }
-
-        const testIds = [].concat(...subjects.map(subject => subject.tests || []));
-
-        const subjectPayload = BuildDeletePayload({
-            ids: subjectIds,
-            statusKey: 'subject_status',
-            timestamp,
-            userId
-        });
-
-        return { subjectPayload, testIds };
-    } catch (error) {
-        throw new ApolloError(`Failed to handle delete subjects: ${error.message}`, 'HANDLE_DELETE_SUBJECTS_FAILED', {
-            error: error.message,
-        });
+    if (!subjects.length) {
+      throw new ApolloError('No matching subjects found', 'SUBJECTS_NOT_FOUND');
     }
+
+    const testIds = [].concat(...subjects.map((subject) => subject.tests || []));
+
+    const subjectPayload = BuildDeletePayload({
+      ids: subjectIds,
+      statusKey: 'subject_status',
+      timestamp,
+      userId,
+    });
+
+    return { subjectPayload, testIds };
+  } catch (error) {
+    throw new ApolloError(`Failed to handle delete subjects: ${error.message}`, 'HANDLE_DELETE_SUBJECTS_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** EXPORT MODULE ***************

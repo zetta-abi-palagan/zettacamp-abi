@@ -19,51 +19,51 @@ const { AuthorizeRequest } = require('../middleware/auth');
  * @returns {Promise<void>} A promise that resolves when the Apollo Server is started and applied.
  */
 async function SetupApolloServer(app, port) {
-    if (!app || typeof app.listen !== 'function') {
-        throw new Error("Invalid Express app: .listen method not found.");
-    }
-    if (!port) {
-        console.warn("Port not provided to SetupApolloServer; log message might be incomplete.");
-        port = '[UNKNOWN_PORT]';
-    }
-    const server = new ApolloServer({
-        typeDefs,
-        resolvers,
-        context: async ({ req }) => {
-            // *************** Extract GraphQL query from request body
-            const query = req.body && req.body.query;
+  if (!app || typeof app.listen !== 'function') {
+    throw new Error('Invalid Express app: .listen method not found.');
+  }
+  if (!port) {
+    console.warn('Port not provided to SetupApolloServer; log message might be incomplete.');
+    port = '[UNKNOWN_PORT]';
+  }
+  const server = new ApolloServer({
+    typeDefs,
+    resolvers,
+    context: async ({ req }) => {
+      // *************** Extract GraphQL query from request body
+      const query = req.body && req.body.query;
 
-            // *************** If introspection query, skip auth and return no user
-            if (query && (query.indexOf('__schema') !== -1 || query.indexOf('__type') !== -1)) {
-                return {
-                    dataLoaders: CreateLoaders(),
-                    user: null
-                };
-            }
+      // *************** If introspection query, skip auth and return no user
+      if (query && (query.indexOf('__schema') !== -1 || query.indexOf('__type') !== -1)) {
+        return {
+          dataLoaders: CreateLoaders(),
+          user: null,
+        };
+      }
 
-            // *************** Authorize request and extract user info
-            const { user: decodedUser } = AuthorizeRequest(req, req.body);
+      // *************** Authorize request and extract user info
+      const { user: decodedUser } = AuthorizeRequest(req, req.body);
 
-            let user;
+      let user;
 
-            // *************** Fetch user details from DB if authenticated
-            if (decodedUser && decodedUser._id) {
-                if (decodedUser.role === 'STUDENT') {
-                    user = await StudentModel.findOne({ _id: decodedUser._id, student_status: 'ACTIVE' }).lean();
-                } else {
-                    user = await UserModel.findOne({ _id: decodedUser._id, user_status: 'ACTIVE' }).lean();
-                }
-            }
-            return {
-                dataLoaders: CreateLoaders(),
-                user
-            }
+      // *************** Fetch user details from DB if authenticated
+      if (decodedUser && decodedUser._id) {
+        if (decodedUser.role === 'STUDENT') {
+          user = await StudentModel.findOne({ _id: decodedUser._id, student_status: 'ACTIVE' }).lean();
+        } else {
+          user = await UserModel.findOne({ _id: decodedUser._id, user_status: 'ACTIVE' }).lean();
         }
-    });
-    await server.start();
-    // *************** Apply the GraphQL middleware to the existing Express app with /graphql endpoint
-    server.applyMiddleware({ app });
-    console.log(`GraphQL server ready at http://localhost:${port}${server.graphqlPath}`);
+      }
+      return {
+        dataLoaders: CreateLoaders(),
+        user,
+      };
+    },
+  });
+  await server.start();
+  // *************** Apply the GraphQL middleware to the existing Express app with /graphql endpoint
+  server.applyMiddleware({ app });
+  console.log(`GraphQL server ready at http://localhost:${port}${server.graphqlPath}`);
 }
 
 // *************** EXPORT MODULE ***************

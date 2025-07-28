@@ -15,16 +15,16 @@ const TaskLoader = require('../modules/task/task.loader');
  * @returns {object} An object with initialized DataLoader instances for User, Student, School, Block, Subject, Test, Student Test Result, and Task.
  */
 function CreateLoaders() {
-    return {
-        UserLoader: UserLoader(),
-        StudentLoader: StudentLoader(),
-        SchoolLoader: SchoolLoader(),
-        BlockLoader: BlockLoader(),
-        SubjectLoader: SubjectLoader(),
-        TestLoader: TestLoader(),
-        StudentTestResultLoader: StudentTestResultLoader(),
-        TaskLoader: TaskLoader()
-    };
+  return {
+    UserLoader: UserLoader(),
+    StudentLoader: StudentLoader(),
+    SchoolLoader: SchoolLoader(),
+    BlockLoader: BlockLoader(),
+    SubjectLoader: SubjectLoader(),
+    TestLoader: TestLoader(),
+    StudentTestResultLoader: StudentTestResultLoader(),
+    TaskLoader: TaskLoader(),
+  };
 }
 
 // *************** EXPORT MODULE ***************

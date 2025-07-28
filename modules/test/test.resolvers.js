@@ -1,7 +1,7 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const BlockModel = require('../block/block.model');
 const SubjectModel = require('../subject/subject.model');
 const TestModel = require('./test.model');
@@ -9,7 +9,7 @@ const StudentTestResultModel = require('../studentTestResult/student_test_result
 const TaskModel = require('../task/task.model');
 const UserModel = require('../user/user.model');
 
-// *************** IMPORT HELPER FUNCTION *************** 
+// *************** IMPORT HELPER FUNCTION ***************
 const TestHelper = require('./test.helper');
 
 // *************** IMPORT VALIDATOR ***************
@@ -25,21 +25,21 @@ const CommonValidator = require('../../shared/validator/index');
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of test objects.
  */
 async function GetAllTests(_, { test_status }) {
-    try {
-        TestValidator.ValidateTestStatusFilter(test_status);
+  try {
+    TestValidator.ValidateTestStatusFilter(test_status);
 
-        const testFilter = test_status ? { test_status: test_status } : { test_status: { $ne: 'DELETED' } };
+    const testFilter = test_status ? { test_status: test_status } : { test_status: { $ne: 'DELETED' } };
 
-        const tests = await TestModel.find(testFilter).lean();
+    const tests = await TestModel.find(testFilter).lean();
 
-        return tests;
-    } catch (error) {
-        console.error('Unexpected error in GetAllTests:', error);
+    return tests;
+  } catch (error) {
+    console.error('Unexpected error in GetAllTests:', error);
 
-        throw new ApolloError('Failed to retrieve tests', 'GET_TESTS_FAILED', {
-            error: error.message
-        });
-    }
+    throw new ApolloError('Failed to retrieve tests', 'GET_TESTS_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -50,22 +50,22 @@ async function GetAllTests(_, { test_status }) {
  * @returns {Promise<object>} - A promise that resolves to the found test object.
  */
 async function GetOneTest(_, { id }) {
-    try {
-        CommonValidator.ValidateObjectId(id);
+  try {
+    CommonValidator.ValidateObjectId(id);
 
-        const test = await TestModel.findOne({ _id: id }).lean();
-        if (!test) {
-            throw new ApolloError('Test not found', 'NOT_FOUND');
-        }
-
-        return test;
-    } catch (error) {
-        console.error('Unexpected error in GetOneTest:', error);
-
-        throw new ApolloError('Failed to retrieve test', 'GET_TEST_FAILED', {
-            error: error.message
-        });
+    const test = await TestModel.findOne({ _id: id }).lean();
+    if (!test) {
+      throw new ApolloError('Test not found', 'NOT_FOUND');
     }
+
+    return test;
+  } catch (error) {
+    console.error('Unexpected error in GetOneTest:', error);
+
+    throw new ApolloError('Failed to retrieve test', 'GET_TEST_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** MUTATION ***************
@@ -78,54 +78,59 @@ async function GetOneTest(_, { id }) {
  * @returns {Promise<object>} - A promise that resolves to the newly created test object.
  */
 async function CreateTest(_, { createTestInput }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateInputTypeObject(createTestInput);
-        CommonValidator.ValidateObjectId(createTestInput.subject);
-
-        // *************** Ensure parent subject exists and is active
-        const parentSubject = await SubjectModel.findOne({ _id: createTestInput.subject, subject_status: { $ne: 'DELETED' } }).select({ block: 1 }).lean();
-        if (!parentSubject) {
-            throw new ApolloError('Parent subject not found.', 'NOT_FOUND');
-        }
-
-        // *************** Ensure parent block to the subject exists and is active
-        const parentBlock = await BlockModel.findOne({ _id: parentSubject.block, block_status: { $ne: 'DELETED' } }).select({ evaluation_type: 1 }).lean();
-        if (!parentBlock) {
-            throw new ApolloError('Parent block not found.', 'NOT_FOUND');
-        }
-
-        TestValidator.ValidateTestInput({ testInput: createTestInput, evaluationType: parentBlock.evaluation_type });
-
-        // *************** Prepare payload and create test
-        const createTestPayload = TestHelper.GetCreateTestPayload({ testInput: createTestInput, userId, evaluationType: parentBlock.evaluation_type });
-
-        const newTest = await TestModel.create(createTestPayload);
-        if (!newTest) {
-            throw new ApolloError('Failed to create test', 'CREATE_TEST_FAILED');
-        }
-
-        // *************** Add new test to parent subject's tests array
-        const updatedSubject = await SubjectModel.updateOne(
-            { _id: createTestInput.subject },
-            { $addToSet: { tests: newTest._id } }
-        )
-        if (!updatedSubject.nModified) {
-            throw new ApolloError('Failed to add test to subject', 'SUBJECT_UPDATE_FAILED');
-        }
-
-        return newTest;
-    } catch (error) {
-        console.error('Unexpected error in CreateTest:', error);
-
-        throw new ApolloError('Failed to create test', 'CREATE_TEST_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateInputTypeObject(createTestInput);
+    CommonValidator.ValidateObjectId(createTestInput.subject);
+
+    // *************** Ensure parent subject exists and is active
+    const parentSubject = await SubjectModel.findOne({ _id: createTestInput.subject, subject_status: { $ne: 'DELETED' } })
+      .select({ block: 1 })
+      .lean();
+    if (!parentSubject) {
+      throw new ApolloError('Parent subject not found.', 'NOT_FOUND');
+    }
+
+    // *************** Ensure parent block to the subject exists and is active
+    const parentBlock = await BlockModel.findOne({ _id: parentSubject.block, block_status: { $ne: 'DELETED' } })
+      .select({ evaluation_type: 1 })
+      .lean();
+    if (!parentBlock) {
+      throw new ApolloError('Parent block not found.', 'NOT_FOUND');
+    }
+
+    TestValidator.ValidateTestInput({ testInput: createTestInput, evaluationType: parentBlock.evaluation_type });
+
+    // *************** Prepare payload and create test
+    const createTestPayload = TestHelper.GetCreateTestPayload({
+      testInput: createTestInput,
+      userId,
+      evaluationType: parentBlock.evaluation_type,
+    });
+
+    const newTest = await TestModel.create(createTestPayload);
+    if (!newTest) {
+      throw new ApolloError('Failed to create test', 'CREATE_TEST_FAILED');
+    }
+
+    // *************** Add new test to parent subject's tests array
+    const updatedSubject = await SubjectModel.updateOne({ _id: createTestInput.subject }, { $addToSet: { tests: newTest._id } });
+    if (!updatedSubject.nModified) {
+      throw new ApolloError('Failed to add test to subject', 'SUBJECT_UPDATE_FAILED');
+    }
+
+    return newTest;
+  } catch (error) {
+    console.error('Unexpected error in CreateTest:', error);
+
+    throw new ApolloError('Failed to create test', 'CREATE_TEST_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -139,63 +144,65 @@ async function CreateTest(_, { createTestInput }, context) {
  * @returns {Promise<object>} - A promise that resolves to an object containing the published test and the new task.
  */
 async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateObjectId(id);
-        TestValidator.ValidatePublishTestInput({ assignCorrectorDueDate: assign_corrector_due_date, testDueDate: test_due_date });
-
-        // *************** Prepare payload for publishing the test
-        const publishTestPayload = TestHelper.GetPublishTestPayload({ userId, testDueDate: test_due_date });
-
-        // *************** Update test status and due date
-        const publishedTest = await TestModel.findOneAndUpdate(
-            { _id: id, test_status: { $ne: 'DELETED' } },
-            { $set: publishTestPayload },
-            { new: true }
-        ).lean();
-        if (!publishedTest) {
-            throw new ApolloError('Test not found', 'NOT_FOUND');
-        }
-
-        // *************** Get the academic director ID
-        const academicDirector = await UserModel.findOne({ role: 'ACADEMIC_DIRECTOR', user_status: 'ACTIVE' }).select({ _id: 1 }).lean();
-        if (!academicDirector) {
-            throw new ApolloError('Academic director not found', 'NOT_FOUND')
-        }
-
-        // *************** Prepare payload for assign corrector task
-        const assignCorrectorTaskPayload = TestHelper.GetAssignCorrectorTaskPayload({ testId: publishedTest._id, assignCorrectorDueDate: assign_corrector_due_date, userId, academicDirectorId: academicDirector._id });
-
-        // *************** Create assign corrector task
-        const assignCorrectorTask = await TaskModel.create(assignCorrectorTaskPayload);
-        if (!assignCorrectorTask) {
-            throw new ApolloError('Failed to create assign corrector task', 'CREATE_TASK_FAILED');
-        }
-
-        // *************** Add assign corrector task to test's tasks array
-        const updatedTest = await TestModel.updateOne(
-            { _id: assignCorrectorTask.test },
-            { $addToSet: { tasks: assignCorrectorTask._id } }
-        );
-        if (!updatedTest.nModified) {
-            throw new ApolloError('Failed to add task to test', 'TEST_UPDATE_FAILED');
-        }
-
-        return {
-            test: publishedTest,
-            assign_corrector_task: assignCorrectorTask
-        }
-    } catch (error) {
-        console.error('Unexpected error in PublishTest:', error);
-
-        throw new ApolloError('Failed to publish test', 'PUBLISH_TEST_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateObjectId(id);
+    TestValidator.ValidatePublishTestInput({ assignCorrectorDueDate: assign_corrector_due_date, testDueDate: test_due_date });
+
+    // *************** Prepare payload for publishing the test
+    const publishTestPayload = TestHelper.GetPublishTestPayload({ userId, testDueDate: test_due_date });
+
+    // *************** Update test status and due date
+    const publishedTest = await TestModel.findOneAndUpdate(
+      { _id: id, test_status: { $ne: 'DELETED' } },
+      { $set: publishTestPayload },
+      { new: true }
+    ).lean();
+    if (!publishedTest) {
+      throw new ApolloError('Test not found', 'NOT_FOUND');
+    }
+
+    // *************** Get the academic director ID
+    const academicDirector = await UserModel.findOne({ role: 'ACADEMIC_DIRECTOR', user_status: 'ACTIVE' }).select({ _id: 1 }).lean();
+    if (!academicDirector) {
+      throw new ApolloError('Academic director not found', 'NOT_FOUND');
+    }
+
+    // *************** Prepare payload for assign corrector task
+    const assignCorrectorTaskPayload = TestHelper.GetAssignCorrectorTaskPayload({
+      testId: publishedTest._id,
+      assignCorrectorDueDate: assign_corrector_due_date,
+      userId,
+      academicDirectorId: academicDirector._id,
+    });
+
+    // *************** Create assign corrector task
+    const assignCorrectorTask = await TaskModel.create(assignCorrectorTaskPayload);
+    if (!assignCorrectorTask) {
+      throw new ApolloError('Failed to create assign corrector task', 'CREATE_TASK_FAILED');
+    }
+
+    // *************** Add assign corrector task to test's tasks array
+    const updatedTest = await TestModel.updateOne({ _id: assignCorrectorTask.test }, { $addToSet: { tasks: assignCorrectorTask._id } });
+    if (!updatedTest.nModified) {
+      throw new ApolloError('Failed to add task to test', 'TEST_UPDATE_FAILED');
+    }
+
+    return {
+      test: publishedTest,
+      assign_corrector_task: assignCorrectorTask,
+    };
+  } catch (error) {
+    console.error('Unexpected error in PublishTest:', error);
+
+    throw new ApolloError('Failed to publish test', 'PUBLISH_TEST_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -208,51 +215,65 @@ async function PublishTest(_, { id, assign_corrector_due_date, test_due_date }, 
  * @returns {Promise<object>} - A promise that resolves to the updated test object.
  */
 async function UpdateTest(_, { id, updateTestInput }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateObjectId(id);
-
-        // *************** Fetch the test to be updated
-        const test = await TestModel.findById(id).select({ subject: 1, notations: 1 }).lean();
-        if (!test) {
-            throw new ApolloError('Test not found', 'NOT_FOUND');
-        }
-
-        // *************** Ensure parent subject exists and is active
-        const parentSubject = await SubjectModel.findOne({ _id: test.subject, subject_status: { $ne: 'DELETED' } }).select({ block: 1 }).lean();
-        if (!parentSubject) {
-            throw new ApolloError('Parent subject not found.', 'NOT_FOUND');
-        }
-
-        // *************** Ensure parent block to the subject exists and is active
-        const parentBlock = await BlockModel.findById({ _id: parentSubject.block, block_status: { $ne: 'DELETED' } }).select({ evaluation_type: 1, block_status: 1 }).lean();
-        if (!parentBlock || parentBlock.block_status !== 'ACTIVE') {
-            throw new ApolloError('Parent block not found.', 'NOT_FOUND');
-        }
-
-        TestValidator.ValidateTestInput({ testInput: updateTestInput, evaluationType: parentBlock.evaluation_type, existingNotations: test.notations, isUpdate: true });
-
-        // *************** Prepare payload and update test
-        const updateTestPayload = TestHelper.GetUpdateTestPayload({ testInput: updateTestInput, userId, evaluationType: parentBlock.evaluation_type, existingNotations: test.notations });
-
-        // *************** Update the test in the database
-        const updatedTest = await TestModel.findOneAndUpdate({ _id: id }, { $set: updateTestPayload }, { new: true }).lean();
-        if (!updatedTest) {
-            throw new ApolloError('Failed to update test', 'UPDATE_TEST_FAILED');
-        }
-
-        return updatedTest;
-    } catch (error) {
-        console.error('Unexpected error in UpdateTest:', error);
-
-        throw new ApolloError('Failed to update test', 'UPDATE_TEST_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateObjectId(id);
+
+    // *************** Fetch the test to be updated
+    const test = await TestModel.findById(id).select({ subject: 1, notations: 1 }).lean();
+    if (!test) {
+      throw new ApolloError('Test not found', 'NOT_FOUND');
+    }
+
+    // *************** Ensure parent subject exists and is active
+    const parentSubject = await SubjectModel.findOne({ _id: test.subject, subject_status: { $ne: 'DELETED' } })
+      .select({ block: 1 })
+      .lean();
+    if (!parentSubject) {
+      throw new ApolloError('Parent subject not found.', 'NOT_FOUND');
+    }
+
+    // *************** Ensure parent block to the subject exists and is active
+    const parentBlock = await BlockModel.findById({ _id: parentSubject.block, block_status: { $ne: 'DELETED' } })
+      .select({ evaluation_type: 1, block_status: 1 })
+      .lean();
+    if (!parentBlock || parentBlock.block_status !== 'ACTIVE') {
+      throw new ApolloError('Parent block not found.', 'NOT_FOUND');
+    }
+
+    TestValidator.ValidateTestInput({
+      testInput: updateTestInput,
+      evaluationType: parentBlock.evaluation_type,
+      existingNotations: test.notations,
+      isUpdate: true,
+    });
+
+    // *************** Prepare payload and update test
+    const updateTestPayload = TestHelper.GetUpdateTestPayload({
+      testInput: updateTestInput,
+      userId,
+      evaluationType: parentBlock.evaluation_type,
+      existingNotations: test.notations,
+    });
+
+    // *************** Update the test in the database
+    const updatedTest = await TestModel.findOneAndUpdate({ _id: id }, { $set: updateTestPayload }, { new: true }).lean();
+    if (!updatedTest) {
+      throw new ApolloError('Failed to update test', 'UPDATE_TEST_FAILED');
+    }
+
+    return updatedTest;
+  } catch (error) {
+    console.error('Unexpected error in UpdateTest:', error);
+
+    throw new ApolloError('Failed to update test', 'UPDATE_TEST_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -264,67 +285,53 @@ async function UpdateTest(_, { id, updateTestInput }, context) {
  * @returns {Promise<object>} - A promise that resolves to the test object as it was before being soft-deleted.
  */
 async function DeleteTest(_, { id }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateObjectId(id);
-
-        // *************** Prepare payloads for cascading soft delete
-        const {
-            test,
-            subject,
-            tasks,
-            studentTestResults
-        } = await TestHelper.GetDeleteTestPayload({ testId: id, userId });
-
-        // *************** Soft delete all related student test results
-        if (studentTestResults) {
-            const deletedStudentTestResults = await StudentTestResultModel.updateMany(
-                studentTestResults.filter,
-                studentTestResults.update
-            );
-            if (!deletedStudentTestResults.nModified) {
-                throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
-            }
-        }
-
-        // *************** Soft delete all related tasks
-        if (tasks) {
-            const deletedTasks = await TaskModel.updateMany(
-                tasks.filter,
-                tasks.update
-            );
-            if (!deletedTasks.nModified) {
-                throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
-            }
-        }
-
-        // *************** Soft delete the test itself
-        const deletedTest = await TestModel.findOneAndUpdate(
-            test.filter,
-            test.update
-        ).lean();
-        if (!deletedTest) {
-            throw new ApolloError('Test deletion failed', 'TEST_DELETION_FAILED');
-        }
-
-        // *************** Remove test reference from parent subject
-        const updatedSubject = await SubjectModel.updateOne(subject.filter, subject.update);
-        if (!updatedSubject.nModified) {
-            throw new ApolloError('Failed to update subject (remove test)', 'SUBJECT_UPDATE_FAILED');
-        }
-
-        return deletedTest;
-    } catch (error) {
-        console.error('Unexpected error in DeleteTest:', error);
-
-        throw new ApolloError('Failed to delete test', 'DELETE_TEST_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateObjectId(id);
+
+    // *************** Prepare payloads for cascading soft delete
+    const { test, subject, tasks, studentTestResults } = await TestHelper.GetDeleteTestPayload({ testId: id, userId });
+
+    // *************** Soft delete all related student test results
+    if (studentTestResults) {
+      const deletedStudentTestResults = await StudentTestResultModel.updateMany(studentTestResults.filter, studentTestResults.update);
+      if (!deletedStudentTestResults.nModified) {
+        throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
+      }
+    }
+
+    // *************** Soft delete all related tasks
+    if (tasks) {
+      const deletedTasks = await TaskModel.updateMany(tasks.filter, tasks.update);
+      if (!deletedTasks.nModified) {
+        throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
+      }
+    }
+
+    // *************** Soft delete the test itself
+    const deletedTest = await TestModel.findOneAndUpdate(test.filter, test.update).lean();
+    if (!deletedTest) {
+      throw new ApolloError('Test deletion failed', 'TEST_DELETION_FAILED');
+    }
+
+    // *************** Remove test reference from parent subject
+    const updatedSubject = await SubjectModel.updateOne(subject.filter, subject.update);
+    if (!updatedSubject.nModified) {
+      throw new ApolloError('Failed to update subject (remove test)', 'SUBJECT_UPDATE_FAILED');
+    }
+
+    return deletedTest;
+  } catch (error) {
+    console.error('Unexpected error in DeleteTest:', error);
+
+    throw new ApolloError('Failed to delete test', 'DELETE_TEST_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** LOADER ***************
@@ -337,17 +344,17 @@ async function DeleteTest(_, { id }, context) {
  * @returns {Promise<object>} - A promise that resolves to the subject object.
  */
 async function SubjectLoader(test, _, context) {
-    try {
-        TestValidator.ValidateSubjectLoaderInput(test, context);
+  try {
+    TestValidator.ValidateSubjectLoaderInput(test, context);
 
-        const subject = await context.dataLoaders.SubjectLoader.load(test.subject);
+    const subject = await context.dataLoaders.SubjectLoader.load(test.subject);
 
-        return subject;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch subject`, 'SUBJECT_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return subject;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch subject`, 'SUBJECT_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -359,17 +366,17 @@ async function SubjectLoader(test, _, context) {
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of student test result objects.
  */
 async function StudentTestResultLoader(test, _, context) {
-    try {
-        TestValidator.ValidateStudentTestResultLoaderInput(test, context);
+  try {
+    TestValidator.ValidateStudentTestResultLoaderInput(test, context);
 
-        const studentTestResults = await context.dataLoaders.StudentTestResultLoader.loadMany(test.student_test_results);
+    const studentTestResults = await context.dataLoaders.StudentTestResultLoader.loadMany(test.student_test_results);
 
-        return studentTestResults;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch student test results`, 'STUDENT_TEST_RESULTS_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return studentTestResults;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch student test results`, 'STUDENT_TEST_RESULTS_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -381,17 +388,17 @@ async function StudentTestResultLoader(test, _, context) {
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of task objects.
  */
 async function TaskLoader(test, _, context) {
-    try {
-        TestValidator.ValidateTaskLoaderInput(test, context);
+  try {
+    TestValidator.ValidateTaskLoaderInput(test, context);
 
-        const tasks = await context.dataLoaders.TaskLoader.loadMany(test.tasks);
+    const tasks = await context.dataLoaders.TaskLoader.loadMany(test.tasks);
 
-        return tasks;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch tasks`, 'TASKS_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return tasks;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch tasks`, 'TASKS_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -403,17 +410,17 @@ async function TaskLoader(test, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function CreatedByLoader(test, _, context) {
-    try {
-        TestValidator.ValidateUserLoaderInput(test, context, 'created_by');
+  try {
+    TestValidator.ValidateUserLoaderInput(test, context, 'created_by');
 
-        const createdBy = await context.dataLoaders.UserLoader.load(test.created_by);
+    const createdBy = await context.dataLoaders.UserLoader.load(test.created_by);
 
-        return createdBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return createdBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -425,17 +432,17 @@ async function CreatedByLoader(test, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function UpdatedByLoader(test, _, context) {
-    try {
-        TestValidator.ValidateUserLoaderInput(test, context, 'updated_by');
+  try {
+    TestValidator.ValidateUserLoaderInput(test, context, 'updated_by');
 
-        const updatedBy = await context.dataLoaders.UserLoader.load(test.updated_by);
+    const updatedBy = await context.dataLoaders.UserLoader.load(test.updated_by);
 
-        return updatedBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return updatedBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -447,17 +454,17 @@ async function UpdatedByLoader(test, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function PublishedByLoader(test, _, context) {
-    try {
-        TestValidator.ValidateUserLoaderInput(test, context, 'published_by');
+  try {
+    TestValidator.ValidateUserLoaderInput(test, context, 'published_by');
 
-        const publishedBy = await context.dataLoaders.UserLoader.load(test.published_by);
+    const publishedBy = await context.dataLoaders.UserLoader.load(test.published_by);
 
-        return publishedBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return publishedBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -469,40 +476,40 @@ async function PublishedByLoader(test, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function DeletedByLoader(test, _, context) {
-    try {
-        TestValidator.ValidateUserLoaderInput(test, context, 'deleted_by');
+  try {
+    TestValidator.ValidateUserLoaderInput(test, context, 'deleted_by');
 
-        const deletedBy = await context.dataLoaders.UserLoader.load(test.deleted_by);
+    const deletedBy = await context.dataLoaders.UserLoader.load(test.deleted_by);
 
-        return deletedBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return deletedBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    Query: {
-        GetAllTests,
-        GetOneTest
-    },
+  Query: {
+    GetAllTests,
+    GetOneTest,
+  },
 
-    Mutation: {
-        CreateTest,
-        PublishTest,
-        UpdateTest,
-        DeleteTest
-    },
+  Mutation: {
+    CreateTest,
+    PublishTest,
+    UpdateTest,
+    DeleteTest,
+  },
 
-    Test: {
-        subject: SubjectLoader,
-        student_test_results: StudentTestResultLoader,
-        tasks: TaskLoader,
-        created_by: CreatedByLoader,
-        updated_by: UpdatedByLoader,
-        published_by: PublishedByLoader,
-        deleted_by: DeletedByLoader
-    }
-}
+  Test: {
+    subject: SubjectLoader,
+    student_test_results: StudentTestResultLoader,
+    tasks: TaskLoader,
+    created_by: CreatedByLoader,
+    updated_by: UpdatedByLoader,
+    published_by: PublishedByLoader,
+    deleted_by: DeletedByLoader,
+  },
+};

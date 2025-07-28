@@ -1,14 +1,14 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const BlockModel = require('./block.model');
 const SubjectModel = require('../subject/subject.model');
 const TestModel = require('../test/test.model');
 const StudentTestResultModel = require('../studentTestResult/student_test_result.model');
 const TaskModel = require('../task/task.model');
 
-// *************** IMPORT HELPER FUNCTION *************** 
+// *************** IMPORT HELPER FUNCTION ***************
 const BlockHelper = require('./block.helper');
 
 // *************** IMPORT VALIDATOR ***************
@@ -24,21 +24,21 @@ const CommonValidator = require('../../shared/validator/index');
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of block objects.
  */
 async function GetAllBlocks(_, { block_status }) {
-    try {
-        BlockValidator.ValidateBlockStatusFilter(block_status);
+  try {
+    BlockValidator.ValidateBlockStatusFilter(block_status);
 
-        const blockFilter = block_status ? { block_status: block_status } : { block_status: { $ne: 'DELETED' } };
+    const blockFilter = block_status ? { block_status: block_status } : { block_status: { $ne: 'DELETED' } };
 
-        const blocks = await BlockModel.find(blockFilter).lean();
+    const blocks = await BlockModel.find(blockFilter).lean();
 
-        return blocks;
-    } catch (error) {
-        console.error('Unexpected error in GetAllBlocks:', error);
+    return blocks;
+  } catch (error) {
+    console.error('Unexpected error in GetAllBlocks:', error);
 
-        throw new ApolloError('Failed to retrieve blocks', 'GET_BLOCKS_FAILED', {
-            error: error.message
-        });
-    }
+    throw new ApolloError('Failed to retrieve blocks', 'GET_BLOCKS_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -49,22 +49,22 @@ async function GetAllBlocks(_, { block_status }) {
  * @returns {Promise<object>} - A promise that resolves to the found block object.
  */
 async function GetOneBlock(_, { id }) {
-    try {
-        CommonValidator.ValidateObjectId(id)
+  try {
+    CommonValidator.ValidateObjectId(id);
 
-        const block = await BlockModel.findById(id).lean();
-        if (!block) {
-            throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
-        }
-
-        return block;
-    } catch (error) {
-        console.error('Unexpected error in GetOneBlocks:', error);
-
-        throw new ApolloError('Failed to retrieve block', 'GET_BLOCK_FAILED', {
-            error: error.message
-        });
+    const block = await BlockModel.findById(id).lean();
+    if (!block) {
+      throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
     }
+
+    return block;
+  } catch (error) {
+    console.error('Unexpected error in GetOneBlocks:', error);
+
+    throw new ApolloError('Failed to retrieve block', 'GET_BLOCK_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** MUTATION ***************
@@ -77,31 +77,31 @@ async function GetOneBlock(_, { id }) {
  * @returns {Promise<object>} - A promise that resolves to the newly created block object.
  */
 async function CreateBlock(_, { createBlockInput }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateInputTypeObject(createBlockInput);
-        BlockValidator.ValidateBlockInput({ blockInput: createBlockInput });
-
-        // *************** Prepare payload and create the block
-        const createBlockPayload = BlockHelper.GetCreateBlockPayload({ createBlockInput, userId });
-
-        const newBlock = await BlockModel.create(createBlockPayload);
-        if (!newBlock) {
-            throw new ApolloError('Failed to create block', 'CREATE_BLOCK_FAILED');
-        }
-
-        return newBlock;
-    } catch (error) {
-        console.error('Unexpected error in CreateBlock:', error);
-
-        throw new ApolloError('Failed to create block', 'CREATE_BLOCK_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateInputTypeObject(createBlockInput);
+    BlockValidator.ValidateBlockInput({ blockInput: createBlockInput });
+
+    // *************** Prepare payload and create the block
+    const createBlockPayload = BlockHelper.GetCreateBlockPayload({ createBlockInput, userId });
+
+    const newBlock = await BlockModel.create(createBlockPayload);
+    if (!newBlock) {
+      throw new ApolloError('Failed to create block', 'CREATE_BLOCK_FAILED');
+    }
+
+    return newBlock;
+  } catch (error) {
+    console.error('Unexpected error in CreateBlock:', error);
+
+    throw new ApolloError('Failed to create block', 'CREATE_BLOCK_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -114,42 +114,38 @@ async function CreateBlock(_, { createBlockInput }, context) {
  * @returns {Promise<object>} - A promise that resolves to the updated block object.
  */
 async function UpdateBlock(_, { id, updateBlockInput }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateObjectId(id);
-        CommonValidator.ValidateInputTypeObject(updateBlockInput);
-
-        const block = await BlockModel.findById(id).select({ subjects: 1 }).lean();
-        if (!block) {
-            throw new ApolloError('Block not found', 'NOT_FOUND');
-        }
-
-        BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, subjects: block.subjects, isUpdate: true });
-
-        const updateBlockPayload = BlockHelper.GetUpdateBlockPayload({ updateBlockInput, subjects: block.subjects, userId });
-
-        const updatedBlock = await BlockModel.findOneAndUpdate(
-            { _id: id },
-            { $set: updateBlockPayload },
-            { new: true }
-        ).lean();
-
-        if (!updatedBlock) {
-            throw new ApolloError('Block update failed', 'BLOCK_UPDATE_FAILED');
-        }
-
-        return updatedBlock;
-    } catch (error) {
-        console.error('Unexpected error in UpdateBlock:', error);
-
-        throw new ApolloError('Failed to update block', 'UPDATE_BLOCK_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateObjectId(id);
+    CommonValidator.ValidateInputTypeObject(updateBlockInput);
+
+    const block = await BlockModel.findById(id).select({ subjects: 1 }).lean();
+    if (!block) {
+      throw new ApolloError('Block not found', 'NOT_FOUND');
+    }
+
+    BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, subjects: block.subjects, isUpdate: true });
+
+    const updateBlockPayload = BlockHelper.GetUpdateBlockPayload({ updateBlockInput, subjects: block.subjects, userId });
+
+    const updatedBlock = await BlockModel.findOneAndUpdate({ _id: id }, { $set: updateBlockPayload }, { new: true }).lean();
+
+    if (!updatedBlock) {
+      throw new ApolloError('Block update failed', 'BLOCK_UPDATE_FAILED');
+    }
+
+    return updatedBlock;
+  } catch (error) {
+    console.error('Unexpected error in UpdateBlock:', error);
+
+    throw new ApolloError('Failed to update block', 'UPDATE_BLOCK_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -162,85 +158,64 @@ async function UpdateBlock(_, { id, updateBlockInput }, context) {
  * @returns {Promise<object>} - A promise that resolves to the block object as it was before being soft-deleted.
  */
 async function DeleteBlock(_, { id }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateObjectId(id);
-
-        // *************** Get the payload for deleting a block
-        const {
-            block,
-            subjects,
-            tests,
-            tasks,
-            studentTestResults
-        } = await BlockHelper.GetDeleteBlockPayload({ blockId: id, userId });
-
-        // *************** Soft delete student test results if any
-        if (studentTestResults) {
-            const studentTestResultUpdate = await StudentTestResultModel.updateMany(
-                studentTestResults.filter,
-                studentTestResults.update
-            );
-            if (!studentTestResultUpdate.nModified) {
-                throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
-            }
-        }
-
-        // *************** Soft delete tasks if any
-        if (tasks) {
-            const taskUpdate = await TaskModel.updateMany(
-                tasks.filter,
-                tasks.update
-            );
-            if (!taskUpdate.nModified) {
-                throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
-            }
-        }
-
-        // *************** Soft delete tests if any
-        if (tests) {
-            const testUpdate = await TestModel.updateMany(
-                tests.filter,
-                tests.update
-            );
-            if (!testUpdate.nModified) {
-                throw new ApolloError('No tests matched for deletion', 'TESTS_NOT_FOUND');
-            }
-        }
-
-        // *************** Soft delete subjects if any
-        if (subjects) {
-            const subjectUpdate = await SubjectModel.updateMany(
-                subjects.filter,
-                subjects.update
-            );
-            if (!subjectUpdate.nModified) {
-                throw new ApolloError('No subjects matched for deletion', 'SUBJECTS_NOT_FOUND');
-            }
-        }
-
-        // *************** Soft delete the subject itself
-        const deletedBlock = await BlockModel.findOneAndUpdate(
-            block.filter,
-            block.update
-        ).lean();
-
-        if (!deletedBlock) {
-            throw new ApolloError('Block deletion failed', 'BLOCK_DELETION_FAILED');
-        }
-
-        return deletedBlock;
-    } catch (error) {
-        console.error('Unexpected error in DeleteBlock:', error);
-
-        throw new ApolloError('Failed to delete block', 'DELETE_BLOCK_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateObjectId(id);
+
+    // *************** Get the payload for deleting a block
+    const { block, subjects, tests, tasks, studentTestResults } = await BlockHelper.GetDeleteBlockPayload({ blockId: id, userId });
+
+    // *************** Soft delete student test results if any
+    if (studentTestResults) {
+      const studentTestResultUpdate = await StudentTestResultModel.updateMany(studentTestResults.filter, studentTestResults.update);
+      if (!studentTestResultUpdate.nModified) {
+        throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
+      }
+    }
+
+    // *************** Soft delete tasks if any
+    if (tasks) {
+      const taskUpdate = await TaskModel.updateMany(tasks.filter, tasks.update);
+      if (!taskUpdate.nModified) {
+        throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
+      }
+    }
+
+    // *************** Soft delete tests if any
+    if (tests) {
+      const testUpdate = await TestModel.updateMany(tests.filter, tests.update);
+      if (!testUpdate.nModified) {
+        throw new ApolloError('No tests matched for deletion', 'TESTS_NOT_FOUND');
+      }
+    }
+
+    // *************** Soft delete subjects if any
+    if (subjects) {
+      const subjectUpdate = await SubjectModel.updateMany(subjects.filter, subjects.update);
+      if (!subjectUpdate.nModified) {
+        throw new ApolloError('No subjects matched for deletion', 'SUBJECTS_NOT_FOUND');
+      }
+    }
+
+    // *************** Soft delete the subject itself
+    const deletedBlock = await BlockModel.findOneAndUpdate(block.filter, block.update).lean();
+
+    if (!deletedBlock) {
+      throw new ApolloError('Block deletion failed', 'BLOCK_DELETION_FAILED');
+    }
+
+    return deletedBlock;
+  } catch (error) {
+    console.error('Unexpected error in DeleteBlock:', error);
+
+    throw new ApolloError('Failed to delete block', 'DELETE_BLOCK_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** LOADER ***************
@@ -253,19 +228,19 @@ async function DeleteBlock(_, { id }, context) {
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of subject objects.
  */
 async function SubjectLoader(parent, _, context) {
-    try {
-        BlockValidator.ValidateSubjectLoaderInput(parent, context);
+  try {
+    BlockValidator.ValidateSubjectLoaderInput(parent, context);
 
-        const subjects = await context.dataLoaders.SubjectLoader.loadMany(parent.subjects);
+    const subjects = await context.dataLoaders.SubjectLoader.loadMany(parent.subjects);
 
-        return subjects;
-    } catch (error) {
-        console.error("Error fetching subjects:", error);
+    return subjects;
+  } catch (error) {
+    console.error('Error fetching subjects:', error);
 
-        throw new ApolloError(`Failed to fetch subjects for ${parent.name}`, 'SUBJECT_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    throw new ApolloError(`Failed to fetch subjects for ${parent.name}`, 'SUBJECT_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -277,17 +252,17 @@ async function SubjectLoader(parent, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function CreatedByLoader(block, _, context) {
-    try {
-        BlockValidator.ValidateUserLoaderInput(block, context, 'created_by');
+  try {
+    BlockValidator.ValidateUserLoaderInput(block, context, 'created_by');
 
-        const createdBy = await context.dataLoaders.UserLoader.load(block.created_by);
+    const createdBy = await context.dataLoaders.UserLoader.load(block.created_by);
 
-        return createdBy;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return createdBy;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -299,17 +274,17 @@ async function CreatedByLoader(block, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function UpdatedByLoader(block, _, context) {
-    try {
-        BlockValidator.ValidateUserLoaderInput(block, context, 'updated_by');
+  try {
+    BlockValidator.ValidateUserLoaderInput(block, context, 'updated_by');
 
-        const updatedBy = await context.dataLoaders.UserLoader.load(block.updated_by);
+    const updatedBy = await context.dataLoaders.UserLoader.load(block.updated_by);
 
-        return updatedBy;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return updatedBy;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -321,36 +296,36 @@ async function UpdatedByLoader(block, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function DeletedByLoader(block, _, context) {
-    try {
-        BlockValidator.ValidateUserLoaderInput(block, context, 'deleted_by');
+  try {
+    BlockValidator.ValidateUserLoaderInput(block, context, 'deleted_by');
 
-        const deletedBy = await context.dataLoaders.UserLoader.load(block.deleted_by);
+    const deletedBy = await context.dataLoaders.UserLoader.load(block.deleted_by);
 
-        return deletedBy;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return deletedBy;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch user: ${error.message}`, 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    Query: {
-        GetAllBlocks,
-        GetOneBlock
-    },
+  Query: {
+    GetAllBlocks,
+    GetOneBlock,
+  },
 
-    Mutation: {
-        CreateBlock,
-        UpdateBlock,
-        DeleteBlock
-    },
+  Mutation: {
+    CreateBlock,
+    UpdateBlock,
+    DeleteBlock,
+  },
 
-    Block: {
-        subjects: SubjectLoader,
-        created_by: CreatedByLoader,
-        updated_by: UpdatedByLoader,
-        deleted_by: DeletedByLoader
-    }
-}
+  Block: {
+    subjects: SubjectLoader,
+    created_by: CreatedByLoader,
+    updated_by: UpdatedByLoader,
+    deleted_by: DeletedByLoader,
+  },
+};

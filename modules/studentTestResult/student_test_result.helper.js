@@ -1,11 +1,11 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const StudentTestResultModel = require('./student_test_result.model');
 
 // *************** IMPORT UTILITES ***************
-const CommonHelper = require('../../shared/helper/index')
+const CommonHelper = require('../../shared/helper/index');
 
 // *************** IMPORT VALIDATOR ***************
 const CommonValidator = require('../../shared/validator/index');
@@ -20,21 +20,21 @@ const StudentTestResultValidator = require('./student_test_result.validator');
  * @returns {object} A processed data payload including the calculated average mark.
  */
 function GetUpdateStudentTestResultPayload({ marks, userId, notations }) {
-    CommonValidator.ValidateInputTypeObject(marks);
-    CommonValidator.ValidateObjectId(userId);
-    StudentTestResultValidator.ValidateUpdateStudentTestResultInput({ marks, notations });
+  CommonValidator.ValidateInputTypeObject(marks);
+  CommonValidator.ValidateObjectId(userId);
+  StudentTestResultValidator.ValidateUpdateStudentTestResultInput({ marks, notations });
 
-    let totalMarks = 0;
-    for (const item of marks) {
-        totalMarks += item.mark;
-    }
-    const averageMark = totalMarks / marks.length;
+  let totalMarks = 0;
+  for (const item of marks) {
+    totalMarks += item.mark;
+  }
+  const averageMark = totalMarks / marks.length;
 
-    return {
-        marks: marks,
-        average_mark: Number(averageMark.toFixed(2)),
-        updated_by: userId
-    };
+  return {
+    marks: marks,
+    average_mark: Number(averageMark.toFixed(2)),
+    updated_by: userId,
+  };
 }
 
 /**
@@ -45,35 +45,42 @@ function GetUpdateStudentTestResultPayload({ marks, userId, notations }) {
  * @returns {Promise<object>} A promise that resolves to a structured payload for the delete and update operations.
  */
 async function GetDeleteStudentTestResultPayload({ studentTestResultId, userId }) {
-    try {
-        CommonValidator.ValidateObjectId(studentTestResultId);
-        CommonValidator.ValidateObjectId(userId);
+  try {
+    CommonValidator.ValidateObjectId(studentTestResultId);
+    CommonValidator.ValidateObjectId(userId);
 
-        const deletionTimestamp = Date.now();
+    const deletionTimestamp = Date.now();
 
-        const studentTestResult = await StudentTestResultModel.findOne({ _id: studentTestResultId, student_test_result_status: { $ne: 'DELETED' } });
-        if (!studentTestResult) {
-            throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
-        }
-
-        const testId = studentTestResult.test;
-
-        const deletePayload = {
-            studentTestResult: CommonHelper.BuildDeletePayload({
-                ids: [studentTestResultId],
-                statusKey: 'student_test_result_status',
-                timestamp: deletionTimestamp,
-                userId
-            }),
-            test: BuildPullResultFromTestPayload(testId, studentTestResultId)
-        };
-
-        return deletePayload;
-    } catch (error) {
-        throw new ApolloError(`Failed to build delete student test result payload: ${error.message}`, 'GET_DELETE_STUDENT_TEST_RESULT_PAYLOAD_FAILED', {
-            error: error.message
-        });
+    const studentTestResult = await StudentTestResultModel.findOne({
+      _id: studentTestResultId,
+      student_test_result_status: { $ne: 'DELETED' },
+    });
+    if (!studentTestResult) {
+      throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
     }
+
+    const testId = studentTestResult.test;
+
+    const deletePayload = {
+      studentTestResult: CommonHelper.BuildDeletePayload({
+        ids: [studentTestResultId],
+        statusKey: 'student_test_result_status',
+        timestamp: deletionTimestamp,
+        userId,
+      }),
+      test: BuildPullResultFromTestPayload(testId, studentTestResultId),
+    };
+
+    return deletePayload;
+  } catch (error) {
+    throw new ApolloError(
+      `Failed to build delete student test result payload: ${error.message}`,
+      'GET_DELETE_STUDENT_TEST_RESULT_PAYLOAD_FAILED',
+      {
+        error: error.message,
+      }
+    );
+  }
 }
 
 /**
@@ -84,14 +91,14 @@ async function GetDeleteStudentTestResultPayload({ studentTestResultId, userId }
  * @returns {object} An object containing 'filter' and 'update' properties for a MongoDB $pull operation.
  */
 function BuildPullResultFromTestPayload({ testId, studentTestResultId }) {
-    return {
-        filter: { _id: testId },
-        update: { $pull: { student_test_results: studentTestResultId } }
-    };
+  return {
+    filter: { _id: testId },
+    update: { $pull: { student_test_results: studentTestResultId } },
+  };
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetUpdateStudentTestResultPayload,
-    GetDeleteStudentTestResultPayload
-}
+  GetUpdateStudentTestResultPayload,
+  GetDeleteStudentTestResultPayload,
+};

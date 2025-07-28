@@ -1,11 +1,11 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const TestModel = require('../test/test.model');
 const StudentTestResultModel = require('./student_test_result.model');
 
-// *************** IMPORT HELPER FUNCTION *************** 
+// *************** IMPORT HELPER FUNCTION ***************
 const StudentTestResultHelper = require('./student_test_result.helper');
 
 // *************** IMPORT VALIDATOR ***************
@@ -23,24 +23,32 @@ const CommonValidator = require('../../shared/validator/index');
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of student test result objects.
  */
 async function GetAllStudentTestResults(_, { student_test_result_status, test_id, student_id }) {
-    try {
-        StudentTestResultValidator.ValidateStudentTestResultFilter({ studentTestResult: student_test_result_status, testId: test_id, studentId: student_id });
+  try {
+    StudentTestResultValidator.ValidateStudentTestResultFilter({
+      studentTestResult: student_test_result_status,
+      testId: test_id,
+      studentId: student_id,
+    });
 
-        const filter = {};
-        filter.student_test_result_status = student_test_result_status || { $ne: 'DELETED' };
-        if (test_id) { filter.test = test_id; }
-        if (student_id) { filter.student = student_id; }
-
-        const studentTestResults = await StudentTestResultModel.find(filter).lean();
-
-        return studentTestResults;
-    } catch (error) {
-        console.error('Unexpected error in GetAllStudentTestResults:', error);
-
-        throw new ApolloError('Failed to retrieve student test results', 'GET_STUDENT_TEST_RESULTS_FAILED', {
-            error: error.message
-        });
+    const filter = {};
+    filter.student_test_result_status = student_test_result_status || { $ne: 'DELETED' };
+    if (test_id) {
+      filter.test = test_id;
     }
+    if (student_id) {
+      filter.student = student_id;
+    }
+
+    const studentTestResults = await StudentTestResultModel.find(filter).lean();
+
+    return studentTestResults;
+  } catch (error) {
+    console.error('Unexpected error in GetAllStudentTestResults:', error);
+
+    throw new ApolloError('Failed to retrieve student test results', 'GET_STUDENT_TEST_RESULTS_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -51,22 +59,22 @@ async function GetAllStudentTestResults(_, { student_test_result_status, test_id
  * @returns {Promise<object>} - A promise that resolves to the found student test result object.
  */
 async function GetOneStudentTestResult(_, { id }) {
-    try {
-        CommonValidator.ValidateObjectId(id);
+  try {
+    CommonValidator.ValidateObjectId(id);
 
-        const studentTestResult = await StudentTestResultModel.findOne({ _id: id }).lean();
-        if (!studentTestResult) {
-            throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
-        }
-
-        return studentTestResult;
-    } catch (error) {
-        console.error('Unexpected error in GetOneStudentTestResult:', error);
-
-        throw new ApolloError('Failed to retrieve student test result', 'GET_STUDENT_TEST_RESULT_FAILED', {
-            error: error.message
-        });
+    const studentTestResult = await StudentTestResultModel.findOne({ _id: id }).lean();
+    if (!studentTestResult) {
+      throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
     }
+
+    return studentTestResult;
+  } catch (error) {
+    console.error('Unexpected error in GetOneStudentTestResult:', error);
+
+    throw new ApolloError('Failed to retrieve student test result', 'GET_STUDENT_TEST_RESULT_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** MUTATION ***************
@@ -81,52 +89,58 @@ async function GetOneStudentTestResult(_, { id }) {
  */
 
 async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateObjectId(id);
-        CommonValidator.ValidateInputTypeObject(updateStudentTestResultInput);
-
-        const marks = updateStudentTestResultInput.marks;
-
-        // *************** Check the to be updated student test result
-        const studentTestResult = await StudentTestResultModel.findOne({ _id: id, student_test_result_status: { $ne: 'DELETED' } }).select({ test: 1 }).lean();
-        if (!studentTestResult) {
-            throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
-        }
-
-        // *************** Check the parent test of the student test result
-        const parentTest = await TestModel.findById(studentTestResult.test).select({ notations: 1 }).lean();
-        if (!parentTest) {
-            throw new ApolloError('Related test for this result could not be found.', 'NOT_FOUND');
-        }
-
-        StudentTestResultValidator.ValidateUpdateStudentTestResultInput({ marks, notations: parentTest.notations });
-
-        // *************** Prepare the payload for updating the student test result
-        const updateStudentTestResultPayload = StudentTestResultHelper.GetUpdateStudentTestResultPayload({ marks, userId, notations: parentTest.notations });
-
-        // *************** Update the student test result
-        const updatedStudentTestResult = await StudentTestResultModel.findOneAndUpdate(
-            { _id: id, student_test_result_status: { $ne: 'DELETED' } },
-            { $set: updateStudentTestResultInput },
-            { new: true }
-        ).lean();
-        if (!updatedStudentTestResult) {
-            throw new ApolloError('Failed to update student test result', 'STUDENT_TEST_RESULT_UPDATE_FAILED');
-        }
-
-        return updatedStudentTestResult;
-    } catch (error) {
-        console.error('Unexpected error in UpdateStudentTestResult:', error);
-
-        throw new ApolloError('Failed to update student test result', 'UPDATE_STUDENT_TEST_RESULT_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateObjectId(id);
+    CommonValidator.ValidateInputTypeObject(updateStudentTestResultInput);
+
+    const marks = updateStudentTestResultInput.marks;
+
+    // *************** Check the to be updated student test result
+    const studentTestResult = await StudentTestResultModel.findOne({ _id: id, student_test_result_status: { $ne: 'DELETED' } })
+      .select({ test: 1 })
+      .lean();
+    if (!studentTestResult) {
+      throw new ApolloError('Student test result not found', 'STUDENT_TEST_RESULT_NOT_FOUND');
+    }
+
+    // *************** Check the parent test of the student test result
+    const parentTest = await TestModel.findById(studentTestResult.test).select({ notations: 1 }).lean();
+    if (!parentTest) {
+      throw new ApolloError('Related test for this result could not be found.', 'NOT_FOUND');
+    }
+
+    StudentTestResultValidator.ValidateUpdateStudentTestResultInput({ marks, notations: parentTest.notations });
+
+    // *************** Prepare the payload for updating the student test result
+    const updateStudentTestResultPayload = StudentTestResultHelper.GetUpdateStudentTestResultPayload({
+      marks,
+      userId,
+      notations: parentTest.notations,
+    });
+
+    // *************** Update the student test result
+    const updatedStudentTestResult = await StudentTestResultModel.findOneAndUpdate(
+      { _id: id, student_test_result_status: { $ne: 'DELETED' } },
+      { $set: updateStudentTestResultInput },
+      { new: true }
+    ).lean();
+    if (!updatedStudentTestResult) {
+      throw new ApolloError('Failed to update student test result', 'STUDENT_TEST_RESULT_UPDATE_FAILED');
+    }
+
+    return updatedStudentTestResult;
+  } catch (error) {
+    console.error('Unexpected error in UpdateStudentTestResult:', error);
+
+    throw new ApolloError('Failed to update student test result', 'UPDATE_STUDENT_TEST_RESULT_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -138,43 +152,43 @@ async function UpdateStudentTestResult(_, { id, updateStudentTestResultInput }, 
  * @returns {Promise<object>} - A promise that resolves to the student test result object as it was before being soft-deleted.
  */
 async function DeleteStudentTestResult(_, { id }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateObjectId(id);
-
-        // *************** Prepare the payload for deleting the student test result
-        const {
-            studentTestResult,
-            test
-        } = await StudentTestResultHelper.GetDeleteStudentTestResultPayload({ studentTestResultId: id, userId });
-
-        // *************** Soft-delete the student test result and update the parent test
-        const deletedStudentTestResult = await StudentTestResultModel.findOneAndUpdate(
-            studentTestResult.filter,
-            studentTestResult.update,
-        ).lean();
-
-        if (!deletedStudentTestResult) {
-            throw new ApolloError('Failed to delete student test result', 'STUDENT_TEST_RESULT_DELETION_FAILED');
-        }
-
-        const updatedTest = await TestModel.updateOne(test.filter, test.update);
-        if (!updatedTest.nModified) {
-            throw new ApolloError('Failed to update test', 'TEST_UPDATE_FAILED');
-        }
-
-        return deletedStudentTestResult;
-    } catch (error) {
-        console.error('Unexpected error in DeleteStudentTestResult:', error);
-
-        throw new ApolloError('Failed to delete student test result', 'DELETE_STUDENT_TEST_RESULT_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateObjectId(id);
+
+    // *************** Prepare the payload for deleting the student test result
+    const { studentTestResult, test } = await StudentTestResultHelper.GetDeleteStudentTestResultPayload({
+      studentTestResultId: id,
+      userId,
+    });
+
+    // *************** Soft-delete the student test result and update the parent test
+    const deletedStudentTestResult = await StudentTestResultModel.findOneAndUpdate(
+      studentTestResult.filter,
+      studentTestResult.update
+    ).lean();
+
+    if (!deletedStudentTestResult) {
+      throw new ApolloError('Failed to delete student test result', 'STUDENT_TEST_RESULT_DELETION_FAILED');
+    }
+
+    const updatedTest = await TestModel.updateOne(test.filter, test.update);
+    if (!updatedTest.nModified) {
+      throw new ApolloError('Failed to update test', 'TEST_UPDATE_FAILED');
+    }
+
+    return deletedStudentTestResult;
+  } catch (error) {
+    console.error('Unexpected error in DeleteStudentTestResult:', error);
+
+    throw new ApolloError('Failed to delete student test result', 'DELETE_STUDENT_TEST_RESULT_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** LOADER ***************
@@ -187,17 +201,17 @@ async function DeleteStudentTestResult(_, { id }, context) {
  * @returns {Promise<object>} - A promise that resolves to the student object.
  */
 async function StudentLoader(studentTestResult, _, context) {
-    try {
-        StudentTestResultValidator.ValidateStudentLoaderInput(studentTestResult, context);
+  try {
+    StudentTestResultValidator.ValidateStudentLoaderInput(studentTestResult, context);
 
-        const student = await context.dataLoaders.StudentLoader.load(studentTestResult.student);
+    const student = await context.dataLoaders.StudentLoader.load(studentTestResult.student);
 
-        return student;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch student`, 'STUDENT_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return student;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch student`, 'STUDENT_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -209,17 +223,17 @@ async function StudentLoader(studentTestResult, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the test object.
  */
 async function TestLoader(studentTestResult, _, context) {
-    try {
-        StudentTestResultValidator.ValidateTestLoaderInput(studentTestResult, context);
+  try {
+    StudentTestResultValidator.ValidateTestLoaderInput(studentTestResult, context);
 
-        const test = await context.dataLoaders.TestLoader.load(studentTestResult.test);
+    const test = await context.dataLoaders.TestLoader.load(studentTestResult.test);
 
-        return test;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch test`, 'TEST_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return test;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch test`, 'TEST_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -231,17 +245,17 @@ async function TestLoader(studentTestResult, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function CreatedByLoader(studentTestResult, _, context) {
-    try {
-        StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'created_by');
+  try {
+    StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'created_by');
 
-        const createdBy = await context.dataLoaders.UserLoader.load(studentTestResult.created_by);
+    const createdBy = await context.dataLoaders.UserLoader.load(studentTestResult.created_by);
 
-        return createdBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return createdBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -253,17 +267,17 @@ async function CreatedByLoader(studentTestResult, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function UpdatedByLoader(studentTestResult, _, context) {
-    try {
-        StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'updated_by');
+  try {
+    StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'updated_by');
 
-        const updatedBy = await context.dataLoaders.UserLoader.load(studentTestResult.updated_by);
+    const updatedBy = await context.dataLoaders.UserLoader.load(studentTestResult.updated_by);
 
-        return updatedBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return updatedBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -275,36 +289,36 @@ async function UpdatedByLoader(studentTestResult, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function DeletedByLoader(studentTestResult, _, context) {
-    try {
-        StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'deleted_by');
+  try {
+    StudentTestResultValidator.ValidateUserLoaderInput(studentTestResult, context, 'deleted_by');
 
-        const deletedBy = await context.dataLoaders.UserLoader.load(studentTestResult.deleted_by);
+    const deletedBy = await context.dataLoaders.UserLoader.load(studentTestResult.deleted_by);
 
-        return deletedBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return deletedBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    Query: {
-        GetAllStudentTestResults,
-        GetOneStudentTestResult
-    },
+  Query: {
+    GetAllStudentTestResults,
+    GetOneStudentTestResult,
+  },
 
-    Mutation: {
-        UpdateStudentTestResult,
-        DeleteStudentTestResult
-    },
+  Mutation: {
+    UpdateStudentTestResult,
+    DeleteStudentTestResult,
+  },
 
-    StudentTestResult: {
-        student: StudentLoader,
-        test: TestLoader,
-        created_by: CreatedByLoader,
-        updated_by: UpdatedByLoader,
-        deleted_by: DeletedByLoader
-    }
-}
+  StudentTestResult: {
+    student: StudentLoader,
+    test: TestLoader,
+    created_by: CreatedByLoader,
+    updated_by: UpdatedByLoader,
+    deleted_by: DeletedByLoader,
+  },
+};

@@ -1,11 +1,11 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const FinalTranscriptResultModel = require('./final_transcript_result.model');
 
 // *************** IMPORT VALIDATOR ***************
-const FinalTranscriptResultValidator = require('./final_transcript_result.validator')
+const FinalTranscriptResultValidator = require('./final_transcript_result.validator');
 const CommonValidator = require('../../shared/validator/index');
 
 // *************** QUERY ***************
@@ -17,22 +17,22 @@ const CommonValidator = require('../../shared/validator/index');
  * @returns {Promise<object>} - A promise that resolves to the found final transcript result object.
  */
 async function GetFinalTranscriptResult(_, { studentId }) {
-    try {
-        CommonValidator.ValidateObjectId(studentId);
+  try {
+    CommonValidator.ValidateObjectId(studentId);
 
-        const finalTranscriptResult = await FinalTranscriptResultModel.findOne({ student: studentId });
-        if (!finalTranscriptResult) {
-            throw new ApolloError('Final transcript result not found', 'NOT_FOUND');
-        }
-
-        return finalTranscriptResult;
-    } catch (error) {
-        console.error('Unexpected error in GetFinalTranscriptResult:', error);
-
-        throw new ApolloError('Failed to retrieve final transcript result', 'GET_FINAL_TRANSCRIPT_RESULT_FAILED', {
-            error: error.message
-        });
+    const finalTranscriptResult = await FinalTranscriptResultModel.findOne({ student: studentId });
+    if (!finalTranscriptResult) {
+      throw new ApolloError('Final transcript result not found', 'NOT_FOUND');
     }
+
+    return finalTranscriptResult;
+  } catch (error) {
+    console.error('Unexpected error in GetFinalTranscriptResult:', error);
+
+    throw new ApolloError('Failed to retrieve final transcript result', 'GET_FINAL_TRANSCRIPT_RESULT_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** LOADER ***************
@@ -45,17 +45,17 @@ async function GetFinalTranscriptResult(_, { studentId }) {
  * @returns {Promise<object>} - A promise that resolves to the student object.
  */
 async function StudentLoader(finalTranscriptResult, _, context) {
-    try {
-        FinalTranscriptResultValidator.ValidateStudentLoaderInput(finalTranscriptResult, context);
+  try {
+    FinalTranscriptResultValidator.ValidateStudentLoaderInput(finalTranscriptResult, context);
 
-        const student = await context.dataLoaders.StudentLoader.load(finalTranscriptResult.student);
+    const student = await context.dataLoaders.StudentLoader.load(finalTranscriptResult.student);
 
-        return student;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch student`, 'STUDENT_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return student;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch student`, 'STUDENT_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -67,17 +67,17 @@ async function StudentLoader(finalTranscriptResult, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function CreatedByLoader(finalTranscriptResult, _, context) {
-    try {
-        FinalTranscriptResultValidator.ValidateUserLoaderInput(finalTranscriptResult, context, 'created_by');
+  try {
+    FinalTranscriptResultValidator.ValidateUserLoaderInput(finalTranscriptResult, context, 'created_by');
 
-        const createdBy = await context.dataLoaders.UserLoader.load(finalTranscriptResult.created_by);
+    const createdBy = await context.dataLoaders.UserLoader.load(finalTranscriptResult.created_by);
 
-        return createdBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return createdBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -89,17 +89,17 @@ async function CreatedByLoader(finalTranscriptResult, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function UpdatedByLoader(finalTranscriptResult, _, context) {
-    try {
-        FinalTranscriptResultValidator.ValidateUserLoaderInput(finalTranscriptResult, context, 'updated_by');
+  try {
+    FinalTranscriptResultValidator.ValidateUserLoaderInput(finalTranscriptResult, context, 'updated_by');
 
-        const updatedBy = await context.dataLoaders.UserLoader.load(finalTranscriptResult.updated_by);
+    const updatedBy = await context.dataLoaders.UserLoader.load(finalTranscriptResult.updated_by);
 
-        return updatedBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return updatedBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -111,17 +111,17 @@ async function UpdatedByLoader(finalTranscriptResult, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the block object.
  */
 async function BlockLoader(parent, _, context) {
-    try {
-        FinalTranscriptResultValidator.ValidateBlockLoaderInput(parent, context);
+  try {
+    FinalTranscriptResultValidator.ValidateBlockLoaderInput(parent, context);
 
-        const block = await context.dataLoaders.BlockLoader.load(parent.block);
+    const block = await context.dataLoaders.BlockLoader.load(parent.block);
 
-        return block;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch block`, 'BLOCK_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return block;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch block`, 'BLOCK_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -133,17 +133,17 @@ async function BlockLoader(parent, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the subject object.
  */
 async function SubjectLoader(parent, _, context) {
-    try {
-        FinalTranscriptResultValidator.ValidateSubjectLoaderInput(parent, context);
+  try {
+    FinalTranscriptResultValidator.ValidateSubjectLoaderInput(parent, context);
 
-        const subject = await context.dataLoaders.SubjectLoader.load(parent.subject);
+    const subject = await context.dataLoaders.SubjectLoader.load(parent.subject);
 
-        return subject;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch subject`, 'SUBJECT_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return subject;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch subject`, 'SUBJECT_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -155,40 +155,40 @@ async function SubjectLoader(parent, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the test object.
  */
 async function TestLoader(parent, _, context) {
-    try {
-        FinalTranscriptResultValidator.ValidateTestLoaderInput(parent, context);
+  try {
+    FinalTranscriptResultValidator.ValidateTestLoaderInput(parent, context);
 
-        const test = await context.dataLoaders.TestLoader.load(parent.test);
+    const test = await context.dataLoaders.TestLoader.load(parent.test);
 
-        return test;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch test`, 'TEST_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return test;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch test`, 'TEST_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    Query: {
-        GetFinalTranscriptResult
-    },
+  Query: {
+    GetFinalTranscriptResult,
+  },
 
-    FinalTranscriptResult: {
-        student: StudentLoader,
-        created_by: CreatedByLoader,
-        updated_by: UpdatedByLoader,
-    },
+  FinalTranscriptResult: {
+    student: StudentLoader,
+    created_by: CreatedByLoader,
+    updated_by: UpdatedByLoader,
+  },
 
-    BlockResult: {
-        block: BlockLoader,
-    },
+  BlockResult: {
+    block: BlockLoader,
+  },
 
-    SubjectResult: {
-        subject: SubjectLoader,
-    },
+  SubjectResult: {
+    subject: SubjectLoader,
+  },
 
-    TestResult: {
-        test: TestLoader,
-    }
-}
+  TestResult: {
+    test: TestLoader,
+  },
+};

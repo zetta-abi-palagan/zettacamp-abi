@@ -5,7 +5,7 @@ const { ApolloError } = require('apollo-server');
 const SchoolModel = require('./school.model');
 
 // *************** IMPORT UTILITES ***************
-const CommonHelper = require('../../shared/helper/index')
+const CommonHelper = require('../../shared/helper/index');
 
 // *************** IMPORT VALIDATOR ***************
 const SchoolValidator = require('./school.validator');
@@ -19,33 +19,24 @@ const CommonValidator = require('../../shared/validator/index');
  * @returns {object} A processed data payload suitable for a database create operation.
  */
 function GetCreateSchoolPayload({ createSchoolInput, userId }) {
-    CommonValidator.ValidateInputTypeObject(createSchoolInput);
-    CommonValidator.ValidateObjectId(userId);
-    SchoolValidator.ValidateSchoolInput({ schoolInput: createSchoolInput });
+  CommonValidator.ValidateInputTypeObject(createSchoolInput);
+  CommonValidator.ValidateObjectId(userId);
+  SchoolValidator.ValidateSchoolInput({ schoolInput: createSchoolInput });
 
-    const {
-        commercial_name,
-        legal_name,
-        address,
-        city,
-        country,
-        zipcode,
-        logo,
-        school_status
-    } = createSchoolInput;
+  const { commercial_name, legal_name, address, city, country, zipcode, logo, school_status } = createSchoolInput;
 
-    return {
-        commercial_name,
-        legal_name,
-        address,
-        city,
-        country,
-        zipcode,
-        logo,
-        school_status: school_status.toUpperCase(),
-        created_by: userId,
-        updated_by: userId
-    };
+  return {
+    commercial_name,
+    legal_name,
+    address,
+    city,
+    country,
+    zipcode,
+    logo,
+    school_status: school_status.toUpperCase(),
+    created_by: userId,
+    updated_by: userId,
+  };
 }
 
 /**
@@ -56,35 +47,26 @@ function GetCreateSchoolPayload({ createSchoolInput, userId }) {
  * @returns {object} A processed data payload suitable for a partial database update operation.
  */
 function GetUpdateSchoolPayload({ updateSchoolInput, userId }) {
-    CommonValidator.ValidateInputTypeObject(updateSchoolInput);
-    CommonValidator.ValidateObjectId(userId);
-    SchoolValidator.ValidateSchoolInput({ schoolInput: updateSchoolInput, isUpdate: true });
+  CommonValidator.ValidateInputTypeObject(updateSchoolInput);
+  CommonValidator.ValidateObjectId(userId);
+  SchoolValidator.ValidateSchoolInput({ schoolInput: updateSchoolInput, isUpdate: true });
 
-    const {
-        commercial_name,
-        legal_name,
-        address,
-        city,
-        country,
-        zipcode,
-        logo,
-        school_status
-    } = updateSchoolInput;
+  const { commercial_name, legal_name, address, city, country, zipcode, logo, school_status } = updateSchoolInput;
 
-    const payload = {};
+  const payload = {};
 
-    if (commercial_name !== undefined && commercial_name !== null) payload.commercial_name = commercial_name;
-    if (legal_name !== undefined && legal_name !== null) payload.legal_name = legal_name;
-    if (address !== undefined && address !== null) payload.address = address;
-    if (city !== undefined && city !== null) payload.city = city;
-    if (country !== undefined && country !== null) payload.country = country;
-    if (zipcode !== undefined && zipcode !== null) payload.zipcode = zipcode;
-    if (logo !== undefined && logo !== null) payload.logo = logo;
-    if (school_status !== undefined && school_status !== null) payload.school_status = school_status.toUpperCase();
+  if (commercial_name !== undefined && commercial_name !== null) payload.commercial_name = commercial_name;
+  if (legal_name !== undefined && legal_name !== null) payload.legal_name = legal_name;
+  if (address !== undefined && address !== null) payload.address = address;
+  if (city !== undefined && city !== null) payload.city = city;
+  if (country !== undefined && country !== null) payload.country = country;
+  if (zipcode !== undefined && zipcode !== null) payload.zipcode = zipcode;
+  if (logo !== undefined && logo !== null) payload.logo = logo;
+  if (school_status !== undefined && school_status !== null) payload.school_status = school_status.toUpperCase();
 
-    payload.updated_by = userId;
+  payload.updated_by = userId;
 
-    return payload;
+  return payload;
 }
 
 /**
@@ -95,43 +77,43 @@ function GetUpdateSchoolPayload({ updateSchoolInput, userId }) {
  * @returns {Promise<object>} A promise that resolves to a structured payload for the delete operations.
  */
 async function GetDeleteSchoolPayload({ schoolId, userId }) {
-    try {
-        CommonValidator.ValidateObjectId(schoolId);
-        CommonValidator.ValidateObjectId(userId);
+  try {
+    CommonValidator.ValidateObjectId(schoolId);
+    CommonValidator.ValidateObjectId(userId);
 
-        const deletionTimestamp = Date.now();
+    const deletionTimestamp = Date.now();
 
-        const school = await SchoolModel.findOne({ _id: schoolId, school_status: { $ne: 'DELETED' } });
-        if (!school) {
-            throw new ApolloError('School not found', 'SCHOOL_NOT_FOUND');
-        }
-
-        studentIds = school.students || [];
-
-        const deleteSchoolPayload = {
-            school: CommonHelper.BuildDeletePayload({
-                ids: [schoolId],
-                statusKey: 'school_status',
-                timestamp: deletionTimestamp,
-                userId: userId
-            }),
-            students: null
-        };
-
-        if (studentIds.length) {
-            deleteSchoolPayload.students = HandleDeleteStudent({
-                studentIds,
-                userId,
-                timestamp: deletionTimestamp
-            });
-        }
-
-        return deleteSchoolPayload;
-    } catch (error) {
-        throw new ApolloError(`Failed in GetDeleteSchoolPayload: ${error.message}`, 'DELETE_SCHOOL_PAYLOAD_FAILED', {
-            error: error.message
-        });
+    const school = await SchoolModel.findOne({ _id: schoolId, school_status: { $ne: 'DELETED' } });
+    if (!school) {
+      throw new ApolloError('School not found', 'SCHOOL_NOT_FOUND');
     }
+
+    studentIds = school.students || [];
+
+    const deleteSchoolPayload = {
+      school: CommonHelper.BuildDeletePayload({
+        ids: [schoolId],
+        statusKey: 'school_status',
+        timestamp: deletionTimestamp,
+        userId: userId,
+      }),
+      students: null,
+    };
+
+    if (studentIds.length) {
+      deleteSchoolPayload.students = HandleDeleteStudent({
+        studentIds,
+        userId,
+        timestamp: deletionTimestamp,
+      });
+    }
+
+    return deleteSchoolPayload;
+  } catch (error) {
+    throw new ApolloError(`Failed in GetDeleteSchoolPayload: ${error.message}`, 'DELETE_SCHOOL_PAYLOAD_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -143,19 +125,19 @@ async function GetDeleteSchoolPayload({ schoolId, userId }) {
  * @returns {object} An object containing the 'filter' and 'update' payload for students.
  */
 function HandleDeleteStudent({ studentIds, userId, timestamp }) {
-    CommonValidator.ValidateObjectIdArray(studentIds, 'INVALID_STUDENT_ID');
+  CommonValidator.ValidateObjectIdArray(studentIds, 'INVALID_STUDENT_ID');
 
-    return CommonHelper.BuildDeletePayload({
-        ids: studentIds,
-        statusKey: 'student_status',
-        timestamp,
-        userId
-    });
+  return CommonHelper.BuildDeletePayload({
+    ids: studentIds,
+    statusKey: 'student_status',
+    timestamp,
+    userId,
+  });
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetCreateSchoolPayload,
-    GetUpdateSchoolPayload,
-    GetDeleteSchoolPayload
-}
+  GetCreateSchoolPayload,
+  GetUpdateSchoolPayload,
+  GetDeleteSchoolPayload,
+};

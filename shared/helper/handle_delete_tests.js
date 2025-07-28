@@ -1,7 +1,7 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const TestModel = require('../../modules/test/test.model');
 
 // *************** IMPORT UTILITES ***************
@@ -19,31 +19,31 @@ const CommonValidator = require('../validator/index');
  * @returns {Promise<object>} A promise that resolves to an object containing the test delete payload, an array of task IDs, and an array of student result IDs.
  */
 async function HandleDeleteTests({ testIds, userId, timestamp }) {
-    try {
-        CommonValidator.ValidateObjectIdArray(testIds, 'INVALID_TEST_ID');
+  try {
+    CommonValidator.ValidateObjectIdArray(testIds, 'INVALID_TEST_ID');
 
-        const tests = await TestModel.find({ _id: { $in: testIds } });
+    const tests = await TestModel.find({ _id: { $in: testIds } });
 
-        if (!tests.length) {
-            throw new ApolloError('No matching tests found', 'TESTS_NOT_FOUND');
-        }
-
-        const taskIds = [].concat(...tests.map(test => test.tasks || []));
-        const studentResultIds = [].concat(...tests.map(test => test.student_test_results || []));
-
-        const testPayload = BuildDeletePayload({
-            ids: testIds,
-            statusKey: 'test_status',
-            timestamp,
-            userId
-        });
-
-        return { testPayload, taskIds, studentResultIds };
-    } catch (error) {
-        throw new ApolloError(`Failed to handle delete tests: ${error.message}`, 'HANDLE_DELETE_TESTS_FAILED', {
-            error: error.message,
-        });
+    if (!tests.length) {
+      throw new ApolloError('No matching tests found', 'TESTS_NOT_FOUND');
     }
+
+    const taskIds = [].concat(...tests.map((test) => test.tasks || []));
+    const studentResultIds = [].concat(...tests.map((test) => test.student_test_results || []));
+
+    const testPayload = BuildDeletePayload({
+      ids: testIds,
+      statusKey: 'test_status',
+      timestamp,
+      userId,
+    });
+
+    return { testPayload, taskIds, studentResultIds };
+  } catch (error) {
+    throw new ApolloError(`Failed to handle delete tests: ${error.message}`, 'HANDLE_DELETE_TESTS_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** EXPORT MODULE ***************

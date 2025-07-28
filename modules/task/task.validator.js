@@ -13,25 +13,25 @@ const { ApolloError } = require('apollo-server');
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateTaskFilter({ taskStatus, testId, userId }) {
-    const validStatus = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
+  const validStatus = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
 
-    if (!taskStatus) {
-        return;
-    }
+  if (!taskStatus) {
+    return;
+  }
 
-    if (typeof taskStatus !== 'string' || !validStatus.includes(taskStatus.toUpperCase())) {
-        throw new ApolloError(`Task status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
-            field: 'task_status'
-        });
-    }
+  if (typeof taskStatus !== 'string' || !validStatus.includes(taskStatus.toUpperCase())) {
+    throw new ApolloError(`Task status must be one of: ${validStatus.join(', ')}.`, 'BAD_USER_INPUT', {
+      field: 'task_status',
+    });
+  }
 
-    if (testId && !mongoose.Types.ObjectId.isValid(testId)) {
-        throw new ApolloError(`Invalid test ID: ${testId}`, "BAD_USER_INPUT");
-    }
+  if (testId && !mongoose.Types.ObjectId.isValid(testId)) {
+    throw new ApolloError(`Invalid test ID: ${testId}`, 'BAD_USER_INPUT');
+  }
 
-    if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
-        throw new ApolloError(`Invalid user ID: ${userId}`, "BAD_USER_INPUT");
-    }
+  if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApolloError(`Invalid user ID: ${userId}`, 'BAD_USER_INPUT');
+  }
 }
 
 /**
@@ -49,69 +49,69 @@ function ValidateTaskFilter({ taskStatus, testId, userId }) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateTaskInput({ taskInput, isUpdate = false }) {
-    const validTaskType = ['ASSIGN_CORRECTOR', 'ENTER_MARKS', 'VALIDATE_MARKS'];
-    const validTaskStatus = ['PENDING', 'IN_PROGRESS'];
+  const validTaskType = ['ASSIGN_CORRECTOR', 'ENTER_MARKS', 'VALIDATE_MARKS'];
+  const validTaskStatus = ['PENDING', 'IN_PROGRESS'];
 
-    if (isUpdate) {
-        const { task_status } = taskInput;
-        if (!task_status || typeof task_status == 'string' || !validTaskStatus.includes(task_status.toUpperCase())) {
-            throw new ApolloError(`Task status must be one of: ${validTaskStatus.join(', ')}.`, 'BAD_USER_INPUT', { field: 'task_status' });
-        }
+  if (isUpdate) {
+    const { task_status } = taskInput;
+    if (!task_status || typeof task_status == 'string' || !validTaskStatus.includes(task_status.toUpperCase())) {
+      throw new ApolloError(`Task status must be one of: ${validTaskStatus.join(', ')}.`, 'BAD_USER_INPUT', { field: 'task_status' });
+    }
+  }
+
+  const validationRules = [
+    {
+      field: 'test',
+      required: true,
+      skipOnUpdate: true,
+      validate: (val) => mongoose.Types.ObjectId.isValid(val),
+      message: 'A valid test ID is required.',
+    },
+    {
+      field: 'user',
+      required: true,
+      validate: (val) => mongoose.Types.ObjectId.isValid(val),
+      message: 'A valid user ID is required.',
+    },
+    {
+      field: 'title',
+      required: true,
+      validate: (val) => typeof val === 'string' && val.trim() !== '',
+      message: 'Title is required.',
+    },
+    {
+      field: 'description',
+      required: true,
+      validate: (val) => typeof val === 'string' && val.trim() !== '',
+      message: 'Description is required.',
+    },
+    {
+      field: 'task_type',
+      required: true,
+      validate: (val) => typeof val === 'string' && validTaskType.includes(val.toUpperCase()),
+      message: `Task type must be one of: ${validTaskType.join(', ')}.`,
+    },
+    {
+      field: 'due_date',
+      required: false,
+      validate: (val) => !isNaN(new Date(val).getTime()),
+      message: 'A valid date format is required for due_date.',
+    },
+  ];
+
+  for (const rule of validationRules) {
+    if (isUpdate && rule.skipOnUpdate) {
+      continue;
     }
 
-    const validationRules = [
-        {
-            field: 'test',
-            required: true,
-            skipOnUpdate: true,
-            validate: (val) => mongoose.Types.ObjectId.isValid(val),
-            message: 'A valid test ID is required.',
-        },
-        {
-            field: 'user',
-            required: true,
-            validate: (val) => mongoose.Types.ObjectId.isValid(val),
-            message: 'A valid user ID is required.',
-        },
-        {
-            field: 'title',
-            required: true,
-            validate: (val) => typeof val === 'string' && val.trim() !== '',
-            message: 'Title is required.',
-        },
-        {
-            field: 'description',
-            required: true,
-            validate: (val) => typeof val === 'string' && val.trim() !== '',
-            message: 'Description is required.',
-        },
-        {
-            field: 'task_type',
-            required: true,
-            validate: (val) => typeof val === 'string' && validTaskType.includes(val.toUpperCase()),
-            message: `Task type must be one of: ${validTaskType.join(', ')}.`,
-        },
-        {
-            field: 'due_date',
-            required: false,
-            validate: (val) => !isNaN(new Date(val).getTime()),
-            message: 'A valid date format is required for due_date.',
-        }
-    ];
+    const value = taskInput[rule.field];
 
-    for (const rule of validationRules) {
-        if (isUpdate && rule.skipOnUpdate) {
-            continue;
-        }
-
-        const value = taskInput[rule.field];
-
-        if ((!isUpdate && rule.required) || value !== undefined) {
-            if (!rule.validate(value)) {
-                throw new ApolloError(rule.message, 'BAD_USER_INPUT', { field: rule.field });
-            }
-        }
+    if ((!isUpdate && rule.required) || value !== undefined) {
+      if (!rule.validate(value)) {
+        throw new ApolloError(rule.message, 'BAD_USER_INPUT', { field: rule.field });
+      }
     }
+  }
 }
 
 /**
@@ -123,17 +123,17 @@ function ValidateTaskInput({ taskInput, isUpdate = false }) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateAssignCorrectorInput({ taskId, correctorId, enterMarksDueDate }) {
-    if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
-        throw new ApolloError('A valid task_id is required.', "BAD_USER_INPUT");
-    }
+  if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
+    throw new ApolloError('A valid task_id is required.', 'BAD_USER_INPUT');
+  }
 
-    if (!correctorId || !mongoose.Types.ObjectId.isValid(correctorId)) {
-        throw new ApolloError('A valid corrector_id is required.', "BAD_USER_INPUT");
-    }
+  if (!correctorId || !mongoose.Types.ObjectId.isValid(correctorId)) {
+    throw new ApolloError('A valid corrector_id is required.', 'BAD_USER_INPUT');
+  }
 
-    if (enterMarksDueDate && isNaN(new Date(enterMarksDueDate).getTime())) {
-        throw new ApolloError('A valid date format is required for enter_marks_due_date.', 'BAD_USER_INPUT');
-    }
+  if (enterMarksDueDate && isNaN(new Date(enterMarksDueDate).getTime())) {
+    throw new ApolloError('A valid date format is required for enter_marks_due_date.', 'BAD_USER_INPUT');
+  }
 }
 
 /**
@@ -147,38 +147,41 @@ function ValidateAssignCorrectorInput({ taskId, correctorId, enterMarksDueDate }
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateEnterMarksInput({ enterMarksInput, notations }) {
-    const { test, student, marks } = enterMarksInput;
-    if (!test || test.trim() === '' || !mongoose.Types.ObjectId.isValid(test)) {
-        throw new ApolloError('Invalid test ID.', "BAD_USER_INPUT");
-    }
-    if (!student || student.trim() === '' || !mongoose.Types.ObjectId.isValid(student)) {
-        throw new ApolloError('Invalid student ID.', "BAD_USER_INPUT");
-    }
+  const { test, student, marks } = enterMarksInput;
+  if (!test || test.trim() === '' || !mongoose.Types.ObjectId.isValid(test)) {
+    throw new ApolloError('Invalid test ID.', 'BAD_USER_INPUT');
+  }
+  if (!student || student.trim() === '' || !mongoose.Types.ObjectId.isValid(student)) {
+    throw new ApolloError('Invalid student ID.', 'BAD_USER_INPUT');
+  }
 
-    if (!Array.isArray(marks) || !marks.length) {
-        throw new ApolloError('Marks must be a non-empty array.', 'BAD_USER_INPUT', { field: 'marks' });
-    }
+  if (!Array.isArray(marks) || !marks.length) {
+    throw new ApolloError('Marks must be a non-empty array.', 'BAD_USER_INPUT', { field: 'marks' });
+  }
 
-    const notationMap = new Map();
-    for (const notation of notations) {
-        notationMap.set(notation.notation_text, notation.max_points);
-    }
+  const notationMap = new Map();
+  for (const notation of notations) {
+    notationMap.set(notation.notation_text, notation.max_points);
+  }
 
-    for (const [index, markEntry] of marks.entries()) {
-        if (!markEntry.notation_text || typeof markEntry.notation_text !== 'string' || markEntry.notation_text.trim() === '') {
-            throw new ApolloError(`Mark at index ${index} must have non-empty text.`, 'BAD_USER_INPUT');
-        }
-        if (typeof markEntry.mark !== 'number' || isNaN(markEntry.mark) || markEntry.mark < 0) {
-            throw new ApolloError(`Mark at index ${index} must have a valid mark (number ≥ 0).`, 'BAD_USER_INPUT');
-        }
-        if (!notationMap.has(markEntry.notation_text)) {
-            throw new ApolloError(`Invalid notation_text: '${markEntry.notation_text}' does not exist on this test.`, 'BAD_USER_INPUT');
-        }
-        const maxPoints = notationMap.get(markEntry.notation_text);
-        if (markEntry.mark > maxPoints) {
-            throw new ApolloError(`Mark for '${markEntry.notation_text}' (${markEntry.mark}) cannot exceed max points (${maxPoints}).`, 'BAD_USER_INPUT');
-        }
+  for (const [index, markEntry] of marks.entries()) {
+    if (!markEntry.notation_text || typeof markEntry.notation_text !== 'string' || markEntry.notation_text.trim() === '') {
+      throw new ApolloError(`Mark at index ${index} must have non-empty text.`, 'BAD_USER_INPUT');
     }
+    if (typeof markEntry.mark !== 'number' || isNaN(markEntry.mark) || markEntry.mark < 0) {
+      throw new ApolloError(`Mark at index ${index} must have a valid mark (number ≥ 0).`, 'BAD_USER_INPUT');
+    }
+    if (!notationMap.has(markEntry.notation_text)) {
+      throw new ApolloError(`Invalid notation_text: '${markEntry.notation_text}' does not exist on this test.`, 'BAD_USER_INPUT');
+    }
+    const maxPoints = notationMap.get(markEntry.notation_text);
+    if (markEntry.mark > maxPoints) {
+      throw new ApolloError(
+        `Mark for '${markEntry.notation_text}' (${markEntry.mark}) cannot exceed max points (${maxPoints}).`,
+        'BAD_USER_INPUT'
+      );
+    }
+  }
 }
 
 /**
@@ -189,12 +192,12 @@ function ValidateEnterMarksInput({ enterMarksInput, notations }) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateValidateMarksInput({ taskId, studentTestResultId }) {
-    if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
-        throw new ApolloError(`Invalid task ID: ${taskId}`, "BAD_USER_INPUT");
-    }
-    if (!studentTestResultId || !mongoose.Types.ObjectId.isValid(studentTestResultId)) {
-        throw new ApolloError(`Invalid student test result ID: ${studentTestResultId}`, "BAD_USER_INPUT");
-    }
+  if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
+    throw new ApolloError(`Invalid task ID: ${taskId}`, 'BAD_USER_INPUT');
+  }
+  if (!studentTestResultId || !mongoose.Types.ObjectId.isValid(studentTestResultId)) {
+    throw new ApolloError(`Invalid student test result ID: ${studentTestResultId}`, 'BAD_USER_INPUT');
+  }
 }
 
 /**
@@ -204,26 +207,21 @@ function ValidateValidateMarksInput({ taskId, studentTestResultId }) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateTestLoaderInput(task, context) {
-    if (!task || typeof task !== 'object' || task === null) {
-        throw new ApolloError('Input error: task must be a valid object.', 'BAD_USER_INPUT', {
-            field: 'task'
-        });
-    }
+  if (!task || typeof task !== 'object' || task === null) {
+    throw new ApolloError('Input error: task must be a valid object.', 'BAD_USER_INPUT', {
+      field: 'task',
+    });
+  }
 
-    if (!mongoose.Types.ObjectId.isValid(task.test)) {
-        throw new ApolloError('Input error: task.test must be a valid ID.', 'BAD_USER_INPUT', {
-            field: 'task.test'
-        });
-    }
+  if (!mongoose.Types.ObjectId.isValid(task.test)) {
+    throw new ApolloError('Input error: task.test must be a valid ID.', 'BAD_USER_INPUT', {
+      field: 'task.test',
+    });
+  }
 
-    if (
-        !context ||
-        !context.dataLoaders ||
-        !context.dataLoaders.TestLoader ||
-        typeof context.dataLoaders.TestLoader.load !== 'function'
-    ) {
-        throw new ApolloError('Server configuration error: TestLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
-    }
+  if (!context || !context.dataLoaders || !context.dataLoaders.TestLoader || typeof context.dataLoaders.TestLoader.load !== 'function') {
+    throw new ApolloError('Server configuration error: TestLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
+  }
 }
 
 /**
@@ -234,33 +232,28 @@ function ValidateTestLoaderInput(task, context) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateUserLoaderInput(parent, context, fieldName) {
-    if (!parent || typeof parent !== 'object' || parent === null) {
-        throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
-    }
+  if (!parent || typeof parent !== 'object' || parent === null) {
+    throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
+  }
 
-    if (
-        !context ||
-        !context.dataLoaders ||
-        !context.dataLoaders.UserLoader ||
-        typeof context.dataLoaders.UserLoader.load !== 'function'
-    ) {
-        throw new ApolloError('Server configuration error: UserLoader not found on context.', 'INTERNAL_SERVER_ERROR');
-    }
+  if (!context || !context.dataLoaders || !context.dataLoaders.UserLoader || typeof context.dataLoaders.UserLoader.load !== 'function') {
+    throw new ApolloError('Server configuration error: UserLoader not found on context.', 'INTERNAL_SERVER_ERROR');
+  }
 
-    const userId = parent[fieldName];
+  const userId = parent[fieldName];
 
-    if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
-        throw new ApolloError(`Input error: If provided, parent.${fieldName} must be a valid ID.`, 'BAD_USER_INPUT');
-    }
+  if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApolloError(`Input error: If provided, parent.${fieldName} must be a valid ID.`, 'BAD_USER_INPUT');
+  }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    ValidateTaskFilter,
-    ValidateTaskInput,
-    ValidateAssignCorrectorInput,
-    ValidateEnterMarksInput,
-    ValidateValidateMarksInput,
-    ValidateTestLoaderInput,
-    ValidateUserLoaderInput
-}
+  ValidateTaskFilter,
+  ValidateTaskInput,
+  ValidateAssignCorrectorInput,
+  ValidateEnterMarksInput,
+  ValidateValidateMarksInput,
+  ValidateTestLoaderInput,
+  ValidateUserLoaderInput,
+};

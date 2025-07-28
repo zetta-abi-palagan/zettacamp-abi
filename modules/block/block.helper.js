@@ -1,11 +1,11 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const BlockModel = require('./block.model');
 
 // *************** IMPORT UTILITES ***************
-const CommonHelper = require('../../shared/helper/index')
+const CommonHelper = require('../../shared/helper/index');
 
 // *************** IMPORT VALIDATOR ***************
 const CommonValidator = require('../../shared/validator/index');
@@ -26,31 +26,24 @@ const BlockValidator = require('./block.validator');
  * @returns {object} A processed data payload suitable for a database create operation.
  */
 function GetCreateBlockPayload({ createBlockInput, userId }) {
-    CommonValidator.ValidateInputTypeObject(createBlockInput);
-    CommonValidator.ValidateObjectId(userId);
-    BlockValidator.ValidateBlockInput({ blockInput: createBlockInput });
+  CommonValidator.ValidateInputTypeObject(createBlockInput);
+  CommonValidator.ValidateObjectId(userId);
+  BlockValidator.ValidateBlockInput({ blockInput: createBlockInput });
 
-    const {
-        name,
-        description,
-        evaluation_type,
-        block_type,
-        connected_block,
-        is_counted_in_final_transcript,
-        block_status
-    } = createBlockInput;
+  const { name, description, evaluation_type, block_type, connected_block, is_counted_in_final_transcript, block_status } =
+    createBlockInput;
 
-    return {
-        name,
-        description,
-        evaluation_type: evaluation_type.toUpperCase(),
-        block_type: block_type.toUpperCase(),
-        connected_block,
-        is_counted_in_final_transcript,
-        block_status: block_status.toUpperCase(),
-        created_by: userId,
-        updated_by: userId
-    }
+  return {
+    name,
+    description,
+    evaluation_type: evaluation_type.toUpperCase(),
+    block_type: block_type.toUpperCase(),
+    connected_block,
+    is_counted_in_final_transcript,
+    block_status: block_status.toUpperCase(),
+    created_by: userId,
+    updated_by: userId,
+  };
 }
 
 /**
@@ -63,39 +56,39 @@ function GetCreateBlockPayload({ createBlockInput, userId }) {
  * @returns {object} A processed data payload suitable for a partial database update operation.
  */
 function GetUpdateBlockPayload({ updateBlockInput, subjects, userId }) {
-    CommonValidator.ValidateInputTypeObject(updateBlockInput);
-    CommonValidator.ValidateObjectId(userId);
-    BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, subjects, isUpdate: true });
+  CommonValidator.ValidateInputTypeObject(updateBlockInput);
+  CommonValidator.ValidateObjectId(userId);
+  BlockValidator.ValidateBlockInput({ blockInput: updateBlockInput, subjects, isUpdate: true });
 
-    const {
-        name,
-        description,
-        evaluation_type,
-        block_type,
-        connected_block,
-        is_counted_in_final_transcript,
-        block_status,
-        block_passing_criteria
-    } = updateBlockInput;
+  const {
+    name,
+    description,
+    evaluation_type,
+    block_type,
+    connected_block,
+    is_counted_in_final_transcript,
+    block_status,
+    block_passing_criteria,
+  } = updateBlockInput;
 
-    const payload = {};
+  const payload = {};
 
-    if (name !== undefined && name !== null) payload.name = name;
-    if (description !== undefined && description !== null) payload.description = description;
-    if (evaluation_type !== undefined && evaluation_type !== null) payload.evaluation_type = evaluation_type.toUpperCase();
-    if (block_type !== undefined && block_type !== null) payload.block_type = block_type.toUpperCase();
-    if (connected_block !== undefined && connected_block !== null) payload.connected_block = connected_block;
-    if (is_counted_in_final_transcript !== undefined && is_counted_in_final_transcript !== null) {
-        payload.is_counted_in_final_transcript = is_counted_in_final_transcript;
-    }
-    if (block_status !== undefined && block_status !== null) payload.block_status = block_status.toUpperCase();
-    if (block_passing_criteria !== undefined && block_passing_criteria !== null) {
-        payload.block_passing_criteria = block_passing_criteria;
-    }
+  if (name !== undefined && name !== null) payload.name = name;
+  if (description !== undefined && description !== null) payload.description = description;
+  if (evaluation_type !== undefined && evaluation_type !== null) payload.evaluation_type = evaluation_type.toUpperCase();
+  if (block_type !== undefined && block_type !== null) payload.block_type = block_type.toUpperCase();
+  if (connected_block !== undefined && connected_block !== null) payload.connected_block = connected_block;
+  if (is_counted_in_final_transcript !== undefined && is_counted_in_final_transcript !== null) {
+    payload.is_counted_in_final_transcript = is_counted_in_final_transcript;
+  }
+  if (block_status !== undefined && block_status !== null) payload.block_status = block_status.toUpperCase();
+  if (block_passing_criteria !== undefined && block_passing_criteria !== null) {
+    payload.block_passing_criteria = block_passing_criteria;
+  }
 
-    payload.updated_by = userId;
+  payload.updated_by = userId;
 
-    return payload;
+  return payload;
 }
 
 /**
@@ -106,61 +99,69 @@ function GetUpdateBlockPayload({ updateBlockInput, subjects, userId }) {
  * @returns {Promise<object>} A promise that resolves to a structured payload for all required delete operations.
  */
 async function GetDeleteBlockPayload({ blockId, userId }) {
-    try {
-        CommonValidator.ValidateObjectId(blockId);
-        CommonValidator.ValidateObjectId(userId);
+  try {
+    CommonValidator.ValidateObjectId(blockId);
+    CommonValidator.ValidateObjectId(userId);
 
-        const deletionTimestamp = Date.now();
+    const deletionTimestamp = Date.now();
 
-        const block = await BlockModel.findOne({ _id: blockId, block_status: { $ne: 'DELETED' } });
-        if (!block) {
-            throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
-        }
-
-        const subjectIds = block.subjects || [];
-
-        const deleteBlockPayload = {
-            block: CommonHelper.BuildDeletePayload({
-                ids: [blockId],
-                statusKey: 'block_status',
-                timestamp: deletionTimestamp,
-                userId
-            }),
-            subjects: null,
-            tests: null,
-            tasks: null,
-            studentTestResults: null
-        };
-
-        if (!subjectIds.length) return deleteBlockPayload;
-
-        const { subjectPayload, testIds } = await CommonHelper.HandleDeleteSubjects({ subjectIds, userId, timestamp: deletionTimestamp });
-        deleteBlockPayload.subjects = subjectPayload;
-
-        if (!testIds.length) return deleteBlockPayload;
-
-        const { testPayload, taskIds, studentResultIds } = await CommonHelper.HandleDeleteTests({ testIds, userId, timestamp: deletionTimestamp });
-        deleteBlockPayload.tests = testPayload;
-
-        if (taskIds.length) {
-            deleteBlockPayload.tasks = CommonHelper.HandleDeleteTasks({ taskIds, userId, timestamp: deletionTimestamp });
-        }
-
-        if (studentResultIds.length) {
-            deleteBlockPayload.studentTestResults = CommonHelper.HandleDeleteStudentTestResults({ resultIds: studentResultIds, userId, timestamp: deletionTimestamp });
-        }
-
-        return deleteBlockPayload;
-    } catch (error) {
-        throw new ApolloError(`Failed in GetDeleteBlockPayload: ${error.message}`, 'DELETE_BLOCK_PAYLOAD_FAILED', {
-            error: error.message
-        });
+    const block = await BlockModel.findOne({ _id: blockId, block_status: { $ne: 'DELETED' } });
+    if (!block) {
+      throw new ApolloError('Block not found', 'BLOCK_NOT_FOUND');
     }
+
+    const subjectIds = block.subjects || [];
+
+    const deleteBlockPayload = {
+      block: CommonHelper.BuildDeletePayload({
+        ids: [blockId],
+        statusKey: 'block_status',
+        timestamp: deletionTimestamp,
+        userId,
+      }),
+      subjects: null,
+      tests: null,
+      tasks: null,
+      studentTestResults: null,
+    };
+
+    if (!subjectIds.length) return deleteBlockPayload;
+
+    const { subjectPayload, testIds } = await CommonHelper.HandleDeleteSubjects({ subjectIds, userId, timestamp: deletionTimestamp });
+    deleteBlockPayload.subjects = subjectPayload;
+
+    if (!testIds.length) return deleteBlockPayload;
+
+    const { testPayload, taskIds, studentResultIds } = await CommonHelper.HandleDeleteTests({
+      testIds,
+      userId,
+      timestamp: deletionTimestamp,
+    });
+    deleteBlockPayload.tests = testPayload;
+
+    if (taskIds.length) {
+      deleteBlockPayload.tasks = CommonHelper.HandleDeleteTasks({ taskIds, userId, timestamp: deletionTimestamp });
+    }
+
+    if (studentResultIds.length) {
+      deleteBlockPayload.studentTestResults = CommonHelper.HandleDeleteStudentTestResults({
+        resultIds: studentResultIds,
+        userId,
+        timestamp: deletionTimestamp,
+      });
+    }
+
+    return deleteBlockPayload;
+  } catch (error) {
+    throw new ApolloError(`Failed in GetDeleteBlockPayload: ${error.message}`, 'DELETE_BLOCK_PAYLOAD_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetCreateBlockPayload,
-    GetUpdateBlockPayload,
-    GetDeleteBlockPayload,
-}
+  GetCreateBlockPayload,
+  GetUpdateBlockPayload,
+  GetDeleteBlockPayload,
+};

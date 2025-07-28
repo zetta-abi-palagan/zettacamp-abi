@@ -13,14 +13,14 @@ const CommonValidator = require('../validator/index');
  * @returns {object} An object containing the 'filter' and 'update' payload for student test results.
  */
 function HandleDeleteStudentTestResults({ resultIds, userId, timestamp }) {
-    CommonValidator.ValidateObjectIdArray(resultIds, 'INVALID_STUDENT_TEST_RESULT_ID');
+  CommonValidator.ValidateObjectIdArray(resultIds, 'INVALID_STUDENT_TEST_RESULT_ID');
 
-    return BuildDeletePayload({
-        ids: resultIds,
-        statusKey: 'student_test_result_status',
-        timestamp,
-        userId
-    });
+  return BuildDeletePayload({
+    ids: resultIds,
+    statusKey: 'student_test_result_status',
+    timestamp,
+    userId,
+  });
 }
 
 // *************** EXPORT MODULE ***************

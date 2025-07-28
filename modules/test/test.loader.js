@@ -14,20 +14,20 @@ const TestModel = require('./test.model');
  * @returns {DataLoader} - An instance of DataLoader for fetching tests by their unique ID.
  */
 function TestLoader() {
-    return new DataLoader(async (testIds) => {
-        try {
-            const tests = await TestModel.find({
-                _id: { $in: testIds }
-            }).lean();
+  return new DataLoader(async (testIds) => {
+    try {
+      const tests = await TestModel.find({
+        _id: { $in: testIds },
+      }).lean();
 
-            const testsById = new Map(tests.map(test => [String(test._id), test]));
+      const testsById = new Map(tests.map((test) => [String(test._id), test]));
 
-            return testIds.map(testId => testsById.get(String(testId)) || null);
-        } catch (error) {
-            console.error("Error batch fetching tests:", error);
-            throw new ApolloError(`Failed to batch fetch tests: ${error.message}`, 'TEST_BATCH_FETCH_FAILED');
-        }
-    });
+      return testIds.map((testId) => testsById.get(String(testId)) || null);
+    } catch (error) {
+      console.error('Error batch fetching tests:', error);
+      throw new ApolloError(`Failed to batch fetch tests: ${error.message}`, 'TEST_BATCH_FETCH_FAILED');
+    }
+  });
 }
 
 // *************** EXPORT MODULE ***************

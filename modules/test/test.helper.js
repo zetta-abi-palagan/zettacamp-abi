@@ -1,11 +1,11 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const TestModel = require('./test.model');
 
 // *************** IMPORT UTILITES ***************
-const CommonHelper = require('../../shared/helper/index')
+const CommonHelper = require('../../shared/helper/index');
 
 // *************** IMPORT VALIDATOR ***************
 const CommonValidator = require('../../shared/validator/index');
@@ -20,39 +20,39 @@ const TestValidator = require('./test.validator');
  * @returns {object} A processed data payload suitable for a database create operation.
  */
 function GetCreateTestPayload({ testInput, userId, evaluationType }) {
-    CommonValidator.ValidateInputTypeObject(testInput);
-    CommonValidator.ValidateObjectId(userId);
-    TestValidator.ValidateTestInput({ testInput, evaluationType });
+  CommonValidator.ValidateInputTypeObject(testInput);
+  CommonValidator.ValidateObjectId(userId);
+  TestValidator.ValidateTestInput({ testInput, evaluationType });
 
-    const {
-        subject,
-        name,
-        description,
-        test_type,
-        result_visibility,
-        weight,
-        correction_type,
-        notations,
-        is_retake,
-        connected_test,
-        test_status
-    } = testInput;
+  const {
+    subject,
+    name,
+    description,
+    test_type,
+    result_visibility,
+    weight,
+    correction_type,
+    notations,
+    is_retake,
+    connected_test,
+    test_status,
+  } = testInput;
 
-    return {
-        subject: subject,
-        name: name,
-        description: description,
-        test_type: test_type.toUpperCase(),
-        result_visibility: result_visibility.toUpperCase(),
-        weight: weight,
-        correction_type: correction_type.toUpperCase(),
-        notations: notations,
-        is_retake: is_retake,
-        connected_test: connected_test,
-        test_status: test_status.toUpperCase(),
-        created_by: userId,
-        updated_by: userId
-    };
+  return {
+    subject: subject,
+    name: name,
+    description: description,
+    test_type: test_type.toUpperCase(),
+    result_visibility: result_visibility.toUpperCase(),
+    weight: weight,
+    correction_type: correction_type.toUpperCase(),
+    notations: notations,
+    is_retake: is_retake,
+    connected_test: connected_test,
+    test_status: test_status.toUpperCase(),
+    created_by: userId,
+    updated_by: userId,
+  };
 }
 
 /**
@@ -64,41 +64,41 @@ function GetCreateTestPayload({ testInput, userId, evaluationType }) {
  * @returns {object} A processed data payload suitable for a database update operation.
  */
 function GetUpdateTestPayload({ testInput, userId, evaluationType, existingNotations }) {
-    CommonValidator.ValidateInputTypeObject(testInput);
-    CommonValidator.ValidateObjectId(userId);
-    TestValidator.ValidateTestInput({ testInput, evaluationType, existingNotations, isUpdate: true });
+  CommonValidator.ValidateInputTypeObject(testInput);
+  CommonValidator.ValidateObjectId(userId);
+  TestValidator.ValidateTestInput({ testInput, evaluationType, existingNotations, isUpdate: true });
 
-    const {
-        name,
-        description,
-        test_type,
-        result_visibility,
-        weight,
-        correction_type,
-        notations,
-        is_retake,
-        connected_test,
-        test_status,
-        test_passing_criteria,
-    } = testInput;
+  const {
+    name,
+    description,
+    test_type,
+    result_visibility,
+    weight,
+    correction_type,
+    notations,
+    is_retake,
+    connected_test,
+    test_status,
+    test_passing_criteria,
+  } = testInput;
 
-    let payload = {};
+  let payload = {};
 
-    if (name !== undefined && name !== null) payload.name = name;
-    if (description !== undefined && description !== null) payload.description = description;
-    if (test_type !== undefined && test_type !== null) payload.test_type = test_type.toUpperCase();
-    if (result_visibility !== undefined && result_visibility !== null) payload.result_visibility = result_visibility.toUpperCase();
-    if (weight !== undefined && weight !== null) payload.weight = weight;
-    if (correction_type !== undefined && correction_type !== null) payload.correction_type = correction_type.toUpperCase();
-    if (notations !== undefined && notations !== null) payload.notations = notations;
-    if (is_retake !== undefined && is_retake !== null) payload.is_retake = is_retake;
-    if (connected_test !== undefined && connected_test !== null) payload.connected_test = connected_test;
-    if (test_status !== undefined && test_status !== null) payload.test_status = test_status.toUpperCase();
-    if (test_passing_criteria !== undefined && test_passing_criteria !== null) payload.test_passing_criteria = test_passing_criteria;
+  if (name !== undefined && name !== null) payload.name = name;
+  if (description !== undefined && description !== null) payload.description = description;
+  if (test_type !== undefined && test_type !== null) payload.test_type = test_type.toUpperCase();
+  if (result_visibility !== undefined && result_visibility !== null) payload.result_visibility = result_visibility.toUpperCase();
+  if (weight !== undefined && weight !== null) payload.weight = weight;
+  if (correction_type !== undefined && correction_type !== null) payload.correction_type = correction_type.toUpperCase();
+  if (notations !== undefined && notations !== null) payload.notations = notations;
+  if (is_retake !== undefined && is_retake !== null) payload.is_retake = is_retake;
+  if (connected_test !== undefined && connected_test !== null) payload.connected_test = connected_test;
+  if (test_status !== undefined && test_status !== null) payload.test_status = test_status.toUpperCase();
+  if (test_passing_criteria !== undefined && test_passing_criteria !== null) payload.test_passing_criteria = test_passing_criteria;
 
-    payload.updated_by = userId;
+  payload.updated_by = userId;
 
-    return payload;
+  return payload;
 }
 
 /**
@@ -109,14 +109,14 @@ function GetUpdateTestPayload({ testInput, userId, evaluationType, existingNotat
  * @returns {object} A data payload for updating the test's published status.
  */
 function GetPublishTestPayload({ userId, testDueDate }) {
-    CommonValidator.ValidateObjectId(userId);
+  CommonValidator.ValidateObjectId(userId);
 
-    return {
-        is_published: true,
-        published_date: Date.now(),
-        published_by: userId,
-        test_due_date: testDueDate,
-    };
+  return {
+    is_published: true,
+    published_date: Date.now(),
+    published_by: userId,
+    test_due_date: testDueDate,
+  };
 }
 
 /**
@@ -128,21 +128,21 @@ function GetPublishTestPayload({ userId, testDueDate }) {
  * @returns {object} A data payload for creating the new task.
  */
 function GetAssignCorrectorTaskPayload({ testId, assignCorrectorDueDate, userId, academicDirectorId }) {
-    CommonValidator.ValidateObjectId(testId)
-    CommonValidator.ValidateObjectId(userId);
-    CommonValidator.ValidateObjectId(academicDirectorId);
+  CommonValidator.ValidateObjectId(testId);
+  CommonValidator.ValidateObjectId(userId);
+  CommonValidator.ValidateObjectId(academicDirectorId);
 
-    return {
-        test: testId,
-        user: academicDirectorId,
-        title: 'Assign Corrector',
-        description: 'Academic Director should assign corrector for student test',
-        task_type: 'ASSIGN_CORRECTOR',
-        task_status: 'PENDING',
-        due_date: assignCorrectorDueDate,
-        created_by: userId,
-        updated_by: userId
-    };
+  return {
+    test: testId,
+    user: academicDirectorId,
+    title: 'Assign Corrector',
+    description: 'Academic Director should assign corrector for student test',
+    task_type: 'ASSIGN_CORRECTOR',
+    task_status: 'PENDING',
+    due_date: assignCorrectorDueDate,
+    created_by: userId,
+    updated_by: userId,
+  };
 }
 
 /**
@@ -153,57 +153,57 @@ function GetAssignCorrectorTaskPayload({ testId, assignCorrectorDueDate, userId,
  * @returns {Promise<object>} A promise that resolves to a structured payload for all required delete and update operations.
  */
 async function GetDeleteTestPayload({ testId, userId }) {
-    try {
-        CommonValidator.ValidateObjectId(testId);
-        CommonValidator.ValidateObjectId(userId);
+  try {
+    CommonValidator.ValidateObjectId(testId);
+    CommonValidator.ValidateObjectId(userId);
 
-        const deletionTimestamp = Date.now();
+    const deletionTimestamp = Date.now();
 
-        const test = await TestModel.findOne({ _id: testId, test_status: { $ne: 'DELETED' } });
-        if (!test) {
-            throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
-        }
-
-        const taskIds = test.tasks || [];
-        const studentResultIds = test.student_test_results || [];
-
-        const deleteTestPayload = {
-            test: CommonHelper.BuildDeletePayload({
-                ids: [testId],
-                statusKey: 'test_status',
-                timestamp: deletionTimestamp,
-                userId
-            }),
-            subject: BuildPullTestFromSubjectPayload({
-                subjectId: test.subject,
-                testId
-            }),
-            tasks: null,
-            studentTestResults: null
-        };
-
-        if (taskIds.length) {
-            deleteTestPayload.tasks = CommonHelper.HandleDeleteTasks({
-                taskIds,
-                userId,
-                timestamp: deletionTimestamp
-            });
-        }
-
-        if (studentResultIds.length) {
-            deleteTestPayload.studentTestResults = CommonHelper.HandleDeleteStudentTestResults({
-                resultIds: studentResultIds,
-                userId,
-                timestamp: deletionTimestamp
-            });
-        }
-
-        return deleteTestPayload;
-    } catch (error) {
-        throw new ApolloError(`Failed to build delete test payload: ${error.message}`, 'GET_DELETE_TEST_PAYLOAD_FAILED', {
-            error: error.message
-        });
+    const test = await TestModel.findOne({ _id: testId, test_status: { $ne: 'DELETED' } });
+    if (!test) {
+      throw new ApolloError('Test not found', 'TEST_NOT_FOUND');
     }
+
+    const taskIds = test.tasks || [];
+    const studentResultIds = test.student_test_results || [];
+
+    const deleteTestPayload = {
+      test: CommonHelper.BuildDeletePayload({
+        ids: [testId],
+        statusKey: 'test_status',
+        timestamp: deletionTimestamp,
+        userId,
+      }),
+      subject: BuildPullTestFromSubjectPayload({
+        subjectId: test.subject,
+        testId,
+      }),
+      tasks: null,
+      studentTestResults: null,
+    };
+
+    if (taskIds.length) {
+      deleteTestPayload.tasks = CommonHelper.HandleDeleteTasks({
+        taskIds,
+        userId,
+        timestamp: deletionTimestamp,
+      });
+    }
+
+    if (studentResultIds.length) {
+      deleteTestPayload.studentTestResults = CommonHelper.HandleDeleteStudentTestResults({
+        resultIds: studentResultIds,
+        userId,
+        timestamp: deletionTimestamp,
+      });
+    }
+
+    return deleteTestPayload;
+  } catch (error) {
+    throw new ApolloError(`Failed to build delete test payload: ${error.message}`, 'GET_DELETE_TEST_PAYLOAD_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -214,17 +214,17 @@ async function GetDeleteTestPayload({ testId, userId }) {
  * @returns {object} An object containing 'filter' and 'update' properties for a MongoDB $pull operation.
  */
 function BuildPullTestFromSubjectPayload({ subjectId, testId }) {
-    return {
-        filter: { _id: subjectId },
-        update: { $pull: { tests: testId } }
-    };
+  return {
+    filter: { _id: subjectId },
+    update: { $pull: { tests: testId } },
+  };
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetCreateTestPayload,
-    GetUpdateTestPayload,
-    GetPublishTestPayload,
-    GetAssignCorrectorTaskPayload,
-    GetDeleteTestPayload
-}
+  GetCreateTestPayload,
+  GetUpdateTestPayload,
+  GetPublishTestPayload,
+  GetAssignCorrectorTaskPayload,
+  GetDeleteTestPayload,
+};

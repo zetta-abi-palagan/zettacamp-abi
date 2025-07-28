@@ -1,11 +1,11 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const SubjectModel = require('./subject.model');
 
 // *************** IMPORT UTILITES ***************
-const CommonHelper = require('../../shared/helper/index')
+const CommonHelper = require('../../shared/helper/index');
 
 // *************** IMPORT VALIDATOR ***************
 const CommonValidator = require('../../shared/validator/index');
@@ -25,28 +25,22 @@ const SubjectValidator = require('./subject.validator');
  * @returns {object} A processed data payload suitable for a database create operation.
  */
 function GetCreateSubjectPayload({ subjectInput, isTransversal, userId }) {
-    CommonValidator.ValidateInputTypeObject(subjectInput);
-    CommonValidator.ValidateObjectId(userId);
-    SubjectValidator.ValidateSubjectInput({ subjectInput, isTransversal });
+  CommonValidator.ValidateInputTypeObject(subjectInput);
+  CommonValidator.ValidateObjectId(userId);
+  SubjectValidator.ValidateSubjectInput({ subjectInput, isTransversal });
 
-    const {
-        block,
-        name,
-        description,
-        coefficient,
-        subject_status
-    } = subjectInput;
+  const { block, name, description, coefficient, subject_status } = subjectInput;
 
-    return {
-        block,
-        name,
-        description,
-        coefficient,
-        is_transversal: isTransversal,
-        subject_status: subject_status.toUpperCase(),
-        created_by: userId,
-        updated_by: userId
-    };
+  return {
+    block,
+    name,
+    description,
+    coefficient,
+    is_transversal: isTransversal,
+    subject_status: subject_status.toUpperCase(),
+    created_by: userId,
+    updated_by: userId,
+  };
 }
 
 /**
@@ -59,33 +53,26 @@ function GetCreateSubjectPayload({ subjectInput, isTransversal, userId }) {
  * @returns {object} A processed data payload suitable for a partial database update operation.
  */
 function GetUpdateSubjectPayload({ subjectInput, userId, isTransversal, tests }) {
-    CommonValidator.ValidateInputTypeObject(subjectInput);
-    CommonValidator.ValidateObjectId(userId);
-    SubjectValidator.ValidateSubjectInput({ subjectInput, isTransversal, tests, isUpdate: true });
+  CommonValidator.ValidateInputTypeObject(subjectInput);
+  CommonValidator.ValidateObjectId(userId);
+  SubjectValidator.ValidateSubjectInput({ subjectInput, isTransversal, tests, isUpdate: true });
 
-    const {
-        name,
-        description,
-        coefficient,
-        connected_blocks,
-        subject_status,
-        subject_passing_criteria
-    } = subjectInput;
+  const { name, description, coefficient, connected_blocks, subject_status, subject_passing_criteria } = subjectInput;
 
-    const payload = {};
+  const payload = {};
 
-    if (name !== undefined && name !== null) payload.name = name;
-    if (description !== undefined && description !== null) payload.description = description;
-    if (coefficient !== undefined && coefficient !== null) payload.coefficient = coefficient;
-    if (connected_blocks !== undefined && connected_blocks !== null) payload.connected_blocks = connected_blocks;
-    if (subject_status !== undefined && subject_status !== null) payload.subject_status = subject_status.toUpperCase();
-    if (subject_passing_criteria !== undefined && subject_passing_criteria !== null) {
-        payload.subject_passing_criteria = subject_passing_criteria;
-    }
+  if (name !== undefined && name !== null) payload.name = name;
+  if (description !== undefined && description !== null) payload.description = description;
+  if (coefficient !== undefined && coefficient !== null) payload.coefficient = coefficient;
+  if (connected_blocks !== undefined && connected_blocks !== null) payload.connected_blocks = connected_blocks;
+  if (subject_status !== undefined && subject_status !== null) payload.subject_status = subject_status.toUpperCase();
+  if (subject_passing_criteria !== undefined && subject_passing_criteria !== null) {
+    payload.subject_passing_criteria = subject_passing_criteria;
+  }
 
-    payload.updated_by = userId;
+  payload.updated_by = userId;
 
-    return payload;
+  return payload;
 }
 
 /**
@@ -96,64 +83,64 @@ function GetUpdateSubjectPayload({ subjectInput, userId, isTransversal, tests })
  * @returns {Promise<object>} A promise that resolves to a structured payload for all required delete and update operations.
  */
 async function GetDeleteSubjectPayload({ subjectId, userId }) {
-    try {
-        CommonValidator.ValidateObjectId(subjectId);
-        CommonValidator.ValidateObjectId(userId);
+  try {
+    CommonValidator.ValidateObjectId(subjectId);
+    CommonValidator.ValidateObjectId(userId);
 
-        const deletionTimestamp = Date.now();
+    const deletionTimestamp = Date.now();
 
-        const subject = await SubjectModel.findOne({ _id: subjectId, subject_status: { $ne: 'DELETED' } });
-        if (!subject) {
-            throw new ApolloError('Subject not found', 'SUBJECT_NOT_FOUND');
-        }
-
-        const blockId = subject.block;
-        const testIds = subject.tests || [];
-
-        const deleteSubjectPayload = {
-            subject: CommonHelper.BuildDeletePayload({
-                ids: [subjectId],
-                statusKey: 'subject_status',
-                timestamp: deletionTimestamp,
-                userId
-            }),
-            block: BuildPullSubjectFromBlockPayload({ subjectId, blockId }),
-            tests: null,
-            tasks: null,
-            studentTestResults: null
-        };
-
-        if (!testIds.length) return deleteSubjectPayload;
-
-        const { testPayload, taskIds, studentResultIds } = await CommonHelper.HandleDeleteTests({
-            testIds,
-            userId,
-            timestamp: deletionTimestamp
-        });
-        deleteSubjectPayload.tests = testPayload;
-
-        if (taskIds.length) {
-            deleteSubjectPayload.tasks = CommonHelper.HandleDeleteTasks({
-                taskIds,
-                userId,
-                timestamp: deletionTimestamp
-            });
-        }
-
-        if (studentResultIds.length) {
-            deleteSubjectPayload.studentTestResults = CommonHelper.HandleDeleteStudentTestResults({
-                resultIds: studentResultIds,
-                userId,
-                timestamp: deletionTimestamp
-            });
-        }
-
-        return deleteSubjectPayload;
-    } catch (error) {
-        throw new ApolloError(`Failed to build delete subject payload: ${error.message}`, 'GET_DELETE_SUBJECT_PAYLOAD_FAILED', {
-            error: error.message
-        });
+    const subject = await SubjectModel.findOne({ _id: subjectId, subject_status: { $ne: 'DELETED' } });
+    if (!subject) {
+      throw new ApolloError('Subject not found', 'SUBJECT_NOT_FOUND');
     }
+
+    const blockId = subject.block;
+    const testIds = subject.tests || [];
+
+    const deleteSubjectPayload = {
+      subject: CommonHelper.BuildDeletePayload({
+        ids: [subjectId],
+        statusKey: 'subject_status',
+        timestamp: deletionTimestamp,
+        userId,
+      }),
+      block: BuildPullSubjectFromBlockPayload({ subjectId, blockId }),
+      tests: null,
+      tasks: null,
+      studentTestResults: null,
+    };
+
+    if (!testIds.length) return deleteSubjectPayload;
+
+    const { testPayload, taskIds, studentResultIds } = await CommonHelper.HandleDeleteTests({
+      testIds,
+      userId,
+      timestamp: deletionTimestamp,
+    });
+    deleteSubjectPayload.tests = testPayload;
+
+    if (taskIds.length) {
+      deleteSubjectPayload.tasks = CommonHelper.HandleDeleteTasks({
+        taskIds,
+        userId,
+        timestamp: deletionTimestamp,
+      });
+    }
+
+    if (studentResultIds.length) {
+      deleteSubjectPayload.studentTestResults = CommonHelper.HandleDeleteStudentTestResults({
+        resultIds: studentResultIds,
+        userId,
+        timestamp: deletionTimestamp,
+      });
+    }
+
+    return deleteSubjectPayload;
+  } catch (error) {
+    throw new ApolloError(`Failed to build delete subject payload: ${error.message}`, 'GET_DELETE_SUBJECT_PAYLOAD_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -164,15 +151,15 @@ async function GetDeleteSubjectPayload({ subjectId, userId }) {
  * @returns {object} An object containing 'filter' and 'update' properties for a MongoDB $pull operation.
  */
 function BuildPullSubjectFromBlockPayload({ subjectId, blockId }) {
-    return {
-        filter: { _id: blockId },
-        update: { $pull: { subjects: subjectId } }
-    };
+  return {
+    filter: { _id: blockId },
+    update: { $pull: { subjects: subjectId } },
+  };
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetCreateSubjectPayload,
-    GetUpdateSubjectPayload,
-    GetDeleteSubjectPayload
-}
+  GetCreateSubjectPayload,
+  GetUpdateSubjectPayload,
+  GetDeleteSubjectPayload,
+};

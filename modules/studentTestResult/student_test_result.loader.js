@@ -14,20 +14,20 @@ const StudentTestResultModel = require('./student_test_result.model');
  * @returns {DataLoader} - An instance of DataLoader for fetching student test results by their unique ID.
  */
 function StudentTestResultLoader() {
-    return new DataLoader(async (studentTestResultIds) => {
-        try {
-            const results = await StudentTestResultModel.find({
-                _id: { $in: studentTestResultIds },
-            }).lean();
+  return new DataLoader(async (studentTestResultIds) => {
+    try {
+      const results = await StudentTestResultModel.find({
+        _id: { $in: studentTestResultIds },
+      }).lean();
 
-            const resultsById = new Map(results.map(result => [String(result._id), result]));
+      const resultsById = new Map(results.map((result) => [String(result._id), result]));
 
-            return studentTestResultIds.map(id => resultsById.get(String(id)) || null);
-        } catch (error) {
-            console.error("Error batch fetching student test results:", error);
-            throw new ApolloError(`Failed to batch fetch student test results: ${error.message}`, 'STUDENT_TEST_RESULT_BATCH_FETCH_FAILED');
-        }
-    });
+      return studentTestResultIds.map((id) => resultsById.get(String(id)) || null);
+    } catch (error) {
+      console.error('Error batch fetching student test results:', error);
+      throw new ApolloError(`Failed to batch fetch student test results: ${error.message}`, 'STUDENT_TEST_RESULT_BATCH_FETCH_FAILED');
+    }
+  });
 }
 
 // *************** EXPORT MODULE ***************

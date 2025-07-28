@@ -7,9 +7,9 @@ const HandleDeleteTasks = require('./handle_delete_tasks');
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    BuildDeletePayload,
-    HandleDeleteSubjects,
-    HandleDeleteTests,
-    HandleDeleteStudentTestResults,
-    HandleDeleteTasks
-}
+  BuildDeletePayload,
+  HandleDeleteSubjects,
+  HandleDeleteTests,
+  HandleDeleteStudentTestResults,
+  HandleDeleteTasks,
+};

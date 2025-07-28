@@ -8,15 +8,15 @@
  * @returns {object} An object containing 'filter' and 'update' properties for a database operation.
  */
 function BuildDeletePayload({ ids, statusKey, timestamp, userId }) {
-    return {
-        filter: { _id: { $in: ids } },
-        update: {
-            [statusKey]: 'DELETED',
-            updated_by: userId,
-            deleted_by: userId,
-            deleted_at: timestamp
-        }
-    };
+  return {
+    filter: { _id: { $in: ids } },
+    update: {
+      [statusKey]: 'DELETED',
+      updated_by: userId,
+      deleted_by: userId,
+      deleted_at: timestamp,
+    },
+  };
 }
 
 // *************** EXPORT MODULE ***************

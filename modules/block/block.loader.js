@@ -14,20 +14,20 @@ const BlockModel = require('./block.model');
  * @returns {DataLoader} - An instance of DataLoader for fetching blocks by their unique ID.
  */
 function BlockLoader() {
-    return new DataLoader(async (blockIds) => {
-        try {
-            const blocks = await BlockModel.find({
-                _id: { $in: blockIds },
-            }).lean();
+  return new DataLoader(async (blockIds) => {
+    try {
+      const blocks = await BlockModel.find({
+        _id: { $in: blockIds },
+      }).lean();
 
-            const blocksById = new Map(blocks.map(block => [String(block._id), block]));
+      const blocksById = new Map(blocks.map((block) => [String(block._id), block]));
 
-            return blockIds.map(blockId => blocksById.get(String(blockId)));
-        } catch (error) {
-            console.error('Error batch fetching blocks:', error);
-            throw new ApolloError(`Failed to batch fetch blocks: ${error.message}`, 'BLOCK_BATCH_FETCH_FAILED');
-        }
-    });
+      return blockIds.map((blockId) => blocksById.get(String(blockId)));
+    } catch (error) {
+      console.error('Error batch fetching blocks:', error);
+      throw new ApolloError(`Failed to batch fetch blocks: ${error.message}`, 'BLOCK_BATCH_FETCH_FAILED');
+    }
+  });
 }
 
 // *************** EXPORT MODULE ***************

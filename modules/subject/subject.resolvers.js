@@ -1,14 +1,14 @@
 // *************** IMPORT LIBRARY ***************
 const { ApolloError } = require('apollo-server');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const BlockModel = require('../block/block.model');
 const SubjectModel = require('./subject.model');
 const TestModel = require('../test/test.model');
 const StudentTestResultModel = require('../studentTestResult/student_test_result.model');
 const TaskModel = require('../task/task.model');
 
-// *************** IMPORT HELPER FUNCTION *************** 
+// *************** IMPORT HELPER FUNCTION ***************
 const SubjectHelper = require('./subject.helper');
 
 // *************** IMPORT VALIDATOR ***************
@@ -24,21 +24,21 @@ const CommonValidator = require('../../shared/validator/index');
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of subject objects.
  */
 async function GetAllSubjects(_, { subject_status }) {
-    try {
-        SubjectValidator.ValidateSubjectStatusFilter(subject_status);
+  try {
+    SubjectValidator.ValidateSubjectStatusFilter(subject_status);
 
-        const subjectFilter = subject_status ? { subject_status: subject_status } : { subject_status: { $ne: 'DELETED' } };
+    const subjectFilter = subject_status ? { subject_status: subject_status } : { subject_status: { $ne: 'DELETED' } };
 
-        const subjects = await SubjectModel.find(subjectFilter).lean();
+    const subjects = await SubjectModel.find(subjectFilter).lean();
 
-        return subjects;
-    } catch (error) {
-        console.error('Unexpected error in GetAllSubjects:', error);
+    return subjects;
+  } catch (error) {
+    console.error('Unexpected error in GetAllSubjects:', error);
 
-        throw new ApolloError('Failed to retrieve subjects', 'GET_SUBJECTS_FAILED', {
-            error: error.message
-        });
-    }
+    throw new ApolloError('Failed to retrieve subjects', 'GET_SUBJECTS_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -49,22 +49,22 @@ async function GetAllSubjects(_, { subject_status }) {
  * @returns {Promise<object>} - A promise that resolves to the found subject object.
  */
 async function GetOneSubject(_, { id }) {
-    try {
-        CommonValidator.ValidateObjectId(id);
+  try {
+    CommonValidator.ValidateObjectId(id);
 
-        const subject = await SubjectModel.findById(id).lean();
-        if (!subject) {
-            throw new ApolloError('Subject not found', 'NOT_FOUND');
-        }
-
-        return subject;
-    } catch (error) {
-        console.error('Unexpected error in GetOneSubject:', error);
-
-        throw new ApolloError('Failed to retrieve subject', 'GET_SUBJECT_FAILED', {
-            error: error.message
-        });
+    const subject = await SubjectModel.findById(id).lean();
+    if (!subject) {
+      throw new ApolloError('Subject not found', 'NOT_FOUND');
     }
+
+    return subject;
+  } catch (error) {
+    console.error('Unexpected error in GetOneSubject:', error);
+
+    throw new ApolloError('Failed to retrieve subject', 'GET_SUBJECT_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** MUTATION ***************
@@ -77,51 +77,50 @@ async function GetOneSubject(_, { id }) {
  * @returns {Promise<object>} - A promise that resolves to the newly created subject object.
  */
 async function CreateSubject(_, { createSubjectInput }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateInputTypeObject(createSubjectInput);
-        CommonValidator.ValidateObjectId(createSubjectInput.block);
-
-        // *************** Ensure parent block exists and is active
-        const parentBlock = await BlockModel.findOne({ _id: createSubjectInput.block, block_status: { $ne: 'DELETED' } }).select({ block_type: 1 }).lean();
-        if (!parentBlock) {
-            throw new ApolloError('Parent block not found.', 'NOT_FOUND');
-        }
-
-        // *************** Determine if subject is transversal based on parent block type
-        const isTransversal = parentBlock.block_type === 'TRANSVERSAL';
-
-        SubjectValidator.ValidateSubjectInput({ subjectInput: createSubjectInput, isTransversal });
-
-        // *************** Prepare payload and create subject
-        const createSubjectPayload = SubjectHelper.GetCreateSubjectPayload({ subjectInput: createSubjectInput, isTransversal, userId });
-
-        const newSubject = await SubjectModel.create(createSubjectPayload);
-        if (!newSubject) {
-            throw new ApolloError('Failed to create subject in database', 'CREATE_SUBJECT_FAILED');
-        }
-
-        // *************** Add new subject to parent block's subjects array
-        const updatedBlock = await BlockModel.updateOne(
-            { _id: createSubjectInput.block },
-            { $addToSet: { subjects: newSubject._id } }
-        );
-        if (!updatedBlock.nModified) {
-            throw new ApolloError('Failed to add subject to block', 'BLOCK_UPDATE_FAILED');
-        }
-
-        return newSubject;
-    } catch (error) {
-        console.error('Unexpected error in CreateSubject:', error);
-
-        throw new ApolloError('Failed to create subject', 'CREATE_SUBJECT_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateInputTypeObject(createSubjectInput);
+    CommonValidator.ValidateObjectId(createSubjectInput.block);
+
+    // *************** Ensure parent block exists and is active
+    const parentBlock = await BlockModel.findOne({ _id: createSubjectInput.block, block_status: { $ne: 'DELETED' } })
+      .select({ block_type: 1 })
+      .lean();
+    if (!parentBlock) {
+      throw new ApolloError('Parent block not found.', 'NOT_FOUND');
+    }
+
+    // *************** Determine if subject is transversal based on parent block type
+    const isTransversal = parentBlock.block_type === 'TRANSVERSAL';
+
+    SubjectValidator.ValidateSubjectInput({ subjectInput: createSubjectInput, isTransversal });
+
+    // *************** Prepare payload and create subject
+    const createSubjectPayload = SubjectHelper.GetCreateSubjectPayload({ subjectInput: createSubjectInput, isTransversal, userId });
+
+    const newSubject = await SubjectModel.create(createSubjectPayload);
+    if (!newSubject) {
+      throw new ApolloError('Failed to create subject in database', 'CREATE_SUBJECT_FAILED');
+    }
+
+    // *************** Add new subject to parent block's subjects array
+    const updatedBlock = await BlockModel.updateOne({ _id: createSubjectInput.block }, { $addToSet: { subjects: newSubject._id } });
+    if (!updatedBlock.nModified) {
+      throw new ApolloError('Failed to add subject to block', 'BLOCK_UPDATE_FAILED');
+    }
+
+    return newSubject;
+  } catch (error) {
+    console.error('Unexpected error in CreateSubject:', error);
+
+    throw new ApolloError('Failed to create subject', 'CREATE_SUBJECT_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -134,42 +133,48 @@ async function CreateSubject(_, { createSubjectInput }, context) {
  * @returns {Promise<object>} - A promise that resolves to the updated subject object.
  */
 async function UpdateSubject(_, { id, updateSubjectInput }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateObjectId(id);
-        CommonValidator.ValidateInputTypeObject(updateSubjectInput);
-
-        // *************** Find the subject to ensure it exists and get its is_transversal property
-        const subject = await SubjectModel.findById(id).select({ is_transversal: 1, tests: 1 }).lean();
-        if (!subject) {
-            throw new ApolloError('Subject not found', 'NOT_FOUND');
-        }
-        SubjectValidator.ValidateSubjectInput({ subjectInput: updateSubjectInput, isTransversal: subject.is_transversal, tests: subject.tests, isUpdate: true });
-
-        // *************** Prepare the payload and update the subject
-        const updateSubjectPayload = SubjectHelper.GetUpdateSubjectPayload({ subjectInput: updateSubjectInput, userId, isTransversal: subject.is_transversal, tests: subject.tests });
-
-        const updatedSubject = await SubjectModel.findOneAndUpdate(
-            { _id: id },
-            { $set: updateSubjectPayload },
-            { new: true }
-        ).lean();
-        if (!updatedSubject) {
-            throw new ApolloError('Subject update failed', 'UPDATE_SUBJECT_FAILED');
-        }
-
-        return updatedSubject;
-    } catch (error) {
-        console.error('Unexpected error in UpdateSubject:', error);
-
-        throw new ApolloError('Failed to update subject', 'UPDATE_SUBJECT_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateObjectId(id);
+    CommonValidator.ValidateInputTypeObject(updateSubjectInput);
+
+    // *************** Find the subject to ensure it exists and get its is_transversal property
+    const subject = await SubjectModel.findById(id).select({ is_transversal: 1, tests: 1 }).lean();
+    if (!subject) {
+      throw new ApolloError('Subject not found', 'NOT_FOUND');
+    }
+    SubjectValidator.ValidateSubjectInput({
+      subjectInput: updateSubjectInput,
+      isTransversal: subject.is_transversal,
+      tests: subject.tests,
+      isUpdate: true,
+    });
+
+    // *************** Prepare the payload and update the subject
+    const updateSubjectPayload = SubjectHelper.GetUpdateSubjectPayload({
+      subjectInput: updateSubjectInput,
+      userId,
+      isTransversal: subject.is_transversal,
+      tests: subject.tests,
+    });
+
+    const updatedSubject = await SubjectModel.findOneAndUpdate({ _id: id }, { $set: updateSubjectPayload }, { new: true }).lean();
+    if (!updatedSubject) {
+      throw new ApolloError('Subject update failed', 'UPDATE_SUBJECT_FAILED');
+    }
+
+    return updatedSubject;
+  } catch (error) {
+    console.error('Unexpected error in UpdateSubject:', error);
+
+    throw new ApolloError('Failed to update subject', 'UPDATE_SUBJECT_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -182,84 +187,63 @@ async function UpdateSubject(_, { id, updateSubjectInput }, context) {
  * @returns {Promise<object>} - A promise that resolves to the subject object as it was before being soft-deleted.
  */
 async function DeleteSubject(_, { id }, context) {
-    try {
-        const userId = (context && context.user && context.user._id);
-        if (!userId) {
-            throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
-        }
-
-        CommonValidator.ValidateObjectId(id);
-
-        // *************** Prepare payloads for cascading soft delete
-        const {
-            subject,
-            block,
-            tests,
-            tasks,
-            studentTestResults
-        } = await SubjectHelper.GetDeleteSubjectPayload({ subjectId: id, userId });
-
-        // *************** Soft delete student test results if any
-        if (studentTestResults) {
-            const studentResultUpdate = await StudentTestResultModel.updateMany(
-                studentTestResults.filter,
-                studentTestResults.update
-            );
-            if (!studentResultUpdate.nModified) {
-                throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
-            }
-        }
-
-        // *************** Soft delete tasks if any
-        if (tasks) {
-            const taskUpdate = await TaskModel.updateMany(
-                tasks.filter,
-                tasks.update
-            );
-            if (!taskUpdate.nModified) {
-                throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
-            }
-        }
-
-        // *************** Soft delete tests if any
-        if (tests) {
-            const testUpdate = await TestModel.updateMany(
-                tests.filter,
-                tests.update
-            );
-            if (!testUpdate.nModified) {
-                throw new ApolloError('No tests matched for deletion', 'TESTS_NOT_FOUND');
-            }
-        }
-
-        // *************** Soft delete the subject itself
-        const deletedSubject = await SubjectModel.findOneAndUpdate(
-            subject.filter,
-            subject.update
-        ).lean();
-
-        if (!deletedSubject) {
-            throw new ApolloError('Subject deletion failed', 'SUBJECT_DELETION_FAILED');
-        }
-
-        // *************** Remove subject reference from parent block
-        const updatedBlock = await BlockModel.updateOne(
-            block.filter,
-            block.update
-        );
-
-        if (!updatedBlock) {
-            throw new ApolloError('Failed to update block (remove subject)', 'BLOCK_UPDATE_FAILED');
-        }
-
-        return deletedSubject;
-    } catch (error) {
-        console.error('Unexpected error in DeleteSubject:', error);
-
-        throw new ApolloError('Failed to delete subject', 'DELETE_SUBJECT_FAILED', {
-            error: error.message
-        });
+  try {
+    const userId = context && context.user && context.user._id;
+    if (!userId) {
+      throw new ApolloError('User not authenticated', 'UNAUTHENTICATED');
     }
+
+    CommonValidator.ValidateObjectId(id);
+
+    // *************** Prepare payloads for cascading soft delete
+    const { subject, block, tests, tasks, studentTestResults } = await SubjectHelper.GetDeleteSubjectPayload({ subjectId: id, userId });
+
+    // *************** Soft delete student test results if any
+    if (studentTestResults) {
+      const studentResultUpdate = await StudentTestResultModel.updateMany(studentTestResults.filter, studentTestResults.update);
+      if (!studentResultUpdate.nModified) {
+        throw new ApolloError('No student test results matched for deletion', 'STUDENT_RESULTS_NOT_FOUND');
+      }
+    }
+
+    // *************** Soft delete tasks if any
+    if (tasks) {
+      const taskUpdate = await TaskModel.updateMany(tasks.filter, tasks.update);
+      if (!taskUpdate.nModified) {
+        throw new ApolloError('No tasks matched for deletion', 'TASKS_NOT_FOUND');
+      }
+    }
+
+    // *************** Soft delete tests if any
+    if (tests) {
+      const testUpdate = await TestModel.updateMany(tests.filter, tests.update);
+      if (!testUpdate.nModified) {
+        throw new ApolloError('No tests matched for deletion', 'TESTS_NOT_FOUND');
+      }
+    }
+
+    // *************** Soft delete the subject itself
+    const deletedSubject = await SubjectModel.findOneAndUpdate(subject.filter, subject.update).lean();
+
+    if (!deletedSubject) {
+      throw new ApolloError('Subject deletion failed', 'SUBJECT_DELETION_FAILED');
+    }
+
+    // *************** Remove subject reference from parent block
+    const updatedBlock = await BlockModel.updateOne(block.filter, block.update);
+
+    if (!updatedBlock) {
+      throw new ApolloError('Failed to update block (remove subject)', 'BLOCK_UPDATE_FAILED');
+    }
+
+    return deletedSubject;
+  } catch (error) {
+    console.error('Unexpected error in DeleteSubject:', error);
+
+    throw new ApolloError('Failed to delete subject', 'DELETE_SUBJECT_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** LOADER ***************
@@ -272,17 +256,17 @@ async function DeleteSubject(_, { id }, context) {
  * @returns {Promise<object>} - A promise that resolves to the block object.
  */
 async function BlockLoader(subject, _, context) {
-    try {
-        SubjectValidator.ValidateBlockLoaderInput(subject, context);
+  try {
+    SubjectValidator.ValidateBlockLoaderInput(subject, context);
 
-        const block = await context.dataLoaders.BlockLoader.load(subject.block);
+    const block = await context.dataLoaders.BlockLoader.load(subject.block);
 
-        return block;
-    } catch (error) {
-        throw new ApolloError(`Failed to fetch block`, 'BLOCK_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return block;
+  } catch (error) {
+    throw new ApolloError(`Failed to fetch block`, 'BLOCK_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -294,19 +278,19 @@ async function BlockLoader(subject, _, context) {
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of connected block objects.
  */
 async function ConnectedBlocksLoader(subject, _, context) {
-    try {
-        SubjectValidator.ValidateConnectedBlocksLoaderInput(subject, context);
+  try {
+    SubjectValidator.ValidateConnectedBlocksLoaderInput(subject, context);
 
-        const connectedBlocks = await context.dataLoaders.BlockLoader.loadMany(subject.connected_blocks);
+    const connectedBlocks = await context.dataLoaders.BlockLoader.loadMany(subject.connected_blocks);
 
-        return connectedBlocks;
-    } catch (error) {
-        console.error("Error fetching connected_blocks:", error);
+    return connectedBlocks;
+  } catch (error) {
+    console.error('Error fetching connected_blocks:', error);
 
-        throw new ApolloError(`Failed to fetch connected_blocks for ${subject.name}`, 'CONNECTED_BLOCKS_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    throw new ApolloError(`Failed to fetch connected_blocks for ${subject.name}`, 'CONNECTED_BLOCKS_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -318,19 +302,19 @@ async function ConnectedBlocksLoader(subject, _, context) {
  * @returns {Promise<Array<object>>} - A promise that resolves to an array of test objects.
  */
 async function TestLoader(subject, _, context) {
-    try {
-        SubjectValidator.ValidateTestLoaderInput(subject, context);
+  try {
+    SubjectValidator.ValidateTestLoaderInput(subject, context);
 
-        const tests = await context.dataLoaders.TestLoader.loadMany(subject.tests);
+    const tests = await context.dataLoaders.TestLoader.loadMany(subject.tests);
 
-        return tests;
-    } catch (error) {
-        console.error("Error fetching tests:", error);
+    return tests;
+  } catch (error) {
+    console.error('Error fetching tests:', error);
 
-        throw new ApolloError(`Failed to fetch tests for ${subject.name}`, 'TEST_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    throw new ApolloError(`Failed to fetch tests for ${subject.name}`, 'TEST_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -342,17 +326,17 @@ async function TestLoader(subject, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function CreatedByLoader(subject, _, context) {
-    try {
-        SubjectValidator.ValidateUserLoaderInput(subject, context, 'created_by');
+  try {
+    SubjectValidator.ValidateUserLoaderInput(subject, context, 'created_by');
 
-        const createdBy = await context.dataLoaders.UserLoader.load(subject.created_by);
+    const createdBy = await context.dataLoaders.UserLoader.load(subject.created_by);
 
-        return createdBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return createdBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -364,17 +348,17 @@ async function CreatedByLoader(subject, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function UpdatedByLoader(subject, _, context) {
-    try {
-        SubjectValidator.ValidateUserLoaderInput(subject, context, 'updated_by');
+  try {
+    SubjectValidator.ValidateUserLoaderInput(subject, context, 'updated_by');
 
-        const updatedBy = await context.dataLoaders.UserLoader.load(subject.updated_by);
+    const updatedBy = await context.dataLoaders.UserLoader.load(subject.updated_by);
 
-        return updatedBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return updatedBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -386,38 +370,38 @@ async function UpdatedByLoader(subject, _, context) {
  * @returns {Promise<object>} - A promise that resolves to the user object.
  */
 async function DeletedByLoader(subject, _, context) {
-    try {
-        SubjectValidator.ValidateUserLoaderInput(subject, context, 'deleted_by');
+  try {
+    SubjectValidator.ValidateUserLoaderInput(subject, context, 'deleted_by');
 
-        const deletedBy = await context.dataLoaders.UserLoader.load(subject.deleted_by);
+    const deletedBy = await context.dataLoaders.UserLoader.load(subject.deleted_by);
 
-        return deletedBy;
-    } catch (error) {
-        throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
-            error: error.message
-        });
-    }
+    return deletedBy;
+  } catch (error) {
+    throw new ApolloError('Failed to fetch user', 'USER_FETCH_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    Query: {
-        GetAllSubjects,
-        GetOneSubject
-    },
+  Query: {
+    GetAllSubjects,
+    GetOneSubject,
+  },
 
-    Mutation: {
-        CreateSubject,
-        UpdateSubject,
-        DeleteSubject
-    },
+  Mutation: {
+    CreateSubject,
+    UpdateSubject,
+    DeleteSubject,
+  },
 
-    Subject: {
-        block: BlockLoader,
-        connected_blocks: ConnectedBlocksLoader,
-        tests: TestLoader,
-        created_by: CreatedByLoader,
-        updated_by: UpdatedByLoader,
-        deleted_by: DeletedByLoader
-    }
-}
+  Subject: {
+    block: BlockLoader,
+    connected_blocks: ConnectedBlocksLoader,
+    tests: TestLoader,
+    created_by: CreatedByLoader,
+    updated_by: UpdatedByLoader,
+    deleted_by: DeletedByLoader,
+  },
+};

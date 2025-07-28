@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 // *************** IMPORT MODULE ***************
 const config = require('./config');
 
-const mongo_uri = config.MONGO_URI
+const mongo_uri = config.MONGO_URI;
 
 /**
  * Establishes a connection to the MongoDB database.
@@ -15,19 +15,19 @@ const mongo_uri = config.MONGO_URI
  * log or process termination on error.
  */
 async function ConnectDB() {
-    if (!mongo_uri) {
-        console.error('MongoDB connection error: MONGO_URI is not defined in environment variables.');
-        process.exit(1);
-    }
+  if (!mongo_uri) {
+    console.error('MongoDB connection error: MONGO_URI is not defined in environment variables.');
+    process.exit(1);
+  }
 
-    try {
-        await mongoose.connect(mongo_uri);
-        await mongoose.set('debug', true);
-        console.log('Successfully connected to MongoDB.');
-    } catch (err) {
-        console.error('MongoDB connection error:', err.message);
-        process.exit(1);
-    }
+  try {
+    await mongoose.connect(mongo_uri);
+    await mongoose.set('debug', true);
+    console.log('Successfully connected to MongoDB.');
+  } catch (err) {
+    console.error('MongoDB connection error:', err.message);
+    process.exit(1);
+  }
 }
 
 // *************** EXPORT MODULE ***************

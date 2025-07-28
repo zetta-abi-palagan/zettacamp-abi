@@ -14,20 +14,20 @@ const TaskModel = require('./task.model');
  * @returns {DataLoader} - An instance of DataLoader for fetching tasks by their unique ID.
  */
 function TaskLoader() {
-    return new DataLoader(async (taskIds) => {
-        try {
-            const tasks = await TaskModel.find({
-                _id: { $in: taskIds }
-            }).lean();
+  return new DataLoader(async (taskIds) => {
+    try {
+      const tasks = await TaskModel.find({
+        _id: { $in: taskIds },
+      }).lean();
 
-            const tasksById = new Map(tasks.map(task => [String(task._id), task]));
+      const tasksById = new Map(tasks.map((task) => [String(task._id), task]));
 
-            return taskIds.map(taskId => tasksById.get(String(taskId)) || null);
-        } catch (error) {
-            console.error("Error batch fetching tasks:", error);
-            throw new ApolloError(`Failed to batch fetch tasks: ${error.message}`, 'TASK_BATCH_FETCH_FAILED');
-        }
-    });
+      return taskIds.map((taskId) => tasksById.get(String(taskId)) || null);
+    } catch (error) {
+      console.error('Error batch fetching tasks:', error);
+      throw new ApolloError(`Failed to batch fetch tasks: ${error.message}`, 'TASK_BATCH_FETCH_FAILED');
+    }
+  });
 }
 
 // *************** EXPORT MODULE ***************

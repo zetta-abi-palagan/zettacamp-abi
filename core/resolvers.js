@@ -1,7 +1,7 @@
 // *************** IMPORT LIBRARY ***************
 const { mergeResolvers } = require('@graphql-tools/merge');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const userResolvers = require('../modules/user/user.resolvers');
 const studentResolvers = require('../modules/student/student.resolvers');
 const schoolResolvers = require('../modules/school/school.resolvers');
@@ -13,4 +13,14 @@ const taskResolvers = require('../modules/task/task.resolvers');
 const finalTranscriptResultResolvers = require('../modules/finalTranscriptResult/final_transcript_result.resolvers');
 
 // *************** EXPORT MODULE ***************
-module.exports = mergeResolvers([userResolvers, schoolResolvers, studentResolvers, blockResolvers, subjectResolvers, testResolvers, studentTestResultResolvers, taskResolvers, finalTranscriptResultResolvers]);
+module.exports = mergeResolvers([
+  userResolvers,
+  schoolResolvers,
+  studentResolvers,
+  blockResolvers,
+  subjectResolvers,
+  testResolvers,
+  studentTestResultResolvers,
+  taskResolvers,
+  finalTranscriptResultResolvers,
+]);

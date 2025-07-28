@@ -12,20 +12,20 @@ const SchoolModel = require('./school.model');
  * @returns {DataLoader} - An instance of DataLoader for fetching schools by ID.
  */
 function SchoolLoader() {
-    return new DataLoader(async (schoolIds) => {
-        try {
-            const schools = await SchoolModel.find({
-                _id: { $in: schoolIds },
-            });
+  return new DataLoader(async (schoolIds) => {
+    try {
+      const schools = await SchoolModel.find({
+        _id: { $in: schoolIds },
+      });
 
-            const schoolsById = new Map(schools.map(school => [String(school._id), school]));
+      const schoolsById = new Map(schools.map((school) => [String(school._id), school]));
 
-            return schoolIds.map(schoolId => schoolsById.get(String(schoolId)));
-        } catch (error) {
-            console.error('Error batch fetching schools:', error);
-            throw new ApolloError(`Failed to batch fetch schools: ${error.message}`, 'USER_BATCH_FETCH_FAILED');
-        }
-    });
+      return schoolIds.map((schoolId) => schoolsById.get(String(schoolId)));
+    } catch (error) {
+      console.error('Error batch fetching schools:', error);
+      throw new ApolloError(`Failed to batch fetch schools: ${error.message}`, 'USER_BATCH_FETCH_FAILED');
+    }
+  });
 }
 
 // *************** EXPORT MODULE ***************

@@ -5,7 +5,7 @@ const ValidateInputTypeObject = require('./object');
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    ValidateObjectId,
-    ValidateObjectIdArray,
-    ValidateInputTypeObject
-}
+  ValidateObjectId,
+  ValidateObjectIdArray,
+  ValidateInputTypeObject,
+};

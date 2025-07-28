@@ -12,21 +12,21 @@ const StudentModel = require('./student.model');
  * @returns {DataLoader} - An instance of DataLoader for fetching students by their unique ID.
  */
 function StudentLoader() {
-    return new DataLoader(async (studentIds) => {
-        try {
-            const students = await StudentModel.find({
-                _id: { $in: studentIds },
-                student_status: 'ACTIVE',
-            });
+  return new DataLoader(async (studentIds) => {
+    try {
+      const students = await StudentModel.find({
+        _id: { $in: studentIds },
+        student_status: 'ACTIVE',
+      });
 
-            const studentsById = new Map(students.map(student => [String(student._id), student]));
+      const studentsById = new Map(students.map((student) => [String(student._id), student]));
 
-            return studentIds.map(studentId => studentsById.get(String(studentId)) || null);
-        } catch (error) {
-            console.error("Error batch fetching students:", error);
-            throw new ApolloError(`Failed to batch fetch students: ${error.message}`, 'STUDENT_BATCH_FETCH_FAILED');
-        }
-    });
+      return studentIds.map((studentId) => studentsById.get(String(studentId)) || null);
+    } catch (error) {
+      console.error('Error batch fetching students:', error);
+      throw new ApolloError(`Failed to batch fetch students: ${error.message}`, 'STUDENT_BATCH_FETCH_FAILED');
+    }
+  });
 }
 
 // *************** EXPORT MODULE ***************

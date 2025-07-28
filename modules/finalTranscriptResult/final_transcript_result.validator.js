@@ -11,26 +11,26 @@ const { ApolloError } = require('apollo-server');
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateStudentLoaderInput(finalTranscriptResult, context) {
-    if (!finalTranscriptResult || typeof finalTranscriptResult !== 'object' || finalTranscriptResult === null) {
-        throw new ApolloError('Input error: finalTranscriptResult must be a valid object.', 'BAD_USER_INPUT', {
-            field: 'finalTranscriptResult'
-        });
-    }
+  if (!finalTranscriptResult || typeof finalTranscriptResult !== 'object' || finalTranscriptResult === null) {
+    throw new ApolloError('Input error: finalTranscriptResult must be a valid object.', 'BAD_USER_INPUT', {
+      field: 'finalTranscriptResult',
+    });
+  }
 
-    if (!mongoose.Types.ObjectId.isValid(finalTranscriptResult.student)) {
-        throw new ApolloError('Input error: finalTranscriptResult.student must be a valid ID.', 'BAD_USER_INPUT', {
-            field: 'finalTranscriptResult.student'
-        });
-    }
+  if (!mongoose.Types.ObjectId.isValid(finalTranscriptResult.student)) {
+    throw new ApolloError('Input error: finalTranscriptResult.student must be a valid ID.', 'BAD_USER_INPUT', {
+      field: 'finalTranscriptResult.student',
+    });
+  }
 
-    if (
-        !context ||
-        !context.dataLoaders ||
-        !context.dataLoaders.StudentLoader ||
-        typeof context.dataLoaders.StudentLoader.load !== 'function'
-    ) {
-        throw new ApolloError('Server configuration error: StudentLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
-    }
+  if (
+    !context ||
+    !context.dataLoaders ||
+    !context.dataLoaders.StudentLoader ||
+    typeof context.dataLoaders.StudentLoader.load !== 'function'
+  ) {
+    throw new ApolloError('Server configuration error: StudentLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
+  }
 }
 
 /**
@@ -41,24 +41,19 @@ function ValidateStudentLoaderInput(finalTranscriptResult, context) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateUserLoaderInput(parent, context, fieldName) {
-    if (!parent || typeof parent !== 'object' || parent === null) {
-        throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
-    }
+  if (!parent || typeof parent !== 'object' || parent === null) {
+    throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
+  }
 
-    if (
-        !context ||
-        !context.dataLoaders ||
-        !context.dataLoaders.UserLoader ||
-        typeof context.dataLoaders.UserLoader.load !== 'function'
-    ) {
-        throw new ApolloError('Server configuration error: UserLoader not found on context.', 'INTERNAL_SERVER_ERROR');
-    }
+  if (!context || !context.dataLoaders || !context.dataLoaders.UserLoader || typeof context.dataLoaders.UserLoader.load !== 'function') {
+    throw new ApolloError('Server configuration error: UserLoader not found on context.', 'INTERNAL_SERVER_ERROR');
+  }
 
-    const userId = parent[fieldName];
+  const userId = parent[fieldName];
 
-    if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
-        throw new ApolloError(`Input error: If provided, parent.${fieldName} must be a valid ID.`, 'BAD_USER_INPUT');
-    }
+  if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApolloError(`Input error: If provided, parent.${fieldName} must be a valid ID.`, 'BAD_USER_INPUT');
+  }
 }
 
 /**
@@ -68,20 +63,17 @@ function ValidateUserLoaderInput(parent, context, fieldName) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateBlockLoaderInput(parent, context) {
-    if (!parent || typeof parent !== 'object' || parent === null) {
-        throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
-    }
+  if (!parent || typeof parent !== 'object' || parent === null) {
+    throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT');
+  }
 
-    if (!mongoose.Types.ObjectId.isValid(parent.block)) {
-        throw new ApolloError('Input error: parent.block must be a valid ID.', 'BAD_USER_INPUT');
-    }
+  if (!mongoose.Types.ObjectId.isValid(parent.block)) {
+    throw new ApolloError('Input error: parent.block must be a valid ID.', 'BAD_USER_INPUT');
+  }
 
-    if (!context ||
-        !context.dataLoaders ||
-        !context.dataLoaders.BlockLoader ||
-        typeof context.dataLoaders.BlockLoader.load !== 'function') {
-        throw new ApolloError('Server configuration error: BlockLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
-    }
+  if (!context || !context.dataLoaders || !context.dataLoaders.BlockLoader || typeof context.dataLoaders.BlockLoader.load !== 'function') {
+    throw new ApolloError('Server configuration error: BlockLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
+  }
 }
 
 /**
@@ -91,26 +83,26 @@ function ValidateBlockLoaderInput(parent, context) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateSubjectLoaderInput(parent, context) {
-    if (!parent || typeof parent !== 'object' || parent === null) {
-        throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT', {
-            field: 'parent'
-        });
-    }
+  if (!parent || typeof parent !== 'object' || parent === null) {
+    throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT', {
+      field: 'parent',
+    });
+  }
 
-    if (!mongoose.Types.ObjectId.isValid(parent.subject)) {
-        throw new ApolloError('Input error: parent.subject must be a valid ID.', 'BAD_USER_INPUT', {
-            field: 'parent.subject'
-        });
-    }
+  if (!mongoose.Types.ObjectId.isValid(parent.subject)) {
+    throw new ApolloError('Input error: parent.subject must be a valid ID.', 'BAD_USER_INPUT', {
+      field: 'parent.subject',
+    });
+  }
 
-    if (
-        !context ||
-        !context.dataLoaders ||
-        !context.dataLoaders.SubjectLoader ||
-        typeof context.dataLoaders.SubjectLoader.load !== 'function'
-    ) {
-        throw new ApolloError('Server configuration error: SubjectLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
-    }
+  if (
+    !context ||
+    !context.dataLoaders ||
+    !context.dataLoaders.SubjectLoader ||
+    typeof context.dataLoaders.SubjectLoader.load !== 'function'
+  ) {
+    throw new ApolloError('Server configuration error: SubjectLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
+  }
 }
 
 /**
@@ -120,33 +112,28 @@ function ValidateSubjectLoaderInput(parent, context) {
  * @returns {void} - This function does not return a value but throws an error if validation fails.
  */
 function ValidateTestLoaderInput(parent, context) {
-    if (!parent || typeof parent !== 'object' || parent === null) {
-        throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT', {
-            field: 'parent'
-        });
-    }
+  if (!parent || typeof parent !== 'object' || parent === null) {
+    throw new ApolloError('Input error: parent must be a valid object.', 'BAD_USER_INPUT', {
+      field: 'parent',
+    });
+  }
 
-    if (!mongoose.Types.ObjectId.isValid(parent.test)) {
-        throw new ApolloError('Input error: parent.test must be a valid ID.', 'BAD_USER_INPUT', {
-            field: 'parent.test'
-        });
-    }
+  if (!mongoose.Types.ObjectId.isValid(parent.test)) {
+    throw new ApolloError('Input error: parent.test must be a valid ID.', 'BAD_USER_INPUT', {
+      field: 'parent.test',
+    });
+  }
 
-    if (
-        !context ||
-        !context.dataLoaders ||
-        !context.dataLoaders.TestLoader ||
-        typeof context.dataLoaders.TestLoader.load !== 'function'
-    ) {
-        throw new ApolloError('Server configuration error: TestLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
-    }
+  if (!context || !context.dataLoaders || !context.dataLoaders.TestLoader || typeof context.dataLoaders.TestLoader.load !== 'function') {
+    throw new ApolloError('Server configuration error: TestLoader with load function not found on context.', 'INTERNAL_SERVER_ERROR');
+  }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    ValidateStudentLoaderInput,
-    ValidateUserLoaderInput,
-    ValidateBlockLoaderInput,
-    ValidateSubjectLoaderInput,
-    ValidateTestLoaderInput
-}
+  ValidateStudentLoaderInput,
+  ValidateUserLoaderInput,
+  ValidateBlockLoaderInput,
+  ValidateSubjectLoaderInput,
+  ValidateTestLoaderInput,
+};

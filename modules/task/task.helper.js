@@ -2,12 +2,12 @@
 const { ApolloError } = require('apollo-server');
 const sgMail = require('@sendgrid/mail');
 
-// *************** IMPORT MODULE *************** 
+// *************** IMPORT MODULE ***************
 const TaskModel = require('./task.model');
 const { SENDGRID_API_KEY, SENDGRID_SENDER_EMAIL } = require('../../core/config');
 
 // *************** IMPORT UTILITES ***************
-const CommonHelper = require('../../shared/helper/index')
+const CommonHelper = require('../../shared/helper/index');
 
 // *************** IMPORT VALIDATOR ***************
 const CommonValidator = require('../../shared/validator/index');
@@ -21,30 +21,23 @@ const TaskValidator = require('./task.validator');
  * @returns {object} A processed data payload suitable for a database create operation.
  */
 function GetCreateTaskPayload({ taskInput, userId }) {
-    CommonValidator.ValidateInputTypeObject(taskInput);
-    CommonValidator.ValidateObjectId(userId);
-    TaskValidator.ValidateTaskInput({ taskInput });
+  CommonValidator.ValidateInputTypeObject(taskInput);
+  CommonValidator.ValidateObjectId(userId);
+  TaskValidator.ValidateTaskInput({ taskInput });
 
-    const {
-        test,
-        user,
-        title,
-        description,
-        task_type,
-        due_date
-    } = taskInput;
+  const { test, user, title, description, task_type, due_date } = taskInput;
 
-    return {
-        test: test,
-        user: user,
-        title: title,
-        description: description,
-        task_type: task_type.toUpperCase(),
-        task_status: 'PENDING',
-        due_date: due_date,
-        created_by: userId,
-        updated_by: userId
-    };
+  return {
+    test: test,
+    user: user,
+    title: title,
+    description: description,
+    task_type: task_type.toUpperCase(),
+    task_status: 'PENDING',
+    due_date: due_date,
+    created_by: userId,
+    updated_by: userId,
+  };
 }
 
 /**
@@ -55,31 +48,24 @@ function GetCreateTaskPayload({ taskInput, userId }) {
  * @returns {object} A processed data payload suitable for a database update operation.
  */
 function GetUpdateTaskPayload({ taskInput, userId }) {
-    CommonValidator.ValidateInputTypeObject(taskInput);
-    CommonValidator.ValidateObjectId(userId);
-    TaskValidator.ValidateTaskInput({ taskInput });
+  CommonValidator.ValidateInputTypeObject(taskInput);
+  CommonValidator.ValidateObjectId(userId);
+  TaskValidator.ValidateTaskInput({ taskInput });
 
-    const {
-        user,
-        title,
-        description,
-        task_type,
-        task_status,
-        due_date
-    } = taskInput;
+  const { user, title, description, task_type, task_status, due_date } = taskInput;
 
-    const payload = {};
+  const payload = {};
 
-    if (user !== undefined && user !== null) payload.user = user;
-    if (title !== undefined && title !== null) payload.title = title;
-    if (description !== undefined && description !== null) payload.description = description;
-    if (task_type !== undefined && task_type !== null) payload.task_type = task_type.toUpperCase();
-    if (task_status !== undefined && task_status !== null) payload.task_status = task_status.toUpperCase();
-    if (due_date !== undefined && due_date !== null) payload.due_date = due_date;
+  if (user !== undefined && user !== null) payload.user = user;
+  if (title !== undefined && title !== null) payload.title = title;
+  if (description !== undefined && description !== null) payload.description = description;
+  if (task_type !== undefined && task_type !== null) payload.task_type = task_type.toUpperCase();
+  if (task_status !== undefined && task_status !== null) payload.task_status = task_status.toUpperCase();
+  if (due_date !== undefined && due_date !== null) payload.due_date = due_date;
 
-    payload.updated_by = userId;
+  payload.updated_by = userId;
 
-    return payload;
+  return payload;
 }
 
 /**
@@ -88,35 +74,35 @@ function GetUpdateTaskPayload({ taskInput, userId }) {
  * @returns {Promise<object>} A promise that resolves to the found task document.
  */
 async function GetDeleteTaskPayload({ taskId, userId }) {
-    try {
-        CommonValidator.ValidateObjectId(taskId);
-        CommonValidator.ValidateObjectId(userId);
+  try {
+    CommonValidator.ValidateObjectId(taskId);
+    CommonValidator.ValidateObjectId(userId);
 
-        const deletionTimestamp = Date.now();
+    const deletionTimestamp = Date.now();
 
-        const task = await TaskModel.findOne({ _id: taskId, task_status: { $ne: 'DELETED' } });
-        if (!task) {
-            throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
-        }
-
-        const testId = task.test;
-
-        const deleteTaskPayload = {
-            task: CommonHelper.BuildDeletePayload({
-                ids: [taskId],
-                statusKey: 'task_status',
-                timestamp: deletionTimestamp,
-                userId
-            }),
-            test: BuildPullTaskFromTestPayload(testId, taskId)
-        };
-
-        return deleteTaskPayload;
-    } catch (error) {
-        throw new ApolloError(`Failed to build delete task payload: ${error.message}`, 'GET_DELETE_TASK_PAYLOAD_FAILED', {
-            error: error.message
-        });
+    const task = await TaskModel.findOne({ _id: taskId, task_status: { $ne: 'DELETED' } });
+    if (!task) {
+      throw new ApolloError('Task not found', 'TASK_NOT_FOUND');
     }
+
+    const testId = task.test;
+
+    const deleteTaskPayload = {
+      task: CommonHelper.BuildDeletePayload({
+        ids: [taskId],
+        statusKey: 'task_status',
+        timestamp: deletionTimestamp,
+        userId,
+      }),
+      test: BuildPullTaskFromTestPayload(testId, taskId),
+    };
+
+    return deleteTaskPayload;
+  } catch (error) {
+    throw new ApolloError(`Failed to build delete task payload: ${error.message}`, 'GET_DELETE_TASK_PAYLOAD_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 /**
@@ -126,10 +112,10 @@ async function GetDeleteTaskPayload({ taskId, userId }) {
  * @returns {object} An object containing 'filter' and 'update' properties for a MongoDB $pull operation.
  */
 function BuildPullTaskFromTestPayload(testId, taskId) {
-    return {
-        filter: { _id: testId },
-        update: { $pull: { tasks: taskId } }
-    };
+  return {
+    filter: { _id: testId },
+    update: { $pull: { tasks: taskId } },
+  };
 }
 
 /**
@@ -138,14 +124,14 @@ function BuildPullTaskFromTestPayload(testId, taskId) {
  * @returns {object} A data payload for the update operation.
  */
 function GetTaskCompletionPayload(userId) {
-    CommonValidator.ValidateObjectId(userId);
+  CommonValidator.ValidateObjectId(userId);
 
-    return {
-        task_status: 'COMPLETED',
-        completed_by: userId,
-        completed_at: Date.now(),
-        updated_by: userId
-    };
+  return {
+    task_status: 'COMPLETED',
+    completed_by: userId,
+    completed_at: Date.now(),
+    updated_by: userId,
+  };
 }
 
 /**
@@ -157,30 +143,30 @@ function GetTaskCompletionPayload(userId) {
  * @returns {object} A data payload for creating the new student test result.
  */
 function GetStudentTestResultPayload({ enterMarksInput, userId, notations }) {
-    CommonValidator.ValidateInputTypeObject(enterMarksInput);
-    CommonValidator.ValidateObjectId(userId);
-    TaskValidator.ValidateEnterMarksInput({ enterMarksInput, notations });
+  CommonValidator.ValidateInputTypeObject(enterMarksInput);
+  CommonValidator.ValidateObjectId(userId);
+  TaskValidator.ValidateEnterMarksInput({ enterMarksInput, notations });
 
-    const { test, student, marks } = enterMarksInput;
+  const { test, student, marks } = enterMarksInput;
 
-    let totalMarks = 0;
+  let totalMarks = 0;
 
-    for (const item of marks) {
-        totalMarks += item.mark
-    }
+  for (const item of marks) {
+    totalMarks += item.mark;
+  }
 
-    const averageMark = marks.length ? (totalMarks / marks.length) : 0;
+  const averageMark = marks.length ? totalMarks / marks.length : 0;
 
-    return {
-        student: student,
-        test: test,
-        marks: marks,
-        average_mark: Number(averageMark.toFixed(2)),
-        mark_entry_date: Date.now(),
-        student_test_result_status: 'PENDING',
-        created_by: userId,
-        updated_by: userId
-    };
+  return {
+    student: student,
+    test: test,
+    marks: marks,
+    average_mark: Number(averageMark.toFixed(2)),
+    mark_entry_date: Date.now(),
+    student_test_result_status: 'PENDING',
+    created_by: userId,
+    updated_by: userId,
+  };
 }
 
 /**
@@ -189,12 +175,12 @@ function GetStudentTestResultPayload({ enterMarksInput, userId, notations }) {
  * @returns {object} A data payload for the update operation.
  */
 function GetStudentTestResultValidationPayload(userId) {
-    CommonValidator.ValidateObjectId(userId)
-    return {
-        student_test_result_status: 'VALIDATED',
-        marks_validated_date: Date.now(),
-        updated_by: userId
-    };
+  CommonValidator.ValidateObjectId(userId);
+  return {
+    student_test_result_status: 'VALIDATED',
+    marks_validated_date: Date.now(),
+    updated_by: userId,
+  };
 }
 
 /**
@@ -206,26 +192,28 @@ function GetStudentTestResultValidationPayload(userId) {
  * @returns {object} An object containing the email 'subject' and 'html' content.
  */
 function GetAssignCorrectorEmail({ test, subject, students }) {
-    const studentNames = students.map(function (student) {
-        return student.first_name + ' ' + student.last_name;
-    });
+  const studentNames = students.map(function (student) {
+    return student.first_name + ' ' + student.last_name;
+  });
 
-    const subjectMsg = 'You have been assigned as a Test Corrector!';
+  const subjectMsg = 'You have been assigned as a Test Corrector!';
 
-    const html = `
+  const html = `
     <h2>You have been assigned as a Test Corrector!</h2>
     <p><strong>Test Name:</strong> ${test.name}</p>
     <p><strong>Subject:</strong> ${subject.name}</p>
     <p><strong>Description:</strong> ${test.description}</p>
     <p><strong>Students to Correct:</strong></p>
     <ol>
-        ${studentNames.map(function (name) {
-        return `<li>${name}</li>`;
-    }).join('')}
+        ${studentNames
+          .map(function (name) {
+            return `<li>${name}</li>`;
+          })
+          .join('')}
     </ol>
 `;
 
-    return { subject: subjectMsg, html: html };
+  return { subject: subjectMsg, html: html };
 }
 
 /**
@@ -237,39 +225,39 @@ function GetAssignCorrectorEmail({ test, subject, students }) {
  * @returns {Promise<object>} - A promise that resolves to an object indicating the outcome of the email sending attempt.
  */
 async function SendEmailWithSendGrid({ to, subject, html }) {
-    try {
-        sgMail.setApiKey(SENDGRID_API_KEY);
+  try {
+    sgMail.setApiKey(SENDGRID_API_KEY);
 
-        const msg = {
-            to,
-            from: SENDGRID_SENDER_EMAIL,
-            subject,
-            html
-        };
+    const msg = {
+      to,
+      from: SENDGRID_SENDER_EMAIL,
+      subject,
+      html,
+    };
 
-        const [response] = await sgMail.send(msg);
+    const [response] = await sgMail.send(msg);
 
-        return {
-            success: response.statusCode >= 200 && response.statusCode < 300,
-            statusCode: response.statusCode
-        };
-    } catch (error) {
-        console.error('SendGrid Error:', error.message || error);
-        return {
-            success: false,
-            error: error.message || 'Unknown error'
-        };
-    }
+    return {
+      success: response.statusCode >= 200 && response.statusCode < 300,
+      statusCode: response.statusCode,
+    };
+  } catch (error) {
+    console.error('SendGrid Error:', error.message || error);
+    return {
+      success: false,
+      error: error.message || 'Unknown error',
+    };
+  }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetCreateTaskPayload,
-    GetUpdateTaskPayload,
-    GetDeleteTaskPayload,
-    GetTaskCompletionPayload,
-    GetStudentTestResultPayload,
-    GetStudentTestResultValidationPayload,
-    GetAssignCorrectorEmail,
-    SendEmailWithSendGrid
-}
+  GetCreateTaskPayload,
+  GetUpdateTaskPayload,
+  GetDeleteTaskPayload,
+  GetTaskCompletionPayload,
+  GetStudentTestResultPayload,
+  GetStudentTestResultValidationPayload,
+  GetAssignCorrectorEmail,
+  SendEmailWithSendGrid,
+};

@@ -13,14 +13,14 @@ const CommonValidator = require('../validator/index');
  * @returns {object} An object containing the 'filter' and 'update' payload for tasks.
  */
 function HandleDeleteTasks({ taskIds, userId, timestamp }) {
-    CommonValidator.ValidateObjectIdArray(taskIds, 'INVALID_TASK_ID');
+  CommonValidator.ValidateObjectIdArray(taskIds, 'INVALID_TASK_ID');
 
-    return BuildDeletePayload({
-        ids: taskIds,
-        statusKey: 'task_status',
-        timestamp,
-        userId
-    });
+  return BuildDeletePayload({
+    ids: taskIds,
+    statusKey: 'task_status',
+    timestamp,
+    userId,
+  });
 }
 
 // *************** EXPORT MODULE ***************

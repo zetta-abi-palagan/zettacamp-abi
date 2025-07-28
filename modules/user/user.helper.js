@@ -7,7 +7,7 @@ const config = require('../../core/config');
 const UserModel = require('./user.model');
 
 // *************** IMPORT UTILITES ***************
-const CommonHelper = require('../../shared/helper/index')
+const CommonHelper = require('../../shared/helper/index');
 
 // *************** IMPORT VALIDATOR ***************
 const UserValidator = require('./user.validator');
@@ -22,33 +22,25 @@ const CommonValidator = require('../../shared/validator/index');
  * @returns {Promise<object>} A promise that resolves to a processed data payload suitable for a database create operation.
  */
 async function GetCreateUserPayload({ createUserInput, userId, isEmailUnique }) {
-    CommonValidator.ValidateInputTypeObject(createUserInput);
-    CommonValidator.ValidateObjectId(userId);
-    UserValidator.ValidateUserInput({ userInput: createUserInput, isEmailUnique });
+  CommonValidator.ValidateInputTypeObject(createUserInput);
+  CommonValidator.ValidateObjectId(userId);
+  UserValidator.ValidateUserInput({ userInput: createUserInput, isEmailUnique });
 
-    const {
-        first_name,
-        last_name,
-        email,
-        password,
-        role,
-        profile_picture,
-        user_status
-    } = createUserInput;
+  const { first_name, last_name, email, password, role, profile_picture, user_status } = createUserInput;
 
-    const hashedPassword = await bcrypt.hash(password, parseInt(config.BCRYPT_ROUNDS))
+  const hashedPassword = await bcrypt.hash(password, parseInt(config.BCRYPT_ROUNDS));
 
-    return {
-        first_name,
-        last_name,
-        email,
-        password: hashedPassword,
-        role: role.toUpperCase(),
-        profile_picture,
-        user_status: user_status.toUpperCase(),
-        created_by: userId,
-        updated_by: userId
-    }
+  return {
+    first_name,
+    last_name,
+    email,
+    password: hashedPassword,
+    role: role.toUpperCase(),
+    profile_picture,
+    user_status: user_status.toUpperCase(),
+    created_by: userId,
+    updated_by: userId,
+  };
 }
 
 /**
@@ -61,33 +53,25 @@ async function GetCreateUserPayload({ createUserInput, userId, isEmailUnique }) 
  * @returns {Promise<object>} A promise that resolves to a processed data payload suitable for a partial database update.
  */
 async function GetUpdateUserPayload({ updateUserInput, userId, isEmailUnique }) {
-    CommonValidator.ValidateInputTypeObject(updateUserInput);
-    CommonValidator.ValidateObjectId(userId);
-    UserValidator.ValidateUserInput({ userInput: updateUserInput, isEmailUnique, isUpdate: true });
+  CommonValidator.ValidateInputTypeObject(updateUserInput);
+  CommonValidator.ValidateObjectId(userId);
+  UserValidator.ValidateUserInput({ userInput: updateUserInput, isEmailUnique, isUpdate: true });
 
-    const {
-        first_name,
-        last_name,
-        email,
-        password,
-        role,
-        profile_picture,
-        user_status
-    } = updateUserInput;
+  const { first_name, last_name, email, password, role, profile_picture, user_status } = updateUserInput;
 
-    const payload = {};
+  const payload = {};
 
-    if (first_name !== undefined && first_name !== null) payload.first_name = first_name;
-    if (last_name !== undefined && last_name !== null) payload.last_name = last_name;
-    if (email !== undefined && email !== null) payload.email = email;
-    if (password !== undefined && password !== null) payload.password = await bcrypt.hash(password, parseInt(config.BCRYPT_ROUNDS));
-    if (role !== undefined && role !== null) payload.role = role.toUpperCase();
-    if (profile_picture !== undefined && profile_picture !== null) payload.profile_picture = profile_picture;
-    if (user_status !== undefined && user_status !== null) payload.user_status = user_status.toUpperCase();
+  if (first_name !== undefined && first_name !== null) payload.first_name = first_name;
+  if (last_name !== undefined && last_name !== null) payload.last_name = last_name;
+  if (email !== undefined && email !== null) payload.email = email;
+  if (password !== undefined && password !== null) payload.password = await bcrypt.hash(password, parseInt(config.BCRYPT_ROUNDS));
+  if (role !== undefined && role !== null) payload.role = role.toUpperCase();
+  if (profile_picture !== undefined && profile_picture !== null) payload.profile_picture = profile_picture;
+  if (user_status !== undefined && user_status !== null) payload.user_status = user_status.toUpperCase();
 
-    payload.updated_by = userId;
+  payload.updated_by = userId;
 
-    return payload;
+  return payload;
 }
 
 /**
@@ -98,37 +82,37 @@ async function GetUpdateUserPayload({ updateUserInput, userId, isEmailUnique }) 
  * @returns {Promise<object>} A promise that resolves to a structured payload for the delete operation.
  */
 async function GetDeleteUserPayload({ userId, deletedBy }) {
-    try {
-        CommonValidator.ValidateObjectId(userId);
-        CommonValidator.ValidateObjectId(deletedBy);
+  try {
+    CommonValidator.ValidateObjectId(userId);
+    CommonValidator.ValidateObjectId(deletedBy);
 
-        const deletionTimestamp = Date.now();
+    const deletionTimestamp = Date.now();
 
-        const user = await UserModel.findOne({ _id: userId, user_status: { $ne: 'DELETED' } });
-        if (!user) {
-            throw new ApolloError('User not found', 'USER_NOT_FOUND');
-        }
-
-        const deleteUserPayload = {
-            user: CommonHelper.BuildDeletePayload({
-                ids: [userId],
-                statusKey: 'user_status',
-                timestamp: deletionTimestamp,
-                userId: deletedBy
-            })
-        }
-
-        return deleteUserPayload;
-    } catch (error) {
-        throw new ApolloError(`Failed in GetDeleteUserPayload: ${error.message}`, 'DELETE_USER_PAYLOAD_FAILED', {
-            error: error.message
-        });
+    const user = await UserModel.findOne({ _id: userId, user_status: { $ne: 'DELETED' } });
+    if (!user) {
+      throw new ApolloError('User not found', 'USER_NOT_FOUND');
     }
+
+    const deleteUserPayload = {
+      user: CommonHelper.BuildDeletePayload({
+        ids: [userId],
+        statusKey: 'user_status',
+        timestamp: deletionTimestamp,
+        userId: deletedBy,
+      }),
+    };
+
+    return deleteUserPayload;
+  } catch (error) {
+    throw new ApolloError(`Failed in GetDeleteUserPayload: ${error.message}`, 'DELETE_USER_PAYLOAD_FAILED', {
+      error: error.message,
+    });
+  }
 }
 
 // *************** EXPORT MODULE ***************
 module.exports = {
-    GetCreateUserPayload,
-    GetUpdateUserPayload,
-    GetDeleteUserPayload
-}
+  GetCreateUserPayload,
+  GetUpdateUserPayload,
+  GetDeleteUserPayload,
+};
