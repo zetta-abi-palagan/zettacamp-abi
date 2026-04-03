@@ -6,6 +6,8 @@ const { InitializeExpressApp, StartExpressServer } = require('./core/express');
 
 const port = config.PORT;
 
+// test adding commit again
+
 /**
  * Initializes and starts the entire application.
  * This function orchestrates database connection, Express app setup, Apollo Server setup,
