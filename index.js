@@ -33,5 +33,7 @@ async function StartApp() {
   }
 }
 
+// Just to test commit
+
 // *************** Start the application
 StartApp();
